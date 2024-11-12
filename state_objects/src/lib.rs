@@ -1,6 +1,9 @@
 //! **WARNING: This is an API preview! Most code won't work or even type check properly!**
 //! State objects projects a state management framework that works well with interchain_core.
 
+
+extern crate alloc;
+
 mod errors;
 mod index;
 mod item;

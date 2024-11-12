@@ -1,25 +1,23 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
 
-use bump_scope::allocator_api2::alloc::Allocator;
-use ixc_core::error::HandlerError;
+use alloc::vec::Vec;
+use core::borrow::Borrow;
 use ixc_core::low_level::create_packet;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
-use ixc_core::{Context, Result};
+use ixc_core::Context;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::header::MessageSelector;
-use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_schema::state_object::{
     decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
 };
-use std::borrow::Borrow;
 
 /// A key-value map.
 pub struct Map<K, V> {
-    _k: std::marker::PhantomData<K>,
-    _v: std::marker::PhantomData<V>,
+    _k: core::marker::PhantomData<K>,
+    _v: core::marker::PhantomData<V>,
     #[cfg(feature = "std")]
     prefix: Vec<u8>,
     // TODO no_std prefix
@@ -127,8 +125,8 @@ unsafe impl<K, V> StateObjectResource for Map<K, V> {
         let mut prefix = Vec::from(scope);
         prefix.push(p);
         Ok(Self {
-            _k: std::marker::PhantomData,
-            _v: std::marker::PhantomData,
+            _k: core::marker::PhantomData,
+            _v: core::marker::PhantomData,
             #[cfg(feature = "std")]
             prefix,
         })
