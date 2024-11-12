@@ -38,7 +38,9 @@ impl Default for TestApp {
     fn default() -> Self {
         let mut hypervisor: Hypervisor<VersionedMultiStore> = Default::default();
         let native_vm = NativeVM::new();
-        hypervisor.register_vm("native", std::boxed::Box::new(native_vm.clone())).unwrap();
+        hypervisor
+            .register_vm("native", std::boxed::Box::new(native_vm.clone()))
+            .unwrap();
         hypervisor.set_default_vm("native").unwrap();
         let mem = MemoryManager::new();
         let mut test_app = Self {
@@ -47,7 +49,9 @@ impl Default for TestApp {
             mem,
             mock_id: Cell::new(0),
         };
-        test_app.register_handler::<default_account::DefaultAccount>().unwrap();
+        test_app
+            .register_handler::<default_account::DefaultAccount>()
+            .unwrap();
         test_app
     }
 }
@@ -56,17 +60,26 @@ impl TestApp {
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
     pub fn register_handler<H: Handler>(&self) -> core::result::Result<(), InitializationError> {
         let scope = ResourceScope::default();
-        unsafe { self.native_vm.register_handler(H::NAME, Box::new(H::new(&scope)?)); }
+        unsafe {
+            self.native_vm
+                .register_handler(H::NAME, Box::new(H::new(&scope)?));
+        }
         Ok(())
     }
 
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
     /// This version of the function also registers the handler's client bindings.
-    pub fn register_handler_with_bindings<H: Handler>(&self, client_bindings: &[(&'static str, AccountID)]) -> core::result::Result<(), InitializationError> {
+    pub fn register_handler_with_bindings<H: Handler>(
+        &self,
+        client_bindings: &[(&'static str, AccountID)],
+    ) -> core::result::Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
         scope.account_resolver = Some(&binding_map);
-        unsafe { self.native_vm.register_handler(H::NAME, Box::new(H::new(&scope)?)); }
+        unsafe {
+            self.native_vm
+                .register_handler(H::NAME, Box::new(H::new(&scope)?));
+        }
         Ok(())
     }
 
@@ -84,14 +97,9 @@ impl TestApp {
     }
 
     /// Creates a new client for the given account.
-    pub fn client_context_for(&self, account_id: AccountID) -> Context
-    {
+    pub fn client_context_for(&self, account_id: AccountID) -> Context {
         unsafe {
-            let ctx = Context::new(
-                account_id,
-                account_id,
-                0,
-                self);
+            let ctx = Context::new(account_id, account_id, 0, self);
             ctx
         }
     }
@@ -102,7 +110,8 @@ impl TestApp {
         let mock_id = self.mock_id.get();
         self.mock_id.set(mock_id + 1);
         let handler_id = format!("mock{}", mock_id);
-        self.native_vm.register_handler(&handler_id, std::boxed::Box::new(mock));
+        self.native_vm
+            .register_handler(&handler_id, std::boxed::Box::new(mock));
         create_account_raw(&mut root, &handler_id, &[])
     }
 
@@ -122,8 +131,14 @@ impl TestApp {
 }
 
 impl HostBackend for TestApp {
-    fn invoke(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        self.hypervisor.borrow_mut().invoke(message_packet, allocator)
+    fn invoke(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        self.hypervisor
+            .borrow_mut()
+            .invoke(message_packet, allocator)
     }
 }
 
@@ -135,9 +150,7 @@ pub struct MockHandler {
 impl MockHandler {
     /// Creates a new mock handler.
     pub fn new() -> Self {
-        MockHandler {
-            mocks: Vec::new(),
-        }
+        MockHandler { mocks: Vec::new() }
     }
 
     /// Adds a mock handler API trait implementation to the mock handler.
@@ -154,12 +167,17 @@ impl MockHandler {
 }
 
 impl RawHandler for MockHandler {
-    fn handle(&self, message_packet: &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn handle(
+        &self,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         for mock in &self.mocks {
             let res = mock.handle(message_packet, callbacks, allocator);
             match res {
                 Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
-                _ => return res
+                _ => return res,
             }
         }
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
@@ -168,7 +186,12 @@ impl RawHandler for MockHandler {
 
 struct MockWrapper<T: RawHandler + ?Sized>(std::boxed::Box<T>);
 impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
-    fn handle(&self, message_packet: &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn handle(
+        &self,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         self.0.handle(message_packet, callbacks, allocator)
     }
 }
@@ -182,6 +205,8 @@ mod default_account {
 
     impl DefaultAccount {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> { Ok(()) }
+        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+            Ok(())
+        }
     }
 }

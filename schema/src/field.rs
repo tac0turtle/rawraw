@@ -17,11 +17,10 @@ pub struct Field<'a> {
     pub referenced_type: &'a str,
 }
 
-impl <'a> Field<'a> {
+impl<'a> Field<'a> {
     /// Returns a copy of the field with the provided name set.
     pub const fn with_name(mut self, name: &'a str) -> Self {
         self.name = name;
         self
     }
 }
-

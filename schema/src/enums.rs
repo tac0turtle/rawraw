@@ -1,9 +1,9 @@
-use ixc_schema_macros::SchemaValue;
-use crate::decoder::Decoder;
 use crate::decoder::DecodeError;
+use crate::decoder::Decoder;
 use crate::encoder::{EncodeError, Encoder};
 use crate::kind::Kind;
 use crate::types::{ReferenceableType, Type};
+use ixc_schema_macros::SchemaValue;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[non_exhaustive]
@@ -23,15 +23,12 @@ pub struct EnumValueDefinition<'a> {
 
 impl<'a> EnumValueDefinition<'a> {
     pub const fn new(name: &'a str, value: i32) -> Self {
-        Self {
-            name,
-            value,
-        }
+        Self { name, value }
     }
 }
 
 pub unsafe trait EnumSchema:
-ReferenceableType + TryFrom<Self::NumericType> + Into<Self::NumericType> + Clone
+    ReferenceableType + TryFrom<Self::NumericType> + Into<Self::NumericType> + Clone
 {
     const NAME: &'static str;
     const VALUES: &'static [EnumValueDefinition<'static>];
@@ -56,8 +53,7 @@ impl EnumNumericType for i16 {}
 impl EnumNumericType for u8 {}
 impl EnumNumericType for i8 {}
 
-fn encode_enum<E: EnumSchema>(x: &E, encoder: &mut dyn Encoder)
-                              -> Result<(), EncodeError>
+fn encode_enum<E: EnumSchema>(x: &E, encoder: &mut dyn Encoder) -> Result<(), EncodeError>
 where
     E::NumericType: Into<i32>,
 {
@@ -70,6 +66,5 @@ where
     E::NumericType: From<i32>,
 {
     let x = decoder.decode_enum(&E::ENUM_TYPE)?;
-    E::try_from(x.into())
-        .map_err(|_| DecodeError::InvalidData)
+    E::try_from(x.into()).map_err(|_| DecodeError::InvalidData)
 }

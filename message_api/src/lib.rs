@@ -2,11 +2,11 @@
 //!
 //! This crate provides a low-level implementation of the Cosmos SDK RFC 003 message passing API.
 
-pub mod header;
-pub mod data_pointer;
-pub mod packet;
-pub mod code;
-pub mod handler;
 mod account_id;
+pub mod code;
+pub mod data_pointer;
+pub mod handler;
+pub mod header;
+pub mod packet;
 
 pub use account_id::AccountID;

@@ -1,9 +1,9 @@
 //! Memory management utilities for codec implementations.
 
-use core::alloc::Layout;
 use allocator_api2::alloc::{AllocError, Allocator};
 use allocator_api2::boxed::Box;
 use allocator_api2::vec::Vec;
+use core::alloc::Layout;
 use core::cell::Cell;
 use core::mem::transmute;
 use core::ptr::{drop_in_place, NonNull};
@@ -42,13 +42,16 @@ impl MemoryManager {
             let len = vec.len();
             let slice = core::slice::from_raw_parts(ptr, len);
             let (dropper, _) = Box::into_non_null(Box::new_in(vec, &self.bump));
-            let drop_cell = Box::new_in(DropCell {
-                /// Rust doesn't know what the lifetime of this data is, but we do because
-                /// we allocated it and own the allocator,
-                /// so we transmute it to have the appropriate lifetime
-                dropper: transmute(dropper as NonNull<dyn DeferDrop>),
-                next: self.drop_cells.get(),
-            }, &self.bump);
+            let drop_cell = Box::new_in(
+                DropCell {
+                    /// Rust doesn't know what the lifetime of this data is, but we do because
+                    /// we allocated it and own the allocator,
+                    /// so we transmute it to have the appropriate lifetime
+                    dropper: transmute(dropper as NonNull<dyn DeferDrop>),
+                    next: self.drop_cells.get(),
+                },
+                &self.bump,
+            );
             let (drop_cell, _) = Box::into_non_null(drop_cell);
             self.drop_cells.set(Some(drop_cell));
             slice
@@ -69,15 +72,30 @@ unsafe impl Allocator for MemoryManager {
         (&self.bump).deallocate(ptr, layout)
     }
 
-    unsafe fn grow(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
         (&self.bump).grow(ptr, old_layout, new_layout)
     }
 
-    unsafe fn grow_zeroed(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
         (&self.bump).grow_zeroed(ptr, old_layout, new_layout)
     }
 
-    unsafe fn shrink(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
         (&self.bump).shrink(ptr, old_layout, new_layout)
     }
 }

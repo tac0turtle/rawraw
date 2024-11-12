@@ -1,5 +1,5 @@
 use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::handler::{HostBackend, RawHandler, Allocator};
+use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
 use ixc_vm_api::{HandlerDescriptor, VM};
 use std::collections::HashMap;
@@ -35,7 +35,13 @@ impl VM for NativeVM {
         }
     }
 
-    fn run_handler(&self, vm_handler_id: &str, message_packet: &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn run_handler(
+        &self,
+        vm_handler_id: &str,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         let vm = self.0.read().unwrap();
         if let Some(handler) = vm.handlers.get(vm_handler_id) {
             handler.handle(message_packet, callbacks, allocator)

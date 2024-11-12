@@ -11,7 +11,7 @@ pub union DataPointer {
     /// A pointer to the data inside the message packet.
     pub local_pointer: LocalPointer,
     /// A wrapper for a u64 value.
-    pub u64_wrapper: U64Wrapper
+    pub u64_wrapper: U64Wrapper,
 }
 
 impl Default for DataPointer {
@@ -47,11 +47,11 @@ impl Default for NativePointer {
 /// A wrapper for a u64 value.
 #[derive(Copy, Clone, Default)]
 #[repr(C)]
-pub struct U64Wrapper  {
+pub struct U64Wrapper {
     /// Zero
     pub zero: u64,
     /// The value
-    pub value: u64
+    pub value: u64,
 }
 
 /// A pointer to data inside the message packet.
@@ -79,11 +79,17 @@ impl DataPointer {
             }
             unsafe {
                 let data = message_packet.data.as_ptr() as *const u8;
-                return core::slice::from_raw_parts(data.offset(self.local_pointer.offset as isize), self.local_pointer.len as usize);
+                return core::slice::from_raw_parts(
+                    data.offset(self.local_pointer.offset as isize),
+                    self.local_pointer.len as usize,
+                );
             }
         }
         unsafe {
-            core::slice::from_raw_parts(self.native_pointer.pointer as *const u8, self.native_pointer.len as usize)
+            core::slice::from_raw_parts(
+                self.native_pointer.pointer as *const u8,
+                self.native_pointer.len as usize,
+            )
         }
     }
 
@@ -110,9 +116,7 @@ impl DataPointer {
 
     /// Unpack a u64 value from the pointer.
     pub unsafe fn get_u64(&self) -> u64 {
-        unsafe {
-            self.u64_wrapper.value
-        }
+        unsafe { self.u64_wrapper.value }
     }
 }
 

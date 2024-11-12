@@ -92,10 +92,10 @@ impl<V: ObjectFieldValue> ObjectFieldValue for Option<V> {
 }
 impl<V: ObjectFieldValue> ObjectFieldValue for [V]
 where
-        for<'a> <V as ObjectFieldValue>::In<'a>: ListElementValue<'a>,
-        for<'a> <<V as ObjectFieldValue>::In<'a> as SchemaValue<'a>>::Type: ListElementType,
-        for<'a> <V as ObjectFieldValue>::Out<'a>: ListElementValue<'a>,
-        for<'a> <<V as ObjectFieldValue>::Out<'a> as SchemaValue<'a>>::Type: ListElementType,
+    for<'a> <V as ObjectFieldValue>::In<'a>: ListElementValue<'a>,
+    for<'a> <<V as ObjectFieldValue>::In<'a> as SchemaValue<'a>>::Type: ListElementType,
+    for<'a> <V as ObjectFieldValue>::Out<'a>: ListElementValue<'a>,
+    for<'a> <<V as ObjectFieldValue>::Out<'a> as SchemaValue<'a>>::Type: ListElementType,
 {
     type In<'a> = &'a [V::In<'a>];
     type Out<'a> = &'a [V::Out<'a>];

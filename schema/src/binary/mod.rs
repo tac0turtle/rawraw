@@ -10,33 +10,42 @@ use crate::mem::MemoryManager;
 use crate::state_object::{ObjectKey, ObjectValue};
 use crate::value::SchemaValue;
 
-pub(crate) mod encoder;
 pub(crate) mod decoder;
+pub(crate) mod encoder;
 
 /// A codec for encoding and decoding values using the native binary format.
 #[derive(Default)]
 pub struct NativeBinaryCodec;
 
 impl Codec for NativeBinaryCodec {
-    fn encode_value<'a>(&self, value: &dyn ValueEncodeVisitor, writer_factory: &'a dyn WriterFactory) -> Result<&'a [u8], EncodeError> {
+    fn encode_value<'a>(
+        &self,
+        value: &dyn ValueEncodeVisitor,
+        writer_factory: &'a dyn WriterFactory,
+    ) -> Result<&'a [u8], EncodeError> {
         encode_value(value, writer_factory)
     }
 
-    fn decode_value<'a>(&self, input: &'a [u8], memory_manager: &'a MemoryManager, visitor: &mut dyn ValueDecodeVisitor<'a>) -> Result<(), DecodeError> {
+    fn decode_value<'a>(
+        &self,
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+        visitor: &mut dyn ValueDecodeVisitor<'a>,
+    ) -> Result<(), DecodeError> {
         decode_value(input, memory_manager, visitor)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::codec::{decode_value, Codec};
+    use crate::mem::MemoryManager;
     use alloc::string::String;
     use alloc::vec::Vec;
     use ixc_schema_macros::SchemaValue;
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
     use simple_time::{Duration, Time};
-    use crate::codec::{decode_value, Codec};
-    use crate::mem::MemoryManager;
 
     #[derive(SchemaValue, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]

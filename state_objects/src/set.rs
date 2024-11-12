@@ -4,5 +4,5 @@ use crate::Map;
 
 /// A set of keys in storage.
 pub struct Set<K> {
-    map: Map<K, ()>
+    map: Map<K, ()>,
 }

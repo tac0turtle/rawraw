@@ -1,16 +1,18 @@
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
 use ixc_core_macros::message_selector;
-use ixc_hypervisor::{CommitError, NewTxError, PopFrameError, PushFrameError, StateHandler, Transaction};
+use ixc_hypervisor::{
+    CommitError, NewTxError, PopFrameError, PushFrameError, StateHandler, Transaction,
+};
+use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
+use ixc_message_api::code::SystemCode::{FatalExecutionError, InvalidHandler};
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
-use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
-use ixc_message_api::code::SystemCode::{FatalExecutionError, InvalidHandler};
 
 #[derive(Default, Clone)]
 pub struct VersionedMultiStore {
@@ -20,7 +22,11 @@ pub struct VersionedMultiStore {
 impl StateHandler for VersionedMultiStore {
     type Tx = Tx;
 
-    fn new_transaction(&self, account_id: AccountID, volatile: bool) -> Result<Self::Tx, NewTxError> {
+    fn new_transaction(
+        &self,
+        account_id: AccountID,
+        volatile: bool,
+    ) -> Result<Self::Tx, NewTxError> {
         let latest = self.versions.last().map(|s| s.clone()).unwrap_or_default();
         Ok(Tx {
             call_stack: vec![],
@@ -108,7 +114,9 @@ impl Transaction for Tx {
             if commit {
                 let current_frame = self.current_frame.borrow();
                 previous_frame.store = current_frame.store.clone();
-                previous_frame.changes.append(&mut current_frame.changes.clone());
+                previous_frame
+                    .changes
+                    .append(&mut current_frame.changes.clone());
             }
             self.current_frame = RefCell::new(previous_frame);
             Ok(())
@@ -130,7 +138,11 @@ impl Transaction for Tx {
 
     fn raw_kv_get(&self, account_id: AccountID, key: &[u8]) -> Option<Vec<u8>> {
         let current_frame = self.current_frame.borrow();
-        current_frame.store.stores.get(&account_id).and_then(|s| s.kv_store.get(key).cloned())
+        current_frame
+            .store
+            .stores
+            .get(&account_id)
+            .and_then(|s| s.kv_store.get(key).cloned())
     }
 
     fn raw_kv_set(&self, account_id: AccountID, key: &[u8], value: &[u8]) {
@@ -155,7 +167,11 @@ impl Transaction for Tx {
         });
     }
 
-    fn handle(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn handle(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         unsafe {
             let header = message_packet.header();
             match header.message_selector {
@@ -163,7 +179,7 @@ impl Transaction for Tx {
                 GET_SELECTOR => self.get(message_packet, allocator),
                 SET_SELECTOR => self.set(message_packet),
                 DELETE_SELECTOR => self.delete(message_packet),
-                _ => Err(todo!())
+                _ => Err(todo!()),
             }
         }
     }
@@ -181,7 +197,11 @@ impl Tx {
         todo!()
     }
 
-    unsafe fn get(&self, packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    unsafe fn get(
+        &self,
+        packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         let key = packet.header().in_pointer1.get(packet);
         self.track_access(key, Access::Read)
             .map_err(|_| SystemCode(InvalidHandler))?;
@@ -190,15 +210,17 @@ impl Tx {
         let current_store = current_frame.get_kv_store(account);
         match current_store.kv_store.get(key) {
             None => unsafe {
-                return Err(HandlerCode(0)) // KV-stores should use handler code 0 to indicate not found
-            }
+                return Err(HandlerCode(0)); // KV-stores should use handler code 0 to indicate not found
+            },
             Some(value) => unsafe {
-                let out = allocator.allocate(Layout::from_size_align_unchecked(value.len(), 16)).
-                    map_err(|_| SystemCode(FatalExecutionError))?;
-                let out_slice = core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
+                let out = allocator
+                    .allocate(Layout::from_size_align_unchecked(value.len(), 16))
+                    .map_err(|_| SystemCode(FatalExecutionError))?;
+                let out_slice =
+                    core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
                 out_slice.copy_from_slice(value.as_slice());
                 packet.header_mut().out_pointer1.set_slice(out_slice);
-            }
+            },
         }
         Ok(())
     }

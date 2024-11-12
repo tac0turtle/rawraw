@@ -1,6 +1,6 @@
 //! Error and success codes returned by the message API.
 
-use core::fmt::{Debug};
+use core::fmt::Debug;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 /// Error and success codes returned by the message API.
@@ -27,7 +27,6 @@ impl<T: Into<u8> + TryFrom<u8> + Debug + Clone> HandlerCode for T {}
 #[non_exhaustive]
 pub enum SystemCode {
     // System restricted error codes:
-
     /// Fatal execution error that likely cannot be recovered from.
     FatalExecutionError = 1,
     /// Account not-found error.
@@ -41,7 +40,6 @@ pub enum SystemCode {
     InvalidHandler = 5,
 
     // Known errors that can be returned by handlers or the system:
-
     /// Any uncategorized error.
     Other = 128,
     /// The handler doesn't handle the specified message.
@@ -74,7 +72,6 @@ impl<E: HandlerCode> From<u16> for ErrorCode<E> {
     }
 }
 
-
 impl<E: HandlerCode> Into<u16> for ErrorCode<E> {
     fn into(self) -> u16 {
         match self {
@@ -103,4 +100,3 @@ impl SystemCode {
         code >= 128
     }
 }
-

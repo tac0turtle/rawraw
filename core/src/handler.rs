@@ -5,8 +5,8 @@ use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
 use ixc_schema::structs::StructSchema;
-use ixc_schema::SchemaValue;
 use ixc_schema::value::OptionalValue;
+use ixc_schema::SchemaValue;
 
 /// Handler trait for account and module handlers.
 pub trait Handler: RawHandler + Router + Resources + Service {
@@ -18,9 +18,7 @@ pub trait Handler: RawHandler + Router + Resources + Service {
 
 /// A message which initializes a new account for a handler.
 // TODO we might want to do something more generic here because this could be a common base trait of Message
-pub trait InitMessage<'a>: SchemaValue<'a> + StructSchema
-// TODO required a sealed struct
-{
+pub trait InitMessage<'a>: SchemaValue<'a> + StructSchema {
     /// The codec used for initializing the handler.
     type Codec: Codec + Default;
 }

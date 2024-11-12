@@ -20,7 +20,13 @@ pub trait VM {
     /// Describe a handler within the virtual machine.
     fn describe_handler(&self, vm_handler_id: &str) -> Option<HandlerDescriptor>;
     /// Run a handler within the virtual machine.
-    fn run_handler(&self, vm_handler_id: &str, message_packet: &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode>;
+    fn run_handler(
+        &self,
+        vm_handler_id: &str,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>;
 }
 
 /// A descriptor for a handler.

@@ -8,9 +8,7 @@ use ixc_schema::structs::StructSchema;
 use ixc_schema::value::{OptionalValue, SchemaValue};
 
 /// The Message trait for invoking messages dynamically.
-pub trait Message<'a>: SchemaValue<'a> + StructSchema
-// TODO required a sealed struct
-{
+pub trait Message<'a>: SchemaValue<'a> + StructSchema {
     /// The message selector.
     const SELECTOR: MessageSelector;
     /// The optional response type.

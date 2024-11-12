@@ -16,7 +16,10 @@ mod module_manager {
     }
 
     pub trait ModuleRouter {
-        fn invoke<'a, 'b, M: Message<'b>>(context: &'a Context, message: M) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error>;
+        fn invoke<'a, 'b, M: Message<'b>>(
+            context: &'a Context,
+            message: M,
+        ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error>;
     }
 }
 

@@ -7,7 +7,7 @@ struct Decoder<'a> {
     data: &'a [u8],
 }
 
-impl <'a> ixc_schema::decoder::Decoder<'a> for Decoder<'a> {
+impl<'a> ixc_schema::decoder::Decoder<'a> for Decoder<'a> {
     fn decode_bool(&mut self) -> Result<bool, DecodeError> {
         todo!()
     }
@@ -68,11 +68,18 @@ impl <'a> ixc_schema::decoder::Decoder<'a> for Decoder<'a> {
         todo!()
     }
 
-    fn decode_struct(&mut self, visitor: &mut dyn StructDecodeVisitor<'a>, struct_type: &StructType) -> Result<(), DecodeError> {
+    fn decode_struct(
+        &mut self,
+        visitor: &mut dyn StructDecodeVisitor<'a>,
+        struct_type: &StructType,
+    ) -> Result<(), DecodeError> {
         todo!()
     }
 
-    fn decode_list(&mut self, visitor: &mut dyn ixc_schema::list::ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
+    fn decode_list(
+        &mut self,
+        visitor: &mut dyn ixc_schema::list::ListDecodeVisitor<'a>,
+    ) -> Result<(), DecodeError> {
         // if it's a packed tag
         //  decode size
         //  for each list item
@@ -82,7 +89,10 @@ impl <'a> ixc_schema::decoder::Decoder<'a> for Decoder<'a> {
         todo!()
     }
 
-    fn decode_option(&mut self, visitor: &mut dyn ValueDecodeVisitor<'a>) -> Result<bool, DecodeError> {
+    fn decode_option(
+        &mut self,
+        visitor: &mut dyn ValueDecodeVisitor<'a>,
+    ) -> Result<bool, DecodeError> {
         todo!()
     }
 

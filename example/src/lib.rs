@@ -15,20 +15,20 @@ pub mod counter {
     #[publish]
     impl Counter {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> { Ok(()) }
+        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+            Ok(())
+        }
 
         pub fn inc(&self, ctx: &mut Context) -> Result<u64> {
             let value = self.value.get(ctx)?;
-            let new_value = value.checked_add(1).ok_or(
-                error!("overflow when incrementing counter")
-            )?;
+            let new_value = value
+                .checked_add(1)
+                .ok_or(error!("overflow when incrementing counter"))?;
             self.value.set(ctx, new_value)?;
             Ok(new_value)
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

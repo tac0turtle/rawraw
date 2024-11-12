@@ -1,5 +1,6 @@
 //! Basic error handling utilities.
 
+use crate::result::ClientResult;
 use alloc::format;
 use alloc::string::String;
 use core::error::Error;
@@ -7,7 +8,6 @@ use core::fmt::{Debug, Display, Formatter};
 use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_schema::decoder::DecodeError;
 use ixc_schema::encoder::EncodeError;
-use crate::result::ClientResult;
 
 /// The standard error type returned by handlers.
 #[derive(Clone)]
@@ -143,7 +143,7 @@ impl<E: HandlerCode> Debug for ClientError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self.code {
             ErrorCode::SystemCode(SystemCode::Other) => write!(f, "{}", self.message),
-            _ => write!(f, "code: {:?}: {}", self.code, self.message)
+            _ => write!(f, "code: {:?}: {}", self.code, self.message),
         }
     }
 }
@@ -152,7 +152,7 @@ impl<E: HandlerCode> Display for ClientError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self.code {
             ErrorCode::SystemCode(SystemCode::Other) => write!(f, "{}", self.message),
-            _ => write!(f, "code: {:?}: {}", self.code, self.message)
+            _ => write!(f, "code: {:?}: {}", self.code, self.message),
         }
     }
 }
@@ -218,12 +218,10 @@ pub fn convert_client_error<E: HandlerCode, F: HandlerCode>(err: ClientError<E>)
 /// Returns a default result if the error is `MessageNotHandled`.
 pub fn unimplemented_ok<R: Default, E: HandlerCode>(res: ClientResult<R, E>) -> ClientResult<R, E> {
     match res {
-        Ok(r) => { Ok(r) }
-        Err(e) => {
-            match e.code {
-                ErrorCode::SystemCode(SystemCode::MessageNotHandled) => { Ok(Default::default()) }
-                _ => Err(e)
-            }
-        }
+        Ok(r) => Ok(r),
+        Err(e) => match e.code {
+            ErrorCode::SystemCode(SystemCode::MessageNotHandled) => Ok(Default::default()),
+            _ => Err(e),
+        },
     }
 }

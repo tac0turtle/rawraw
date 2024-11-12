@@ -1,10 +1,10 @@
 //! Traits for encoding and decoding list types.
-use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::mem::MemoryManager;
 use crate::value::SchemaValue;
+use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
 
 /// A visitor for encoding list types.
 pub trait ListEncodeVisitor {
@@ -32,7 +32,9 @@ pub struct AllocatorVecBuilder<'a, T: SchemaValue<'a>> {
 }
 
 impl<'a, T: SchemaValue<'a>> Default for AllocatorVecBuilder<'a, T> {
-    fn default() -> Self { Self { xs: None } }
+    fn default() -> Self {
+        Self { xs: None }
+    }
 }
 
 impl<'a, T: SchemaValue<'a>> AllocatorVecBuilder<'a, T> {

@@ -1,11 +1,11 @@
 //! Buffer utilities for encoding and decoding.
 
+use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
+use crate::mem::MemoryManager;
 use allocator_api2::alloc::Allocator;
 use core::alloc::Layout;
 use core::ptr::slice_from_raw_parts_mut;
-use crate::decoder::DecodeError;
-use crate::mem::MemoryManager;
 
 /// A factory for creating writers.
 pub trait WriterFactory {
@@ -24,9 +24,9 @@ pub trait Writer {
 impl<'a> WriterFactory for MemoryManager {
     fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter, EncodeError> {
         unsafe {
-            let ptr = self.allocate_zeroed(
-                Layout::from_size_align_unchecked(size, 1)
-            ).map_err(|_| EncodeError::OutOfSpace)?;
+            let ptr = self
+                .allocate_zeroed(Layout::from_size_align_unchecked(size, 1))
+                .map_err(|_| EncodeError::OutOfSpace)?;
             Ok(ReverseSliceWriter {
                 buf: &mut *ptr.as_ptr(),
                 pos: size,
@@ -38,9 +38,9 @@ impl<'a> WriterFactory for MemoryManager {
 impl<'a> WriterFactory for &'a dyn Allocator {
     fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter, EncodeError> {
         unsafe {
-            let ptr = self.allocate_zeroed(
-                Layout::from_size_align_unchecked(size, 1)
-            ).map_err(|_| EncodeError::OutOfSpace)?;
+            let ptr = self
+                .allocate_zeroed(Layout::from_size_align_unchecked(size, 1))
+                .map_err(|_| EncodeError::OutOfSpace)?;
             Ok(ReverseSliceWriter {
                 buf: &mut *ptr.as_ptr(),
                 pos: size,
@@ -86,7 +86,7 @@ pub trait Reader<'a> {
     fn is_done(&self) -> Result<(), DecodeError>;
 }
 
-impl <'a> Reader<'a> for &'a [u8] {
+impl<'a> Reader<'a> for &'a [u8] {
     fn read_bytes(&mut self, size: usize) -> Result<&'a [u8], DecodeError> {
         if self.len() < size {
             return Err(DecodeError::OutOfData);

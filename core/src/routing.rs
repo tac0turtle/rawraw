@@ -2,12 +2,14 @@
 
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::handler::{HostBackend};
+use ixc_message_api::handler::HostBackend;
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 
 /// A router for message packets.
-pub unsafe trait Router where Self: 'static
+pub unsafe trait Router
+where
+    Self: 'static,
 {
     /// The routes sorted by message selector.
     const SORTED_ROUTES: &'static [Route<Self>];
@@ -21,17 +23,26 @@ pub unsafe trait Router where Self: 'static
 // }
 
 /// A route for a message packet.
-pub type Route<T> = (u64, fn(&T, &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode>);
+pub type Route<T> = (
+    u64,
+    fn(
+        &T,
+        &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>,
+);
 
 /// Execute a message packet on a router.
-pub fn exec_route<R: Router + ?Sized>(rtr: &R, packet: &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+pub fn exec_route<R: Router + ?Sized>(
+    rtr: &R,
+    packet: &mut MessagePacket,
+    callbacks: &dyn HostBackend,
+    allocator: &dyn Allocator,
+) -> Result<(), ErrorCode> {
     match find_route(packet.header().message_selector) {
-        Some(rt) => {
-            rt.1(rtr, packet, callbacks, allocator)
-        }
-        None => {
-            Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
-        }
+        Some(rt) => rt.1(rtr, packet, callbacks, allocator),
+        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
     }
 }
 
@@ -39,12 +50,8 @@ pub fn exec_route<R: Router + ?Sized>(rtr: &R, packet: &mut MessagePacket, callb
 pub fn find_route<R: Router + ?Sized>(sel: MessageSelector) -> Option<&'static Route<R>> {
     let res = R::SORTED_ROUTES.binary_search_by_key(&sel, |(selector, _)| *selector);
     match res {
-        Ok(idx) => {
-            Some(&R::SORTED_ROUTES[idx])
-        }
-        Err(_) => {
-            None
-        }
+        Ok(idx) => Some(&R::SORTED_ROUTES[idx]),
+        Err(_) => None,
     }
 }
 
@@ -55,7 +62,7 @@ pub const fn sort_routes<const N: usize, T: ?Sized>(mut arr: [Route<T>; N]) -> [
     loop {
         let mut swapped = false;
         let mut i = 1;
-        while i <  n {
+        while i < n {
             if arr[i - 1].0 > arr[i].0 {
                 let left = arr[i - 1];
                 let right = arr[i];
@@ -105,7 +112,6 @@ pub const fn sort_routes<const N: usize, T: ?Sized>(mut arr: [Route<T>; N]) -> [
 //     }
 //     res
 // }
-
 
 // TODO: can use https://docs.rs/array-concat/latest/array_concat/ to concat arrays then the above function to sort
 // or https://docs.rs/constcat/latest/constcat/

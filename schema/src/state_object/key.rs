@@ -6,7 +6,11 @@ use crate::state_object::value::ObjectValue;
 use crate::state_object::KeyFieldValue;
 
 /// Encode an object key with the given prefix.
-pub fn encode_object_key<'a, 'b, K: ObjectKey>(prefix: &[u8], key: &K::In<'a>, writer_factory: &'b dyn WriterFactory) -> Result<&'b [u8], EncodeError> {
+pub fn encode_object_key<'a, 'b, K: ObjectKey>(
+    prefix: &[u8],
+    key: &K::In<'a>,
+    writer_factory: &'b dyn WriterFactory,
+) -> Result<&'b [u8], EncodeError> {
     let out_size = <K as ObjectKey>::out_size(key) + prefix.len();
     let mut writer = writer_factory.new_reverse(out_size)?;
     <K as ObjectKey>::encode(key, &mut writer)?;
@@ -16,7 +20,10 @@ pub fn encode_object_key<'a, 'b, K: ObjectKey>(prefix: &[u8], key: &K::In<'a>, w
 }
 
 /// Decode an object key. This function assumes that the input has already had any prefix stripped.
-pub fn decode_object_key<'a, K: ObjectKey>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<K::Out<'a>, DecodeError> {
+pub fn decode_object_key<'a, K: ObjectKey>(
+    input: &'a [u8],
+    memory_manager: &'a MemoryManager,
+) -> Result<K::Out<'a>, DecodeError> {
     <K as ObjectKey>::decode(input, memory_manager)
 }
 
@@ -26,7 +33,10 @@ pub trait ObjectKey: ObjectValue {
     fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError>;
 
     /// Decode the key.
-    fn decode<'a>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<Self::Out<'a>, DecodeError>;
+    fn decode<'a>(
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+    ) -> Result<Self::Out<'a>, DecodeError>;
 
     /// Compute the output buffer size for the key.
     fn out_size<'a>(key: &Self::In<'a>) -> usize;
@@ -37,11 +47,16 @@ impl ObjectKey for () {
         Ok(())
     }
 
-    fn decode<'a>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<Self::Out<'a>, DecodeError> {
+    fn decode<'a>(
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+    ) -> Result<Self::Out<'a>, DecodeError> {
         Ok(())
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize { 0 }
+    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+        0
+    }
 }
 
 impl<A: KeyFieldValue> ObjectKey for A {
@@ -49,7 +64,10 @@ impl<A: KeyFieldValue> ObjectKey for A {
         A::encode_terminal(key, writer)
     }
 
-    fn decode<'a>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<Self::Out<'a>, DecodeError> {
+    fn decode<'a>(
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+    ) -> Result<Self::Out<'a>, DecodeError> {
         let mut reader = input;
         let a = A::decode_terminal(&mut reader, memory_manager)?;
         reader.is_done()?;
@@ -66,7 +84,10 @@ impl<A: KeyFieldValue> ObjectKey for (A,) {
         A::encode(&key.0, writer)
     }
 
-    fn decode<'a>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<Self::Out<'a>, DecodeError> {
+    fn decode<'a>(
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+    ) -> Result<Self::Out<'a>, DecodeError> {
         let mut reader = input;
         let a = A::decode(&mut reader, memory_manager)?;
         reader.is_done()?;
@@ -84,7 +105,10 @@ impl<A: KeyFieldValue, B: KeyFieldValue> ObjectKey for (A, B) {
         A::encode(&key.0, writer)
     }
 
-    fn decode<'a>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<Self::Out<'a>, DecodeError> {
+    fn decode<'a>(
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+    ) -> Result<Self::Out<'a>, DecodeError> {
         let mut reader = input;
         let a = A::decode(&mut reader, memory_manager)?;
         let b = B::decode_terminal(&mut reader, memory_manager)?;
@@ -104,7 +128,10 @@ impl<A: KeyFieldValue, B: KeyFieldValue, C: KeyFieldValue> ObjectKey for (A, B, 
         A::encode(&key.0, writer)
     }
 
-    fn decode<'a>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<Self::Out<'a>, DecodeError> {
+    fn decode<'a>(
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+    ) -> Result<Self::Out<'a>, DecodeError> {
         let mut reader = input;
         let a = A::decode(&mut reader, memory_manager)?;
         let b = B::decode(&mut reader, memory_manager)?;
@@ -118,7 +145,9 @@ impl<A: KeyFieldValue, B: KeyFieldValue, C: KeyFieldValue> ObjectKey for (A, B, 
     }
 }
 
-impl<A: KeyFieldValue, B: KeyFieldValue, C: KeyFieldValue, D: KeyFieldValue> ObjectKey for (A, B, C, D) {
+impl<A: KeyFieldValue, B: KeyFieldValue, C: KeyFieldValue, D: KeyFieldValue> ObjectKey
+    for (A, B, C, D)
+{
     fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         D::encode_terminal(&key.3, writer)?;
         C::encode(&key.2, writer)?;
@@ -126,7 +155,10 @@ impl<A: KeyFieldValue, B: KeyFieldValue, C: KeyFieldValue, D: KeyFieldValue> Obj
         A::encode(&key.0, writer)
     }
 
-    fn decode<'a>(input: &'a [u8], memory_manager: &'a MemoryManager) -> Result<Self::Out<'a>, DecodeError> {
+    fn decode<'a>(
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+    ) -> Result<Self::Out<'a>, DecodeError> {
         let mut reader = input;
         let a = A::decode(&mut reader, memory_manager)?;
         let b = B::decode(&mut reader, memory_manager)?;
@@ -137,7 +169,9 @@ impl<A: KeyFieldValue, B: KeyFieldValue, C: KeyFieldValue, D: KeyFieldValue> Obj
     }
 
     fn out_size<'a>(key: &Self::In<'a>) -> usize {
-        A::out_size(&key.0) + B::out_size(&key.1) + C::out_size(&key.2) + D::out_size_terminal(&key.3)
+        A::out_size(&key.0)
+            + B::out_size(&key.1)
+            + C::out_size(&key.2)
+            + D::out_size_terminal(&key.3)
     }
 }
-

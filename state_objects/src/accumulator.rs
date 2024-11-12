@@ -1,13 +1,13 @@
 //! A u128 accumulator map.
-use std::borrow::Borrow;
-use num_enum::{IntoPrimitive, TryFromPrimitive};
-use ixc_core::{error, Context, Result};
+use crate::{Item, Map};
 use ixc_core::error::{convert_client_error, convert_error_code, ClientError};
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
+use ixc_core::{error, Context, Result};
 use ixc_message_api::code::ErrorCode;
 use ixc_schema::state_object::ObjectKey;
-use crate::{Item, Map};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::borrow::Borrow;
 
 /// A 128-bit unsigned integer accumulator.
 pub struct Accumulator {
@@ -34,8 +34,7 @@ impl Accumulator {
     }
 
     /// Adds the given value to the current value.
-    pub fn add<'a>(&self, ctx: &mut Context, value: u128) -> ClientResult<u128>
-    {
+    pub fn add<'a>(&self, ctx: &mut Context, value: u128) -> ClientResult<u128> {
         let current = self.item.get(ctx)?;
         let new_value = current.saturating_add(value);
         self.item.set(ctx, &new_value)?;
@@ -46,10 +45,15 @@ impl Accumulator {
     /// returning an error if the subtraction would result in a negative value.
     pub fn safe_sub<'a>(&self, ctx: &mut Context, value: u128) -> ClientResult<u128, SafeSubError> {
         let current = self.item.get(ctx).map_err(convert_client_error)?;
-        let new_value = current.checked_sub(value).ok_or_else(
-            || ClientError::new(ErrorCode::HandlerCode(SafeSubError::Underflow), "".to_string())
-        )?;
-        self.item.set(ctx, &new_value).map_err(convert_client_error)?;
+        let new_value = current.checked_sub(value).ok_or_else(|| {
+            ClientError::new(
+                ErrorCode::HandlerCode(SafeSubError::Underflow),
+                "".to_string(),
+            )
+        })?;
+        self.item
+            .set(ctx, &new_value)
+            .map_err(convert_client_error)?;
         Ok(new_value)
     }
 }
@@ -77,15 +81,25 @@ impl<K: ObjectKey> AccumulatorMap<K> {
 
     /// Subtracts the given value from the current value for the given key,
     /// returning an error if the subtraction would result in a negative value.
-    pub fn safe_sub<'a, L>(&self, ctx: &mut Context, key: L, value: u128) -> ClientResult<u128, SafeSubError>
+    pub fn safe_sub<'a, L>(
+        &self,
+        ctx: &mut Context,
+        key: L,
+        value: u128,
+    ) -> ClientResult<u128, SafeSubError>
     where
         L: Borrow<K::In<'a>>,
     {
         let current = self.get(ctx, key.borrow()).map_err(convert_client_error)?;
-        let new_value = current.checked_sub(value).ok_or_else(
-            || ClientError::new(ErrorCode::HandlerCode(SafeSubError::Underflow), "".to_string())
-        )?;
-        self.map.set(ctx, key.borrow(), &new_value).map_err(convert_client_error)?;
+        let new_value = current.checked_sub(value).ok_or_else(|| {
+            ClientError::new(
+                ErrorCode::HandlerCode(SafeSubError::Underflow),
+                "".to_string(),
+            )
+        })?;
+        self.map
+            .set(ctx, key.borrow(), &new_value)
+            .map_err(convert_client_error)?;
         Ok(new_value)
     }
 }

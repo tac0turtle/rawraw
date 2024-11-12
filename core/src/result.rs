@@ -1,7 +1,7 @@
 //! Standard result types.
+use crate::error::{ClientError, HandlerError};
 use core::fmt::Debug;
 use ixc_message_api::code::HandlerCode;
-use crate::error::{ClientError, HandlerError};
 
 /// The standard result type which should be used as a return type in handler implementations.
 pub type Result<R, E: HandlerCode = u8> = core::result::Result<R, HandlerError<E>>;

@@ -1,18 +1,21 @@
 //! Basic functionality for creating and managing account lifecycle.
 
 use crate::context::Context;
-use crate::handler::{Service, Handler, InitMessage, Client};
-use crate::low_level::create_packet;
-use ixc_core_macros::message_selector;
-use ixc_message_api::AccountID;
-use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::code::SystemCode::EncodingError;
-use ixc_schema::codec::Codec;
 use crate::error::ClientError;
+use crate::handler::{Client, Handler, InitMessage, Service};
+use crate::low_level::create_packet;
 use crate::result::ClientResult;
+use ixc_core_macros::message_selector;
+use ixc_message_api::code::SystemCode::EncodingError;
+use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::AccountID;
+use ixc_schema::codec::Codec;
 
 /// Creates a new account for the specified handler.
-pub fn create_account<'a, H: Handler>(ctx: &mut Context, init: H::Init<'a>) -> ClientResult<<H as Service>::Client> {
+pub fn create_account<'a, H: Handler>(
+    ctx: &mut Context,
+    init: H::Init<'a>,
+) -> ClientResult<<H as Service>::Client> {
     let cdc = <<H as Handler>::Init<'_> as InitMessage<'_>>::Codec::default();
     let init_bz = cdc.encode_value(&init, ctx.memory_manager())?;
 
@@ -21,7 +24,11 @@ pub fn create_account<'a, H: Handler>(ctx: &mut Context, init: H::Init<'a>) -> C
 }
 
 /// Creates a new account for the named handler with opaque initialization data.
-pub fn create_account_raw<'a>(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
+pub fn create_account_raw<'a>(
+    ctx: &mut Context,
+    name: &str,
+    init: &[u8],
+) -> ClientResult<AccountID> {
     do_create_account(ctx, name, init)
 }
 
@@ -33,11 +40,15 @@ fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult
         packet.header_mut().in_pointer1.set_slice(name.as_bytes());
         packet.header_mut().in_pointer2.set_slice(init);
 
-        ctx.host_backend().invoke(&mut packet, ctx.memory_manager())?;
+        ctx.host_backend()
+            .invoke(&mut packet, ctx.memory_manager())?;
 
         let res = packet.header().in_pointer1.get(&packet);
         if res.len() != size_of::<u128>() {
-            return Err(ClientError::new(ErrorCode::SystemCode(EncodingError), "invalid account ID".into()));
+            return Err(ClientError::new(
+                ErrorCode::SystemCode(EncodingError),
+                "invalid account ID".into(),
+            ));
         }
 
         Ok(AccountID::new(u128::from_le_bytes(res.try_into().unwrap())))
@@ -50,7 +61,8 @@ fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
     let mut packet = create_packet(ctx, ROOT_ACCOUNT, SELF_DESTRUCT_SELECTOR)?;
     unsafe {
-        ctx.host_backend().invoke(&mut packet, ctx.memory_manager())?;
+        ctx.host_backend()
+            .invoke(&mut packet, ctx.memory_manager())?;
         Ok(())
     }
 }

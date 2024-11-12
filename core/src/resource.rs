@@ -28,7 +28,9 @@ pub trait AccountResolver {
 #[cfg(feature = "std")]
 impl AccountResolver for alloc::collections::BTreeMap<&str, AccountID> {
     fn resolve(&self, name: &str) -> Result<AccountID, InitializationError> {
-        self.get(name).copied().ok_or(InitializationError::AccountNotFound)
+        self.get(name)
+            .copied()
+            .ok_or(InitializationError::AccountNotFound)
     }
 }
 
@@ -52,7 +54,11 @@ pub enum InitializationError {
 
 impl<'a> ResourceScope<'a> {
     /// Resolves an account name to an account ID or returns a default account ID if provided.
-    pub fn resolve_account(&self, name: &str, default: Option<AccountID>) -> core::result::Result<AccountID, InitializationError> {
+    pub fn resolve_account(
+        &self,
+        name: &str,
+        default: Option<AccountID>,
+    ) -> core::result::Result<AccountID, InitializationError> {
         self.account_resolver
             .map(|resolver| resolver.resolve(name))
             .unwrap_or_else(|| default.ok_or(InitializationError::AccountNotFound))

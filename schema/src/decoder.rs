@@ -1,15 +1,15 @@
 //! The decoder trait and error type.
 
-use core::error::Error;
-use core::fmt::{Display, Formatter};
-use ixc_message_api::AccountID;
-use ixc_message_api::code::{ErrorCode, SystemCode};
 use crate::codec::ValueDecodeVisitor;
+use crate::enums::EnumType;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
-use crate::enums::EnumType;
 use crate::structs::{StructDecodeVisitor, StructType};
 use crate::value::SchemaValue;
+use core::error::Error;
+use core::fmt::{Display, Formatter};
+use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::AccountID;
 
 /// The trait that decoders must implement.
 pub trait Decoder<'a> {
@@ -46,12 +46,19 @@ pub trait Decoder<'a> {
     /// Decode owned bytes.
     fn decode_owned_bytes(&mut self) -> Result<alloc::vec::Vec<u8>, DecodeError>;
     /// Decode a struct.
-    fn decode_struct(&mut self, visitor: &mut dyn StructDecodeVisitor<'a>, struct_type: &StructType) -> Result<(), DecodeError>;
+    fn decode_struct(
+        &mut self,
+        visitor: &mut dyn StructDecodeVisitor<'a>,
+        struct_type: &StructType,
+    ) -> Result<(), DecodeError>;
     /// Decode a list.
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError>;
     /// Decode an optional value. The visitor will only be called if the value is present.
     /// Returns `true` if the value is present, `false` if it is not.
-    fn decode_option(&mut self, visitor: &mut dyn ValueDecodeVisitor<'a>) -> Result<bool, DecodeError>;
+    fn decode_option(
+        &mut self,
+        visitor: &mut dyn ValueDecodeVisitor<'a>,
+    ) -> Result<bool, DecodeError>;
     /// Decode an account ID.
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError>;
     /// Encode an enum value.

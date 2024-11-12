@@ -4,23 +4,23 @@
 #[cfg(feature = "std")]
 extern crate alloc;
 
-mod context;
-mod events;
-pub mod message;
 pub mod account_api;
-pub mod handler;
-pub mod resource;
+mod context;
 pub mod error;
-pub mod routing;
+mod events;
+pub mod handler;
 pub mod low_level;
+pub mod message;
+pub mod resource;
 pub mod result;
+pub mod routing;
 
+pub use account_api::create_account;
 pub use context::Context;
 pub use events::EventBus;
 pub use handler::Service;
-pub use account_api::create_account;
 
-pub use result::{Result};
+pub use result::Result;
 
 /// Create an error.
 #[macro_export]

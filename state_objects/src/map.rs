@@ -1,18 +1,20 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
 
-use std::borrow::Borrow;
 use bump_scope::allocator_api2::alloc::Allocator;
 use ixc_core::error::HandlerError;
-use ixc_core::{Context, Result};
 use ixc_core::low_level::create_packet;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
+use ixc_core::{Context, Result};
 use ixc_core_macros::message_selector;
-use ixc_message_api::packet::MessagePacket;
-use ixc_message_api::AccountID;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::header::MessageSelector;
-use ixc_schema::state_object::{decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue};
+use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::AccountID;
+use ixc_schema::state_object::{
+    decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
+};
+use std::borrow::Borrow;
 
 /// A key-value map.
 pub struct Map<K, V> {
@@ -74,7 +76,6 @@ const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
 
-
 struct KVStoreClient;
 
 impl KVStoreClient {
@@ -83,7 +84,10 @@ impl KVStoreClient {
         let header = packet.header_mut();
         unsafe {
             header.in_pointer1.set_slice(key);
-            match ctx.host_backend().invoke(&mut packet, &ctx.memory_manager()) {
+            match ctx
+                .host_backend()
+                .invoke(&mut packet, &ctx.memory_manager())
+            {
                 Err(ErrorCode::HandlerCode(0)) => {
                     return Ok(None);
                 }
@@ -100,7 +104,8 @@ impl KVStoreClient {
         unsafe {
             header.in_pointer1.set_slice(key);
             header.in_pointer2.set_slice(value);
-            ctx.host_backend().invoke(&mut packet, &ctx.memory_manager())?;
+            ctx.host_backend()
+                .invoke(&mut packet, &ctx.memory_manager())?;
         }
         Ok(())
     }
@@ -110,7 +115,8 @@ impl KVStoreClient {
         let header = packet.header_mut();
         unsafe {
             header.in_pointer1.set_slice(key);
-            ctx.host_backend().invoke(&mut packet, &ctx.memory_manager())?;
+            ctx.host_backend()
+                .invoke(&mut packet, &ctx.memory_manager())?;
         }
         Ok(())
     }

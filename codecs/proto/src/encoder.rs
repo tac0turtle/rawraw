@@ -1,9 +1,9 @@
-use ixc_schema::encoder::EncodeError;
-use ixc_schema::structs::{StructEncodeVisitor, StructType};
+use crate::wire::{default_wire_info, WireInfo, WireType};
 use integer_encoding::VarInt;
 use ixc_schema::buffer::{ReverseSliceWriter, Writer};
 use ixc_schema::codec::ValueEncodeVisitor;
-use crate::wire::{default_wire_info, WireInfo, WireType};
+use ixc_schema::encoder::EncodeError;
+use ixc_schema::structs::{StructEncodeVisitor, StructType};
 
 struct Encoder<'a> {
     writer: ReverseSliceWriter<'a>,
@@ -92,7 +92,10 @@ impl<'a> ixc_schema::encoder::Encoder for Encoder<'a> {
         todo!()
     }
 
-    fn encode_list(&mut self, visitor: &dyn ixc_schema::list::ListEncodeVisitor) -> Result<(), EncodeError> {
+    fn encode_list(
+        &mut self,
+        visitor: &dyn ixc_schema::list::ListEncodeVisitor,
+    ) -> Result<(), EncodeError> {
         if !self.cur_wire_info.unpacked {
             // for each list item in reverse order
             //  encode element
@@ -105,7 +108,11 @@ impl<'a> ixc_schema::encoder::Encoder for Encoder<'a> {
         todo!()
     }
 
-    fn encode_struct(&mut self, visitor: &dyn StructEncodeVisitor, struct_type: &StructType) -> Result<(), EncodeError> {
+    fn encode_struct(
+        &mut self,
+        visitor: &dyn StructEncodeVisitor,
+        struct_type: &StructType,
+    ) -> Result<(), EncodeError> {
         let mut num = 1;
         for field in struct_type.fields.iter().rev() {
             self.cur_wire_info = default_wire_info(field)?;
@@ -133,7 +140,10 @@ impl<'a> ixc_schema::encoder::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn encode_option(&mut self, visitor: Option<&dyn ValueEncodeVisitor>) -> Result<(), EncodeError> {
+    fn encode_option(
+        &mut self,
+        visitor: Option<&dyn ValueEncodeVisitor>,
+    ) -> Result<(), EncodeError> {
         todo!()
     }
 

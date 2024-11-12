@@ -25,13 +25,23 @@ pub(crate) fn encode_tag(field_number: FieldNumber, wire_type: WireType) -> u64 
 }
 
 pub(crate) fn decode_tag(tag: u64) -> (FieldNumber, WireType) {
-    ((tag >> 3) as FieldNumber, unsafe { core::mem::transmute((tag & 0b111) as u8) })
+    ((tag >> 3) as FieldNumber, unsafe {
+        core::mem::transmute((tag & 0b111) as u8)
+    })
 }
 
 pub(crate) fn default_wire_info(field: &Field) -> Result<WireInfo, EncodeError> {
     let wire_type = match field.kind {
-        Kind::Int8 | Kind::Uint8 | Kind::Int16 | Kind::Uint16 | Kind::Int32 | Kind::Uint32 | Kind::Bool | Kind::Enum |
-        Kind::Int64 | Kind::Uint64 => WireType::Varint,
+        Kind::Int8
+        | Kind::Uint8
+        | Kind::Int16
+        | Kind::Uint16
+        | Kind::Int32
+        | Kind::Uint32
+        | Kind::Bool
+        | Kind::Enum
+        | Kind::Int64
+        | Kind::Uint64 => WireType::Varint,
         Kind::String | Kind::Bytes | Kind::Struct => WireType::LengthDelimited,
         // encode as strings or byte arrays
         Kind::IntN | Kind::UIntN | Kind::Decimal => WireType::LengthDelimited,
@@ -40,8 +50,15 @@ pub(crate) fn default_wire_info(field: &Field) -> Result<WireInfo, EncodeError> 
         Kind::List => {
             if let Some(kind) = field.element_kind {
                 match kind {
-                    Kind::Int8 | Kind::Uint8 | Kind::Int16 | Kind::Uint16 | Kind::Int32 | Kind::Uint32 | Kind::Bool |
-                    Kind::Int64 | Kind::Uint64 => WireType::LengthDelimited,
+                    Kind::Int8
+                    | Kind::Uint8
+                    | Kind::Int16
+                    | Kind::Uint16
+                    | Kind::Int32
+                    | Kind::Uint32
+                    | Kind::Bool
+                    | Kind::Int64
+                    | Kind::Uint64 => WireType::LengthDelimited,
                     _ => {
                         // a repeated field that isn't packed
                         let ty = default_wire_type_for_kind(kind)?;
@@ -65,15 +82,23 @@ pub(crate) fn default_wire_info(field: &Field) -> Result<WireInfo, EncodeError> 
 
 pub(crate) fn default_wire_type_for_kind(kind: Kind) -> Result<WireType, EncodeError> {
     let t = match kind {
-        Kind::Int8 | Kind::Uint8 | Kind::Int16 | Kind::Uint16 | Kind::Int32 | Kind::Uint32 | Kind::Bool | Kind::Enum |
-        Kind::Int64 | Kind::Uint64 => WireType::Varint,
+        Kind::Int8
+        | Kind::Uint8
+        | Kind::Int16
+        | Kind::Uint16
+        | Kind::Int32
+        | Kind::Uint32
+        | Kind::Bool
+        | Kind::Enum
+        | Kind::Int64
+        | Kind::Uint64 => WireType::Varint,
         Kind::String | Kind::Bytes | Kind::Struct => WireType::LengthDelimited,
         // encode as strings or byte arrays
         Kind::IntN | Kind::UIntN | Kind::Decimal => WireType::LengthDelimited,
         // encode as messages
         Kind::Time | Kind::Duration => WireType::LengthDelimited,
         Kind::List => return Err(EncodeError::UnknownError),
-        _ => todo!()
+        _ => todo!(),
     };
     Ok(t)
 }

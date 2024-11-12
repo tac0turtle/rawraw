@@ -11,24 +11,15 @@ impl FieldTypes for () {
 }
 impl<A: Type> FieldTypes for (A,) {
     const N: usize = 1;
-    const FIELDS: &'static [Field<'static>] = &[
-        to_field::<A>(),
-    ];
+    const FIELDS: &'static [Field<'static>] = &[to_field::<A>()];
 }
 impl<A: Type, B: Type> FieldTypes for (A, B) {
     const N: usize = 2;
-    const FIELDS: &'static [Field<'static>] = &[
-        to_field::<A>(),
-        to_field::<B>(),
-    ];
+    const FIELDS: &'static [Field<'static>] = &[to_field::<A>(), to_field::<B>()];
 }
 impl<A: Type, B: Type, C: Type> FieldTypes for (A, B, C) {
     const N: usize = 3;
-    const FIELDS: &'static [Field<'static>] = &[
-        to_field::<A>(),
-        to_field::<B>(),
-        to_field::<C>(),
-    ];
+    const FIELDS: &'static [Field<'static>] = &[to_field::<A>(), to_field::<B>(), to_field::<C>()];
 }
 
 impl<A: Type, B: Type, C: Type, D: Type> FieldTypes for (A, B, C, D) {

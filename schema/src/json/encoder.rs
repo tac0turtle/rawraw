@@ -1,13 +1,11 @@
-use ixc_message_api::AccountID;
-use simple_time::{Duration, Time};
 use crate::codec::ValueEncodeVisitor;
 use crate::encoder::EncodeError;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
+use ixc_message_api::AccountID;
+use simple_time::{Duration, Time};
 
-struct Encoder {
-
-}
+struct Encoder {}
 
 impl crate::encoder::Encoder for Encoder {
     fn encode_u32(&mut self, x: u32) -> Result<(), EncodeError> {
@@ -34,7 +32,11 @@ impl crate::encoder::Encoder for Encoder {
         todo!()
     }
 
-    fn encode_struct(&mut self, visitor: &dyn StructEncodeVisitor, struct_type: &StructType) -> Result<(), EncodeError> {
+    fn encode_struct(
+        &mut self,
+        visitor: &dyn StructEncodeVisitor,
+        struct_type: &StructType,
+    ) -> Result<(), EncodeError> {
         todo!()
     }
 
@@ -82,7 +84,10 @@ impl crate::encoder::Encoder for Encoder {
         todo!()
     }
 
-    fn encode_option(&mut self, visitor: Option<&dyn ValueEncodeVisitor>) -> Result<(), EncodeError> {
+    fn encode_option(
+        &mut self,
+        visitor: Option<&dyn ValueEncodeVisitor>,
+    ) -> Result<(), EncodeError> {
         todo!()
     }
 }

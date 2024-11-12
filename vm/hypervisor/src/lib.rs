@@ -1,18 +1,21 @@
 //! Rust Cosmos SDK RFC 003 hypervisor implementation.
 
-use std::alloc::Layout;
 use ixc_core_macros::message_selector;
-use ixc_message_api::code::{ErrorCode};
+use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::ErrorCode::SystemCode;
+use ixc_message_api::code::SystemCode::{
+    AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled,
+    UnauthorizedCallerAccess,
+};
 use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{HandlerID, VM};
+use std::alloc::Layout;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::sync::Arc;
-use ixc_message_api::code::ErrorCode::SystemCode;
-use ixc_message_api::code::SystemCode::{AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled, UnauthorizedCallerAccess};
 
 /// Rust Cosmos SDK RFC 003 hypervisor implementation.
 pub struct Hypervisor<ST: StateHandler> {
@@ -58,9 +61,15 @@ impl<ST: StateHandler> Hypervisor<ST> {
     }
 
     /// Invoke a message packet.
-    pub fn invoke(&mut self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        let tx = self.state_handler.new_transaction(message_packet.header().caller, true).
-            map_err(|_| SystemCode(FatalExecutionError))?;
+    pub fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let tx = self
+            .state_handler
+            .new_transaction(message_packet.header().caller, true)
+            .map_err(|_| SystemCode(FatalExecutionError))?;
         let mut exec_context = ExecContext {
             vmdata: self.vmdata.clone(),
             tx: RefCell::new(tx),
@@ -68,7 +77,8 @@ impl<ST: StateHandler> Hypervisor<ST> {
         let res = exec_context.invoke(message_packet, allocator);
         let tx = exec_context.tx.into_inner();
         if res.is_ok() {
-            self.state_handler.commit(tx)
+            self.state_handler
+                .commit(tx)
                 .map_err(|_| SystemCode(FatalExecutionError))?;
         }
 
@@ -81,7 +91,11 @@ pub trait StateHandler {
     /// The transaction type.
     type Tx: Transaction;
     /// Create a new transaction.
-    fn new_transaction(&self, account_id: AccountID, volatile: bool) -> Result<Self::Tx, NewTxError>;
+    fn new_transaction(
+        &self,
+        account_id: AccountID,
+        volatile: bool,
+    ) -> Result<Self::Tx, NewTxError>;
     /// Commit a transaction.
     fn commit(&mut self, tx: Self::Tx) -> Result<(), CommitError>;
 }
@@ -114,7 +128,11 @@ pub trait Transaction {
     /// Directly delete a key from the account's raw KV store.
     fn raw_kv_delete(&self, account_id: AccountID, key: &[u8]);
     /// Handle a message packet.
-    fn handle(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode>;
+    fn handle(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>;
 }
 
 /// A push frame error.
@@ -140,19 +158,32 @@ impl<'a, TX: Transaction> ExecContext<TX> {
     fn get_account_handler_id(&self, account_id: AccountID) -> Option<HandlerID> {
         let id: u128 = account_id.into();
         let key = format!("h:{}", id);
-        let value = self.tx.borrow().raw_kv_get(HYPERVISOR_ACCOUNT, key.as_bytes())?;
+        let value = self
+            .tx
+            .borrow()
+            .raw_kv_get(HYPERVISOR_ACCOUNT, key.as_bytes())?;
         self.parse_handler_id(&value)
     }
 
     fn init_next_account(&self, handler_id: &HandlerID) -> Result<AccountID, PushFrameError> {
         let mut tx = self.tx.borrow_mut();
-        let id = tx.raw_kv_get(HYPERVISOR_ACCOUNT, b"next_account_id").map_or(ACCOUNT_ID_NON_RESERVED_START, |v| {
-            u128::from_le_bytes(v.try_into().unwrap())
-        });
+        let id = tx
+            .raw_kv_get(HYPERVISOR_ACCOUNT, b"next_account_id")
+            .map_or(ACCOUNT_ID_NON_RESERVED_START, |v| {
+                u128::from_le_bytes(v.try_into().unwrap())
+            });
         // we push a new storage frame here because if initialization fails all of this gets rolled back
         tx.init_account_storage(AccountID::new(id))?;
-        tx.raw_kv_set(HYPERVISOR_ACCOUNT, b"next_account_id", &(id + 1).to_le_bytes());
-        tx.raw_kv_set(HYPERVISOR_ACCOUNT, format!("h:{}", id).as_bytes(), format_handler_id(handler_id).as_bytes());
+        tx.raw_kv_set(
+            HYPERVISOR_ACCOUNT,
+            b"next_account_id",
+            &(id + 1).to_le_bytes(),
+        );
+        tx.raw_kv_set(
+            HYPERVISOR_ACCOUNT,
+            format!("h:{}", id).as_bytes(),
+            format_handler_id(handler_id).as_bytes(),
+        );
         Ok(AccountID::new(id))
     }
 
@@ -160,7 +191,9 @@ impl<'a, TX: Transaction> ExecContext<TX> {
         let current_account = self.tx.borrow().active_account();
         let id: u128 = current_account.into();
         let key = format!("h:{}", id);
-        self.tx.borrow().raw_kv_delete(HYPERVISOR_ACCOUNT, key.as_bytes());
+        self.tx
+            .borrow()
+            .raw_kv_delete(HYPERVISOR_ACCOUNT, key.as_bytes());
         self.tx.borrow_mut().self_destruct_account()
     }
 
@@ -175,7 +208,11 @@ const HYPERVISOR_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
 impl<TX: Transaction> HostBackend for ExecContext<TX> {
-    fn invoke(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn invoke(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         // get the mutable transaction from the RefCell
         // check if the caller matches the active account
         let account = self.tx.borrow().active_account();
@@ -193,10 +230,14 @@ impl<TX: Transaction> HostBackend for ExecContext<TX> {
         }
 
         // find the account's handler ID and retrieve its VM
-        let handler_id = self.get_account_handler_id(target_account).
-            ok_or(SystemCode(AccountNotFound))?;
-        let vm = self.vmdata.vms.get(&handler_id.vm).
-            ok_or(SystemCode(HandlerNotFound))?;
+        let handler_id = self
+            .get_account_handler_id(target_account)
+            .ok_or(SystemCode(AccountNotFound))?;
+        let vm = self
+            .vmdata
+            .vms
+            .get(&handler_id.vm)
+            .ok_or(SystemCode(HandlerNotFound))?;
 
         // push an execution frame for the target account
         self.tx.borrow_mut().push_frame(target_account, false). // TODO add volatility support
@@ -204,15 +245,21 @@ impl<TX: Transaction> HostBackend for ExecContext<TX> {
         // run the handler
         let res = vm.run_handler(&handler_id.vm_handler_id, message_packet, self, allocator);
         // pop the execution frame
-        self.tx.borrow_mut().pop_frame(res.is_ok()).
-            map_err(|_| SystemCode(InvalidHandler))?;
+        self.tx
+            .borrow_mut()
+            .pop_frame(res.is_ok())
+            .map_err(|_| SystemCode(InvalidHandler))?;
 
         res
     }
 }
 
 impl<TX: Transaction> ExecContext<TX> {
-    fn handle_system_message(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn handle_system_message(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         match message_packet.header().message_selector {
             CREATE_SELECTOR => unsafe {
                 // get the input data
@@ -221,20 +268,26 @@ impl<TX: Transaction> ExecContext<TX> {
                 let init_data = create_header.in_pointer2.get(message_packet);
 
                 // resolve the handler ID and retrieve the VM
-                let handler_id = self.parse_handler_id(handler_id).
-                    ok_or(SystemCode(HandlerNotFound))?;
-                let vm = self.vmdata.vms.get(&handler_id.vm).
-                    ok_or(SystemCode(HandlerNotFound))?;
-                let desc = vm.describe_handler(&handler_id.vm_handler_id).
-                    ok_or(SystemCode(HandlerNotFound))?;
+                let handler_id = self
+                    .parse_handler_id(handler_id)
+                    .ok_or(SystemCode(HandlerNotFound))?;
+                let vm = self
+                    .vmdata
+                    .vms
+                    .get(&handler_id.vm)
+                    .ok_or(SystemCode(HandlerNotFound))?;
+                let desc = vm
+                    .describe_handler(&handler_id.vm_handler_id)
+                    .ok_or(SystemCode(HandlerNotFound))?;
 
                 // get the next account ID and initialize the account storage
-                let id = self.init_next_account(&handler_id).
-                    map_err(|_| SystemCode(InvalidHandler))?;
+                let id = self
+                    .init_next_account(&handler_id)
+                    .map_err(|_| SystemCode(InvalidHandler))?;
 
                 // create a packet for calling on_create
-                let mut on_create_packet = MessagePacket::allocate(allocator, 0).
-                    map_err(|_| SystemCode(FatalExecutionError))?;
+                let mut on_create_packet = MessagePacket::allocate(allocator, 0)
+                    .map_err(|_| SystemCode(FatalExecutionError))?;
                 let mut on_create_header = on_create_packet.header_mut();
                 // TODO: how do we specify a selector that can only be called by the system?
                 on_create_header.account = id;
@@ -242,18 +295,26 @@ impl<TX: Transaction> ExecContext<TX> {
                 on_create_header.message_selector = ON_CREATE_SELECTOR;
                 on_create_header.in_pointer1.set_slice(init_data);
 
-                let res = vm.run_handler(&handler_id.vm_handler_id, &mut on_create_packet, self, allocator);
+                let res = vm.run_handler(
+                    &handler_id.vm_handler_id,
+                    &mut on_create_packet,
+                    self,
+                    allocator,
+                );
                 let is_ok = match res {
                     Ok(_) => true,
                     Err(SystemCode(ixc_message_api::code::SystemCode::MessageNotHandled)) => true,
                     _ => false,
                 };
-                self.tx.borrow_mut().pop_frame(is_ok).
-                    map_err(|_| SystemCode(FatalExecutionError))?;
+                self.tx
+                    .borrow_mut()
+                    .pop_frame(is_ok)
+                    .map_err(|_| SystemCode(FatalExecutionError))?;
 
                 if is_ok {
-                    let mut res = allocator.allocate(Layout::from_size_align_unchecked(16, 16)).
-                        map_err(|_| SystemCode(FatalExecutionError))?;
+                    let mut res = allocator
+                        .allocate(Layout::from_size_align_unchecked(16, 16))
+                        .map_err(|_| SystemCode(FatalExecutionError))?;
                     let id: u128 = id.into();
                     res.as_mut().copy_from_slice(&id.to_le_bytes());
                     create_header.in_pointer1.set_slice(res.as_ref());
@@ -262,13 +323,10 @@ impl<TX: Transaction> ExecContext<TX> {
                     res
                 }
             },
-            SELF_DESTRUCT_SELECTOR => {
-                self.destroy_current_account_data().
-                    map_err(|_| SystemCode(FatalExecutionError))
-            }
-            _ => {
-                Err(SystemCode(MessageNotHandled))
-            }
+            SELF_DESTRUCT_SELECTOR => self
+                .destroy_current_account_data()
+                .map_err(|_| SystemCode(FatalExecutionError)),
+            _ => Err(SystemCode(MessageNotHandled)),
         }
     }
 }

@@ -13,7 +13,11 @@ pub unsafe trait StructSchema: ReferenceableType {
 /// StructDecodeVisitor is the trait that should be derived to decode a struct.
 pub unsafe trait StructDecodeVisitor<'a> {
     /// Decode a field from the input data.
-    fn decode_field(&mut self, index: usize, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError>;
+    fn decode_field(
+        &mut self,
+        index: usize,
+        decoder: &mut dyn Decoder<'a>,
+    ) -> Result<(), DecodeError>;
 }
 
 /// StructEncodeVisitor is the trait that should be derived to encode a struct.

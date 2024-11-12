@@ -14,11 +14,14 @@ pub fn derive_schema_value(input: syn::DeriveInput) -> manyhow::Result<TokenStre
         Data::Struct(str) => {
             return derive_struct_schema(&input, str);
         }
-        _ => bail!("only know how to derive SchemaValue for structs")
+        _ => bail!("only know how to derive SchemaValue for structs"),
     }
 }
 
-fn derive_struct_schema(input: &syn::DeriveInput, str: &DataStruct) -> manyhow::Result<TokenStream2> {
+fn derive_struct_schema(
+    input: &syn::DeriveInput,
+    str: &DataStruct,
+) -> manyhow::Result<TokenStream2> {
     let ixc_schema_path = mk_ixc_schema_path();
     let struct_name = &input.ident;
     // extract struct lifetime
@@ -176,8 +179,7 @@ where
 // this is to make macros work with a single import of the ixc crate
 fn mk_ixc_schema_path() -> TokenStream2 {
     #[cfg(feature = "use_ixc_macro_path")]
-    quote!{::ixc::schema}
+    quote! {::ixc::schema}
     #[cfg(not(feature = "use_ixc_macro_path"))]
-    quote!{::ixc_schema}
+    quote! {::ixc_schema}
 }
-

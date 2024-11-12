@@ -1,7 +1,7 @@
 //! Schema definition.
+use crate::enums::EnumType;
 use crate::message::MessageDescriptor;
 use crate::oneof::OneOfType;
-use crate::enums::EnumType;
 use crate::state_object::StateObjectType;
 use crate::structs::StructType;
 
@@ -19,7 +19,7 @@ pub enum SchemaType<'a> {
     StateObjectType(StateObjectType<'a>),
 }
 
-impl <'a> SchemaType<'a> {
+impl<'a> SchemaType<'a> {
     /// Get the name of the schema type.
     pub const fn name(&self) -> &'a str {
         match self {
@@ -31,13 +31,13 @@ impl <'a> SchemaType<'a> {
     }
 }
 
-impl <'a> PartialOrd for SchemaType<'a> {
+impl<'a> PartialOrd for SchemaType<'a> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.name().partial_cmp(other.name())
     }
 }
 
-impl <'a> Ord for SchemaType<'a> {
+impl<'a> Ord for SchemaType<'a> {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.name().cmp(other.name())
     }
@@ -60,7 +60,6 @@ pub struct Schema<'a> {
 // pub trait HasSchema {
 //     const SCHEMA: Schema<'static>;
 // }
-
 
 // WARNING: this is a terrible hack to make macros work
 // either with ixc_schema or just ixc with the use_ixc_macro_path feature,

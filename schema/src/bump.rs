@@ -1,8 +1,8 @@
+use allocator_api2::alloc::{AllocError, Allocator};
 use core::alloc::Layout;
 use core::cell::Cell;
 use core::cmp::max;
 use core::ptr::NonNull;
-use allocator_api2::alloc::{AllocError, Allocator};
 
 // Very simple, custom bump allocator to avoid third party dependencies,
 // reduce code size, and customize where chunks are allocated from and their sizes.
@@ -69,7 +69,11 @@ unsafe impl Allocator for Bump {
 }
 
 impl Bump {
-    unsafe fn alloc_chunk(&self, start_size: usize, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe fn alloc_chunk(
+        &self,
+        start_size: usize,
+        layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
         let mut size = start_size;
         // the minimum size is the size of the layout plus the size of the footer
         let needed = layout.size() + FOOTER_SIZE;

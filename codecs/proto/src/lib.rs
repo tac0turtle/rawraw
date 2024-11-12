@@ -1,6 +1,6 @@
 //! A codec for encoding and decoding protobuf values.
-mod encoder;
 mod decoder;
+mod encoder;
 mod wire;
 
 use ixc_schema::buffer::WriterFactory;
@@ -14,11 +14,20 @@ use ixc_schema::value::SchemaValue;
 pub struct ProtobufCodec;
 
 impl Codec for ProtobufCodec {
-    fn encode_value<'a>(&self, value: &dyn ValueEncodeVisitor, writer_factory: &'a dyn WriterFactory) -> Result<&'a [u8], EncodeError> {
+    fn encode_value<'a>(
+        &self,
+        value: &dyn ValueEncodeVisitor,
+        writer_factory: &'a dyn WriterFactory,
+    ) -> Result<&'a [u8], EncodeError> {
         todo!()
     }
 
-    fn decode_value<'a>(&self, input: &'a [u8], memory_manager: &'a MemoryManager, visitor: &mut dyn ValueDecodeVisitor<'a>) -> Result<(), DecodeError> {
+    fn decode_value<'a>(
+        &self,
+        input: &'a [u8],
+        memory_manager: &'a MemoryManager,
+        visitor: &mut dyn ValueDecodeVisitor<'a>,
+    ) -> Result<(), DecodeError> {
         todo!()
     }
 }

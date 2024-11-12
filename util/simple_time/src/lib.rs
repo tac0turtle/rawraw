@@ -12,7 +12,7 @@
 #[cfg(feature = "std")]
 extern crate alloc;
 
-use core::ops::{Add, Sub, Neg, AddAssign, SubAssign, Mul, MulAssign};
+use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Time is as the number of nanoseconds since the Unix epoch.
 /// The default value of Time is the Unix epoch 1970-01-01 00:00:00 UTC.

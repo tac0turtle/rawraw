@@ -1,17 +1,24 @@
-use alloc::string::String;
-use alloc::vec::Vec;
-use ixc_message_api::AccountID;
-use simple_time::{Duration, Time};
 use crate::codec::ValueDecodeVisitor;
-use crate::decoder::{DecodeError};
+use crate::decoder::DecodeError;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::state_object::ObjectValue;
 use crate::structs::{StructDecodeVisitor, StructType};
 use crate::value::SchemaValue;
+use alloc::string::String;
+use alloc::vec::Vec;
+use ixc_message_api::AccountID;
+use simple_time::{Duration, Time};
 
-pub fn decode_value<'a>(input: &'a [u8], memory_manager: &'a MemoryManager, visitor: &mut dyn ValueDecodeVisitor<'a>) -> Result<(), DecodeError> {
-    visitor.decode(&mut Decoder { buf: input, scope: memory_manager })
+pub fn decode_value<'a>(
+    input: &'a [u8],
+    memory_manager: &'a MemoryManager,
+    visitor: &mut dyn ValueDecodeVisitor<'a>,
+) -> Result<(), DecodeError> {
+    visitor.decode(&mut Decoder {
+        buf: input,
+        scope: memory_manager,
+    })
 }
 
 pub(crate) struct Decoder<'a> {
@@ -19,7 +26,7 @@ pub(crate) struct Decoder<'a> {
     pub(crate) scope: &'a MemoryManager,
 }
 
-impl <'a> Decoder<'a> {
+impl<'a> Decoder<'a> {
     fn read_bytes(&mut self, size: usize) -> Result<&'a [u8], DecodeError> {
         if self.buf.len() < size {
             return Err(DecodeError::OutOfData);
@@ -63,9 +70,16 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         Ok(String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)?)
     }
 
-    fn decode_struct(&mut self, visitor: &mut dyn StructDecodeVisitor<'a>, struct_type: &StructType) -> Result<(), DecodeError> {
+    fn decode_struct(
+        &mut self,
+        visitor: &mut dyn StructDecodeVisitor<'a>,
+        struct_type: &StructType,
+    ) -> Result<(), DecodeError> {
         let mut i = 0;
-        let mut sub = Decoder { buf: self.buf, scope: self.scope };
+        let mut sub = Decoder {
+            buf: self.buf,
+            scope: self.scope,
+        };
         let mut inner = InnerDecoder { outer: &mut sub };
         for _ in struct_type.fields.iter() {
             visitor.decode_field(i, &mut inner)?;
@@ -77,7 +91,10 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
         visitor.init(size, &self.scope)?;
-        let mut sub = Decoder { buf: self.buf, scope: self.scope };
+        let mut sub = Decoder {
+            buf: self.buf,
+            scope: self.scope,
+        };
         let mut inner = InnerDecoder { outer: &mut sub };
         for _ in 0..size {
             visitor.next(&mut inner)?;
@@ -149,11 +166,17 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         Ok(i16::from_le_bytes(bz.try_into().unwrap()))
     }
 
-    fn decode_option(&mut self, visitor: &mut dyn ValueDecodeVisitor<'a>) -> Result<bool, DecodeError> {
+    fn decode_option(
+        &mut self,
+        visitor: &mut dyn ValueDecodeVisitor<'a>,
+    ) -> Result<bool, DecodeError> {
         if self.buf.is_empty() {
             Ok(false)
         } else {
-            visitor.decode(&mut Decoder { buf: self.buf, scope: self.scope })?;
+            visitor.decode(&mut Decoder {
+                buf: self.buf,
+                scope: self.scope,
+            })?;
             Ok(true)
         }
     }
@@ -167,9 +190,13 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         self.outer.decode_u32()
     }
 
-    fn decode_i32(&mut self) -> Result<i32, DecodeError> { self.outer.decode_i32() }
+    fn decode_i32(&mut self) -> Result<i32, DecodeError> {
+        self.outer.decode_i32()
+    }
 
-    fn decode_u64(&mut self) -> Result<u64, DecodeError> { self.outer.decode_u64() }
+    fn decode_u64(&mut self) -> Result<u64, DecodeError> {
+        self.outer.decode_u64()
+    }
 
     fn decode_u128(&mut self) -> Result<u128, DecodeError> {
         self.outer.decode_u128()
@@ -187,17 +214,27 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         Ok(String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)?)
     }
 
-    fn decode_struct(&mut self, visitor: &mut dyn StructDecodeVisitor<'a>, struct_type: &StructType) -> Result<(), DecodeError> {
+    fn decode_struct(
+        &mut self,
+        visitor: &mut dyn StructDecodeVisitor<'a>,
+        struct_type: &StructType,
+    ) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
         let bz = self.outer.read_bytes(size)?;
-        let mut sub = Decoder { buf: bz, scope: self.outer.scope };
+        let mut sub = Decoder {
+            buf: bz,
+            scope: self.outer.scope,
+        };
         sub.decode_struct(visitor, struct_type)
     }
 
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
         let bz = self.outer.read_bytes(size)?;
-        let mut sub = Decoder { buf: bz, scope: self.outer.scope };
+        let mut sub = Decoder {
+            buf: bz,
+            scope: self.outer.scope,
+        };
         sub.decode_list(visitor)
     }
 
@@ -257,7 +294,10 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         self.outer.decode_i16()
     }
 
-    fn decode_option(&mut self, visitor: &mut dyn ValueDecodeVisitor<'a>) -> Result<bool, DecodeError> {
+    fn decode_option(
+        &mut self,
+        visitor: &mut dyn ValueDecodeVisitor<'a>,
+    ) -> Result<bool, DecodeError> {
         let present = self.decode_bool()?;
         if present {
             visitor.decode(self)?;
@@ -272,8 +312,6 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
 mod tests {
     extern crate std;
 
-    use alloc::vec;
-    use allocator_api2::alloc::Allocator;
     use crate::binary::decoder::decode_value;
     use crate::binary::encoder::encode_value;
     use crate::decoder::{DecodeError, Decoder};
@@ -285,10 +323,12 @@ mod tests {
     use crate::structs::{StructDecodeVisitor, StructEncodeVisitor, StructSchema, StructType};
     use crate::types::{to_field, ReferenceableType, StrT, StructT, UIntNT};
     use crate::value::{ListElementValue, SchemaValue};
+    use alloc::vec;
+    use allocator_api2::alloc::Allocator;
 
     extern crate ixc_schema_macros;
-    use ixc_schema_macros::*;
     use crate::binary::NativeBinaryCodec;
+    use ixc_schema_macros::*;
 
     #[test]
     fn test_u32_decode() {
@@ -302,7 +342,8 @@ mod tests {
     fn test_decode_borrowed_string() {
         let str = "hello";
         let mut mem = MemoryManager::new();
-        let x = crate::codec::decode_value::<&str>(&NativeBinaryCodec, str.as_bytes(), &mem).unwrap();
+        let x =
+            crate::codec::decode_value::<&str>(&NativeBinaryCodec, str.as_bytes(), &mem).unwrap();
         assert_eq!(x, "hello");
     }
 
@@ -310,7 +351,12 @@ mod tests {
     fn test_decode_owned_string() {
         let str = "hello";
         let mut mem = MemoryManager::new();
-        let x = crate::codec::decode_value::<alloc::string::String>(&NativeBinaryCodec, str.as_bytes(), &mem).unwrap();
+        let x = crate::codec::decode_value::<alloc::string::String>(
+            &NativeBinaryCodec,
+            str.as_bytes(),
+            &mem,
+        )
+        .unwrap();
         assert_eq!(x, "hello");
     }
 
@@ -321,7 +367,7 @@ mod tests {
         amount: u128,
     }
 
-    impl <'a> Drop for Coin<'a> {
+    impl<'a> Drop for Coin<'a> {
         fn drop(&mut self) {
             std::println!("drop Coin");
         }
@@ -341,16 +387,20 @@ mod tests {
 
     #[test]
     fn test_coins() {
-        let coins = vec![Coin {
-            denom: "uatom",
-            amount: 1234567890,
-        }, Coin {
-            denom: "foo",
-            amount: 9876543210,
-        }];
+        let coins = vec![
+            Coin {
+                denom: "uatom",
+                amount: 1234567890,
+            },
+            Coin {
+                denom: "foo",
+                amount: 9876543210,
+            },
+        ];
         let mem = MemoryManager::new();
         let res = encode_value(&coins, &mem).unwrap();
-        let decoded = crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, &res, &mem).unwrap();
+        let decoded =
+            crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, &res, &mem).unwrap();
         assert_eq!(decoded, coins);
     }
 }

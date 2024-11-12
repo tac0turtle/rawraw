@@ -1,19 +1,24 @@
-use ixc_message_api::AccountID;
-use simple_time::{Duration, Time};
-use crate::encoder::{EncodeError};
-use crate::structs::{StructDecodeVisitor, StructEncodeVisitor, StructType};
-use crate::value::SchemaValue;
 use crate::buffer::{Writer, WriterFactory};
 use crate::codec::ValueEncodeVisitor;
-use crate::list::ListEncodeVisitor;
+use crate::encoder::EncodeError;
 use crate::enums::EnumType;
+use crate::list::ListEncodeVisitor;
 use crate::state_object::ObjectValue;
+use crate::structs::{StructDecodeVisitor, StructEncodeVisitor, StructType};
+use crate::value::SchemaValue;
+use ixc_message_api::AccountID;
+use simple_time::{Duration, Time};
 
-pub fn encode_value<'a>(value: &dyn ValueEncodeVisitor, writer_factory: &'a dyn WriterFactory) -> Result<&'a [u8], EncodeError> {
+pub fn encode_value<'a>(
+    value: &dyn ValueEncodeVisitor,
+    writer_factory: &'a dyn WriterFactory,
+) -> Result<&'a [u8], EncodeError> {
     let mut sizer = EncodeSizer { size: 0 };
     value.encode(&mut sizer)?;
     let mut writer = writer_factory.new_reverse(sizer.size)?;
-    let mut encoder = Encoder { writer: &mut writer };
+    let mut encoder = Encoder {
+        writer: &mut writer,
+    };
     value.encode(&mut encoder)?;
     Ok(writer.finish())
 }
@@ -44,16 +49,24 @@ impl<'a, W: Writer> crate::encoder::Encoder for Encoder<'a, W> {
     }
 
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {
-        let mut sub = Encoder { writer: self.writer };
+        let mut sub = Encoder {
+            writer: self.writer,
+        };
         let mut inner = InnerEncoder::<W> { outer: &mut sub };
         let size = visitor.encode_reverse(&mut inner)?;
         self.encode_u32(size)?;
         Ok(())
     }
 
-    fn encode_struct(&mut self, visitor: &dyn StructEncodeVisitor, struct_type: &StructType) -> Result<(), EncodeError> {
+    fn encode_struct(
+        &mut self,
+        visitor: &dyn StructEncodeVisitor,
+        struct_type: &StructType,
+    ) -> Result<(), EncodeError> {
         let mut i = struct_type.fields.len();
-        let mut sub = Encoder { writer: self.writer };
+        let mut sub = Encoder {
+            writer: self.writer,
+        };
         let mut inner = InnerEncoder::<W> { outer: &mut sub };
         for f in struct_type.fields.iter().rev() {
             i -= 1;
@@ -108,7 +121,10 @@ impl<'a, W: Writer> crate::encoder::Encoder for Encoder<'a, W> {
         self.encode_i128(x.nanos())
     }
 
-    fn encode_option(&mut self, visitor: Option<&dyn ValueEncodeVisitor>) -> Result<(), EncodeError> {
+    fn encode_option(
+        &mut self,
+        visitor: Option<&dyn ValueEncodeVisitor>,
+    ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
         } else {
@@ -154,7 +170,11 @@ impl crate::encoder::Encoder for EncodeSizer {
         Ok(())
     }
 
-    fn encode_struct(&mut self, visitor: &dyn StructEncodeVisitor, struct_type: &StructType) -> Result<(), EncodeError> {
+    fn encode_struct(
+        &mut self,
+        visitor: &dyn StructEncodeVisitor,
+        struct_type: &StructType,
+    ) -> Result<(), EncodeError> {
         let mut i = 0;
         let mut sub = InnerEncodeSizer { outer: self };
         for f in struct_type.fields {
@@ -221,7 +241,10 @@ impl crate::encoder::Encoder for EncodeSizer {
         self.encode_i128(x.nanos())
     }
 
-    fn encode_option(&mut self, visitor: Option<&dyn ValueEncodeVisitor>) -> Result<(), EncodeError> {
+    fn encode_option(
+        &mut self,
+        visitor: Option<&dyn ValueEncodeVisitor>,
+    ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
         } else {
@@ -239,9 +262,13 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         self.outer.encode_u32(x)
     }
 
-    fn encode_i32(&mut self, x: i32) -> Result<(), EncodeError> { self.outer.encode_i32(x) }
+    fn encode_i32(&mut self, x: i32) -> Result<(), EncodeError> {
+        self.outer.encode_i32(x)
+    }
 
-    fn encode_u64(&mut self, x: u64) -> Result<(), EncodeError> { self.outer.encode_u64(x) }
+    fn encode_u64(&mut self, x: u64) -> Result<(), EncodeError> {
+        self.outer.encode_u64(x)
+    }
 
     fn encode_u128(&mut self, x: u128) -> Result<(), EncodeError> {
         self.outer.encode_u128(x)
@@ -260,7 +287,11 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         self.outer.encode_u32(size)
     }
 
-    fn encode_struct(&mut self, visitor: &dyn StructEncodeVisitor, struct_type: &StructType) -> Result<(), EncodeError> {
+    fn encode_struct(
+        &mut self,
+        visitor: &dyn StructEncodeVisitor,
+        struct_type: &StructType,
+    ) -> Result<(), EncodeError> {
         let end_pos = self.outer.writer.pos(); // this is a reverse writer so we start at the end
         self.outer.encode_struct(visitor, struct_type)?;
         let start_pos = self.outer.writer.pos(); // now we know the start position
@@ -313,7 +344,10 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         self.encode_i128(x.nanos())
     }
 
-    fn encode_option(&mut self, visitor: Option<&dyn ValueEncodeVisitor>) -> Result<(), EncodeError> {
+    fn encode_option(
+        &mut self,
+        visitor: Option<&dyn ValueEncodeVisitor>,
+    ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)?;
             self.encode_bool(true)?;
@@ -358,7 +392,11 @@ impl<'a> crate::encoder::Encoder for InnerEncodeSizer<'a> {
         self.outer.encode_list(visitor)
     }
 
-    fn encode_struct(&mut self, visitor: &dyn StructEncodeVisitor, struct_type: &StructType) -> Result<(), EncodeError> {
+    fn encode_struct(
+        &mut self,
+        visitor: &dyn StructEncodeVisitor,
+        struct_type: &StructType,
+    ) -> Result<(), EncodeError> {
         self.outer.size += 4;
         self.outer.encode_struct(visitor, struct_type)
     }
@@ -416,7 +454,10 @@ impl<'a> crate::encoder::Encoder for InnerEncodeSizer<'a> {
         self.encode_i128(x.nanos())
     }
 
-    fn encode_option(&mut self, visitor: Option<&dyn ValueEncodeVisitor>) -> Result<(), EncodeError> {
+    fn encode_option(
+        &mut self,
+        visitor: Option<&dyn ValueEncodeVisitor>,
+    ) -> Result<(), EncodeError> {
         self.outer.size += 1;
         if let Some(visitor) = visitor {
             visitor.encode(self)?;
@@ -446,4 +487,3 @@ mod tests {
         assert_eq!(res, &[10, 0, 0, 0]);
     }
 }
-

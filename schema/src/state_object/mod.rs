@@ -1,18 +1,18 @@
 //! State object traits.
 
-mod value;
+mod field_types;
 mod key;
-mod value_field;
 mod key_field;
 mod prefix;
-mod field_types;
+mod value;
+mod value_field;
 
-pub use value::{ObjectValue, encode_object_value, decode_object_value};
-pub use value_field::{ObjectFieldValue, Str, Bytes};
+use crate::field::Field;
+pub use key::{decode_object_key, encode_object_key, ObjectKey};
 pub use key_field::KeyFieldValue;
 pub use prefix::PrefixKey;
-pub use key::{ObjectKey, encode_object_key, decode_object_key};
-use crate::field::Field;
+pub use value::{decode_object_value, encode_object_value, ObjectValue};
+pub use value_field::{Bytes, ObjectFieldValue, Str};
 
 /// A type representing objects stored in key-value store state.
 #[non_exhaustive]
