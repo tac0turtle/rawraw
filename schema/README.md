@@ -6,6 +6,7 @@ parameter and return types, serializable structs and enums, and objects in stora
 ## Basic Types
 
 The basic types supported intrinsically are:
+
 * [`u8`], [`u16`], [`u32`], [`u64`], [`u128`]
 * [`i8`], [`i16`], [`i32`], [`i64`], [`i128`]
 * [`bool`]
@@ -16,7 +17,7 @@ The basic types supported intrinsically are:
 * [`Vec<T>`](alloc::vec::Vec) or [`&[T]`](slice)
 
 Custom types may be derived using the [`SchemaValue`] derive macro.
-As a general rule, if a type implements [`SchemaValue`] it can be 
+As a general rule, if a type implements [`SchemaValue`] it can be
 used as a function or struct parameter.
 
 ## Supported Encodings
@@ -52,7 +53,7 @@ JSON escape characters (ex. `"foo\tbar"`).
 This is because a borrowed data structure must have some owner, but in Serde the only
 possible owner is the input itself.
 
-In `ixc_schema` we use a [bump allocator](https://en.wikipedia.org/wiki/Region-based_memory_management) under the hood 
+In `ixc_schema` we use a [bump allocator](https://en.wikipedia.org/wiki/Region-based_memory_management) under the hood
 to hold onto any intermediate allocation that must take place to be able
 to borrow not just strings, but slices of any sort of data.
 When data is decoded there is a ["memory manager"](mem::MemoryManager) that holds onto

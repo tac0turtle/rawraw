@@ -7,14 +7,13 @@ use ixc_message_api::code::SystemCode::{
     AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled,
     UnauthorizedCallerAccess,
 };
-use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
+use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{HandlerID, VM};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::sync::Arc;
 
 /// Rust Cosmos SDK RFC 003 hypervisor implementation.
@@ -48,7 +47,7 @@ impl<ST: StateHandler> Hypervisor<ST> {
 
     /// This is a hack until we figure out a better way to reference handler IDs.
     pub fn set_default_vm(&mut self, name: &str) -> Result<(), ()> {
-        let mut vmdata = Arc::get_mut(&mut self.vmdata).ok_or(())?;
+        let  vmdata = Arc::get_mut(&mut self.vmdata).ok_or(())?;
         vmdata.default_vm = Some(name.to_string());
         Ok(())
     }

@@ -2,18 +2,17 @@
 //! This is a macro utility crate for ixc_core.
 
 use blake2::{Blake2b512, Digest};
-use deluxe::ExtractAttributes;
 use heck::ToUpperCamelCase;
 use manyhow::{bail, ensure, manyhow};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote};
 use std::borrow::Borrow;
 use std::default::Default;
 use syn::punctuated::Punctuated;
 use syn::{
     parse2, parse_macro_input, parse_quote, Attribute, Data, DeriveInput, Item, ItemMod, ItemTrait,
-    LitStr, ReturnType, Signature, TraitItem, Type, Visibility,
+    LitStr, ReturnType, Signature, TraitItem, Type,
 };
 
 #[derive(deluxe::ParseMetaItem)]
@@ -249,7 +248,10 @@ pub fn publish(_attr: TokenStream2, item: TokenStream2) -> manyhow::Result<Token
 /// This attribute macro should be attached to a trait that implements a handler API.
 #[manyhow]
 #[proc_macro_attribute]
-pub fn handler_api(attr: TokenStream2, mut item_trait: ItemTrait) -> manyhow::Result<TokenStream2> {
+pub fn handler_api(
+    _attr: TokenStream2,
+    mut item_trait: ItemTrait,
+) -> manyhow::Result<TokenStream2> {
     let mut builder = APIBuilder::default();
     let trait_ident = &item_trait.ident;
     let dyn_trait = quote!(dyn #trait_ident);

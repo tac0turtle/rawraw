@@ -3,9 +3,7 @@ use crate::codec::ValueEncodeVisitor;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
 use crate::list::ListEncodeVisitor;
-use crate::state_object::ObjectValue;
-use crate::structs::{StructDecodeVisitor, StructEncodeVisitor, StructType};
-use crate::value::SchemaValue;
+use crate::structs::{StructEncodeVisitor, StructType};
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 

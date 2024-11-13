@@ -7,17 +7,15 @@ use crate::store::VersionedMultiStore;
 use crate::vm::NativeVM;
 use allocator_api2::alloc::Allocator;
 use ixc_core::account_api::{create_account_raw, ROOT_ACCOUNT};
-use ixc_core::handler::{Client, Handler, HandlerClient, InitMessage, Service};
+use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
-use ixc_core::routing::Router;
 use ixc_core::Context;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
-use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
@@ -205,7 +203,7 @@ mod default_account {
 
     impl DefaultAccount {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+        pub fn create(&self, _ctx: &mut Context) -> Result<()> {
             Ok(())
         }
     }

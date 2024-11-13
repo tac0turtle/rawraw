@@ -1,6 +1,5 @@
 //! Standard result types.
 use crate::error::{ClientError, HandlerError};
-use core::fmt::Debug;
 use ixc_message_api::code::HandlerCode;
 
 /// The standard result type which should be used as a return type in handler implementations.

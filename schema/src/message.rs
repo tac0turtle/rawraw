@@ -1,9 +1,3 @@
-use crate::codec::Codec;
-use crate::structs::StructSchema;
-use crate::value::OptionalValue;
-use crate::SchemaValue;
-use ixc_message_api::header::MessageSelector;
-
 #[non_exhaustive]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageDescriptor<'a> {
