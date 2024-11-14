@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/module_system/core",
+    "crates/module_system/ixc",
     "crates/module_system/core_macros",
     "crates/module_system/collections",
     "crates/module_system/schema",
