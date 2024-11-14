@@ -1,5 +1,5 @@
 [package]
-name = "state_objects"
+name = "ixc_collections"
 edition = "2021"
 description = "Interchain SDK State Objects"
 version = "0.0.4"
