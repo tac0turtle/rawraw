@@ -1,16 +1,16 @@
 //! This module contains the definition of the `MessagePacket` struct.
 
+use core::alloc::Layout;
+use core::ptr::NonNull;
 use crate::handler::Allocator;
 use crate::header::{MessageHeader, MESSAGE_HEADER_SIZE};
 use allocator_api2::alloc::AllocError;
-use std::alloc::Layout;
-use std::ptr::NonNull;
 
 /// A packet containing a message and its header.
 pub struct MessagePacket<'a> {
     pub(crate) data: NonNull<MessageHeader>,
     pub(crate) len: usize,
-    _marker: std::marker::PhantomData<&'a ()>,
+    _marker: core::marker::PhantomData<&'a ()>,
 }
 
 impl<'a> MessagePacket<'a> {

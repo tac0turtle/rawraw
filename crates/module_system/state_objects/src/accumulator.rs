@@ -7,7 +7,7 @@ use ixc_core::{error, Context, Result};
 use ixc_message_api::code::ErrorCode;
 use ixc_schema::state_object::ObjectKey;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::borrow::Borrow;
+use core::borrow::Borrow;
 
 /// A 128-bit unsigned integer accumulator.
 pub struct Accumulator {

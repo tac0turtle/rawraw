@@ -5,7 +5,7 @@ use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::{Context, Result};
 use ixc_schema::state_object::ObjectValue;
-use std::borrow::Borrow;
+use core::borrow::Borrow;
 
 /// A single item in storage.
 pub struct Item<V> {
