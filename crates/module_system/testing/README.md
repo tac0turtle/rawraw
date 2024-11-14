@@ -17,6 +17,7 @@ using regular rust `#[test]` functions following these basic steps:
 
 Let's define a simple counter with one method `inc` which increments the counter and returns
 the new value:
+
 ```rust
 #[ixc::handler(Counter)]
 pub mod counter {
