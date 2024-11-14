@@ -11,7 +11,7 @@ publish = false
 ixc = { path = ".." }
 
 [dev-dependencies]
-ixc_testing = { path = "../testing" }
+ixc_testing = { path = "../crates/module_system/testing" }
 
 [lints]
 workspace = true

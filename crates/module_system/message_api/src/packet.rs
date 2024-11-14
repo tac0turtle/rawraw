@@ -1,10 +1,10 @@
 //! This module contains the definition of the `MessagePacket` struct.
 
-use core::alloc::Layout;
-use core::ptr::NonNull;
 use crate::handler::Allocator;
 use crate::header::{MessageHeader, MESSAGE_HEADER_SIZE};
 use allocator_api2::alloc::AllocError;
+use core::alloc::Layout;
+use core::ptr::NonNull;
 
 /// A packet containing a message and its header.
 pub struct MessagePacket<'a> {

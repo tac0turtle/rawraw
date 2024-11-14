@@ -1,7 +1,6 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
 mod store;
-mod vm;
 
 use crate::store::VersionedMultiStore;
 use crate::vm::NativeVM;
