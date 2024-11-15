@@ -1,19 +1,19 @@
 [workspace]
 members = [
-    "core",
-    "core_macros",
-    "state_objects",
-    "state_objects_macros",
-    "schema",
-    "schema_macros",
-    "message_api",
-    "testing",
-    "util/simple_time",
+    "crates/module_system/core",
+    "crates/module_system/ixc",
+    "crates/module_system/core_macros",
+    "crates/module_system/collections",
+    "crates/module_system/schema",
+    "crates/module_system/schema_macros",
+    "crates/module_system/message_api",
+    "crates/module_system/testing",
+    "crates/module_system/util/simple_time",
 #    "codecs/proto",
 #    "codecs/evm",
 #    "vm/wasmtime",
-    "vm/api",
-    "vm/hypervisor",
+    "crates/vm/api",
+    "crates/vm/stf",
     "example",
 ]
 
@@ -30,47 +30,3 @@ missing_docs = "deny"
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "deny"
 private_intra_doc_links = "deny"
-
-[package]
-name = "ixc"
-edition = "2021"
-description = "Interchain SDK"
-readme = "README.md"
-version = "0.0.5"
-repository.workspace = true
-license.workspace = true
-
-[dependencies]
-ixc_core = { path = "core", version = "0.0.4" }
-ixc_schema = { path = "schema", version = "0.0.4", features = ["use_ixc_macro_path"] }
-ixc_message_api = { path = "message_api", version = "0.0.4" }
-state_objects = { path = "state_objects", version = "0.0.4" }
-simple_time = { path = "util/simple_time", version = "0.0.2" }
-ixc_core_macros = { path = "core_macros", version = "0.0.4" }
-ixc_schema_macros = { path = "schema_macros", version = "0.0.3", features = ["use_ixc_macro_path"] }
-state_objects_macros = { path = "state_objects_macros", version = "0.0.3" }
-constcat = "0.5.1"
-array-concat = "0.5.3"
-
-[dev-dependencies]
-ixc_testing = { path = "testing" }
-arrayvec = "0.7.6"
-thiserror = "1.0.63"
-num_enum = "0.7.3"
-mockall = "0.13.0"
-
-[lib]
-doctest = false
-
-[lints]
-workspace = true
-
-[features]
-default = []
-
-[profile.release]
-lto = true
-
-[[example]]
-name = "counter"
-crate-type = ["cdylib"]
