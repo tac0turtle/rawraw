@@ -312,19 +312,9 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
 mod tests {
     extern crate std;
 
-    use crate::binary::decoder::decode_value;
     use crate::binary::encoder::encode_value;
-    use crate::decoder::{DecodeError, Decoder};
-    use crate::encoder::{EncodeError, Encoder};
-    use crate::field::Field;
     use crate::mem::MemoryManager;
-    use crate::schema::SchemaType;
-    use crate::state_object::ObjectFieldValue;
-    use crate::structs::{StructDecodeVisitor, StructEncodeVisitor, StructSchema, StructType};
-    use crate::types::{to_field, ReferenceableType, StrT, StructT, UIntNT};
-    use crate::value::{ListElementValue, SchemaValue};
     use alloc::vec;
-    use allocator_api2::alloc::Allocator;
 
     extern crate ixc_schema_macros;
     use crate::binary::NativeBinaryCodec;

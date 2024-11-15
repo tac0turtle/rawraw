@@ -2,7 +2,7 @@
 name = "ixc"	
 edition = "2021"	
 description = "Interchain SDK"	
-readme = "README.md"	
+readme = "../../../README.md"	
 version = "0.0.5"	
 repository.workspace = true	
 license.workspace = true	

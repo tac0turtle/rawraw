@@ -6,13 +6,13 @@ pub use ixc_core::resource::Resources;
 pub use ixc_core::{bail, create_account, ensure, error, Context, EventBus, Result, Service};
 
 #[doc(inline)]
+pub use ixc_collections::{Accumulator, AccumulatorMap, Item, Map};
+#[doc(inline)]
 pub use ixc_message_api::AccountID;
 #[doc(inline)]
 pub use ixc_schema::{Bytes, Str};
 #[doc(inline)]
 pub use simple_time::{Duration, Time};
-#[doc(inline)]
-pub use state_objects::{Accumulator, AccumulatorMap, Item, Map};
 
 pub use ixc_core as core;
 pub use ixc_message_api as message_api;
@@ -29,7 +29,3 @@ pub use ixc_core_macros::{handler, handler_api, on_create, publish, Resources};
 extern crate ixc_schema_macros;
 #[doc(inline)]
 pub use ixc_schema_macros::*;
-
-#[allow(unused_imports)]
-#[doc(inline)]
-pub use state_objects_macros::*;
