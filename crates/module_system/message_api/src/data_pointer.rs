@@ -108,10 +108,8 @@ impl DataPointer {
 
     /// Pack a u64 value into the pointer.
     pub unsafe fn set_u64(&mut self, data: u64) {
-        unsafe {
-            self.u64_wrapper.zero = 0;
-            self.u64_wrapper.value = data;
-        }
+        self.u64_wrapper.zero = 0;
+        self.u64_wrapper.value = data;
     }
 
     /// Unpack a u64 value from the pointer.
