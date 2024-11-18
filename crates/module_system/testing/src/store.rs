@@ -10,6 +10,7 @@ use ixc_message_api::AccountID;
 use ixc_stf::{CommitError, NewTxError, PopFrameError, PushFrameError, StateHandler, Transaction};
 use std::alloc::Layout;
 use std::cell::RefCell;
+use std::collections::HashSet;
 use thiserror::Error;
 
 #[derive(Default, Clone)]
@@ -34,6 +35,10 @@ impl StateHandler for VersionedMultiStore {
                 changes: vec![],
                 volatile,
                 user_tx: true,
+                access_set: AccessSet {
+                    reads: HashSet::new(),
+                    writes: HashSet::new(),
+                },
             }),
         })
     }
@@ -100,6 +105,7 @@ impl Transaction for Tx {
             changes: vec![],
             volatile,
             user_tx: false,
+            access_set: self.current_frame.borrow().access_set.clone(),
         };
         self.call_stack.push(self.current_frame.borrow().clone());
         self.current_frame = RefCell::new(next_frame);
@@ -249,7 +255,24 @@ impl Tx {
     }
 
     fn track_access(&self, key: &[u8], access: Access) -> Result<(), AccessError> {
-        // TODO track reads and writes for parallel execution
+        let mut frame = self.current_frame.borrow_mut();
+
+        match access {
+            Access::Read => {
+                // Check if key was written by another transaction
+                if frame.access_set.writes.contains(key) {
+                    return Err(AccessError);
+                }
+                frame.access_set.reads.insert(key.to_vec());
+            }
+            Access::Write => {
+                // Check if key was read or written by another transaction
+                if frame.access_set.reads.contains(key) || frame.access_set.writes.contains(key) {
+                    return Err(AccessError);
+                }
+                frame.access_set.writes.insert(key.to_vec());
+            }
+        }
         Ok(())
     }
 }
@@ -273,6 +296,7 @@ pub struct Frame {
     changes: ChangeSet,
     volatile: bool,
     user_tx: bool,
+    access_set: AccessSet,
     // TODO events
 }
 
@@ -283,6 +307,21 @@ impl Frame {
         } else {
             self.store.stores.insert(account_id, Store::default());
             self.store.stores.get_mut(&account_id).unwrap()
+        }
+    }
+}
+
+/// A set of accesses to keys in a transaction.
+struct AccessSet {
+    reads: HashSet<Vec<u8>>,
+    writes: HashSet<Vec<u8>>,
+}
+
+impl Clone for AccessSet {
+    fn clone(&self) -> Self {
+        Self {
+            reads: self.reads.clone(),
+            writes: self.writes.clone(),
         }
     }
 }
