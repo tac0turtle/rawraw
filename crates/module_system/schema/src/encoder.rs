@@ -84,7 +84,7 @@ impl Display for EncodeError {
 impl Error for EncodeError {}
 
 impl From<EncodeError> for ErrorCode {
-    fn from(value: EncodeError) -> Self {
+    fn from(_value: EncodeError) -> Self {
         ErrorCode::SystemCode(SystemCode::EncodingError)
     }
 }

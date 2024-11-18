@@ -5,7 +5,6 @@ use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
 use allocator_api2::alloc::Allocator;
 use core::alloc::Layout;
-use core::ptr::slice_from_raw_parts_mut;
 
 /// A factory for creating writers.
 pub trait WriterFactory {

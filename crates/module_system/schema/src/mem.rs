@@ -7,8 +7,6 @@ use core::alloc::Layout;
 use core::cell::Cell;
 use core::mem::transmute;
 use core::ptr::{drop_in_place, NonNull};
-use ixc_message_api::header::{MessageHeader, MESSAGE_HEADER_SIZE};
-use ixc_message_api::packet::MessagePacket;
 
 /// A memory manager that tracks allocated memory using a bump allocator and ensures that
 /// memory is deallocated and dropped properly when the manager is dropped.
@@ -44,9 +42,9 @@ impl MemoryManager {
             let (dropper, _) = Box::into_non_null(Box::new_in(vec, &self.bump));
             let drop_cell = Box::new_in(
                 DropCell {
-                    /// Rust doesn't know what the lifetime of this data is, but we do because
-                    /// we allocated it and own the allocator,
-                    /// so we transmute it to have the appropriate lifetime
+                    // Rust doesn't know what the lifetime of this data is, but we do because
+                    // we allocated it and own the allocator,
+                    // so we transmute it to have the appropriate lifetime
                     dropper: transmute(dropper as NonNull<dyn DeferDrop>),
                     next: self.drop_cells.get(),
                 },
