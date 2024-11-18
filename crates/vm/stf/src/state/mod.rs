@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-pub trait DiskDb {
+pub trait ReaderKv {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
 }
 
@@ -61,7 +61,7 @@ impl<S> SnapshotState<S> {
     }
 }
 
-impl<S: DiskDb> SnapshotState<S> {
+impl<S: ReaderKv> SnapshotState<S> {
     pub fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
         // try to get from values
         match self.changes.get(key) {
@@ -115,7 +115,7 @@ mod tests {
     use super::*;
 
     // implement in memory disk db
-    impl DiskDb for HashMap<Vec<u8>, Vec<u8>> {
+    impl ReaderKv for HashMap<Vec<u8>, Vec<u8>> {
         fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
             self.get(key).cloned()
         }
