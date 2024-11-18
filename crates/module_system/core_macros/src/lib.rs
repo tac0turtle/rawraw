@@ -2,18 +2,17 @@
 //! This is a macro utility crate for ixc_core.
 
 use blake2::{Blake2b512, Digest};
-use deluxe::ExtractAttributes;
 use heck::ToUpperCamelCase;
 use manyhow::{bail, ensure, manyhow};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote};
 use std::borrow::Borrow;
 use std::default::Default;
 use syn::punctuated::Punctuated;
 use syn::{
     parse2, parse_macro_input, parse_quote, Attribute, Data, DeriveInput, Item, ItemMod, ItemTrait,
-    LitStr, ReturnType, Signature, TraitItem, Type, Visibility,
+    LitStr, ReturnType, Signature, TraitItem, Type,
 };
 
 #[derive(deluxe::ParseMetaItem)]
@@ -135,63 +134,54 @@ fn collect_publish_targets(
     targets: &mut Vec<PublishFn>,
     traits: &mut Vec<PublishTrait>,
 ) -> manyhow::Result<()> {
-    match item {
-        Item::Impl(imp) => {
-            match imp.self_ty.borrow() {
-                Type::Path(self_path) => {
-                    let ident = match self_path.path.get_ident() {
-                        None => return Ok(()),
-                        Some(ident) => ident,
-                    };
-                    if ident != self_name {
-                        return Ok(());
+    if let Item::Impl(imp) = item {
+        if let Type::Path(self_path) = imp.self_ty.borrow() {
+            let ident = match self_path.path.get_ident() {
+                None => return Ok(()),
+                Some(ident) => ident,
+            };
+            if ident != self_name {
+                return Ok(());
+            }
+
+            let publish_all = maybe_extract_attribute(imp)?;
+
+            // TODO check for trait implementation
+            if imp.trait_.is_some() && publish_all.is_some() {
+                let trait_ident = imp
+                    .trait_
+                    .as_ref()
+                    .unwrap()
+                    .1
+                    .segments
+                    .first()
+                    .unwrap()
+                    .ident
+                    .clone();
+                traits.push(PublishTrait { ident: trait_ident });
+                return Ok(());
+            }
+
+            for item in &mut imp.items {
+                if let syn::ImplItem::Fn(impl_fn) = item {
+                    let on_create = maybe_extract_attribute(impl_fn)?;
+                    let publish = maybe_extract_attribute(impl_fn)?;
+                    if publish.is_some() && on_create.is_some() {
+                        bail!("on_create and publish attributes must not be attached to the same function");
                     }
-
-                    let publish_all = maybe_extract_attribute(imp)?;
-
-                    // TODO check for trait implementation
-                    if imp.trait_.is_some() && publish_all.is_some() {
-                        let trait_ident = imp
-                            .trait_
-                            .as_ref()
-                            .unwrap()
-                            .1
-                            .segments
-                            .first()
-                            .unwrap()
-                            .ident
-                            .clone();
-                        traits.push(PublishTrait { ident: trait_ident });
-                        return Ok(());
-                    }
-
-                    for item in &mut imp.items {
-                        match item {
-                            syn::ImplItem::Fn(impl_fn) => {
-                                let on_create = maybe_extract_attribute(impl_fn)?;
-                                let publish = maybe_extract_attribute(impl_fn)?;
-                                if publish.is_some() && on_create.is_some() {
-                                    bail!("on_create and publish attributes must not be attached to the same function");
-                                }
-                                let publish = publish_all.clone().or(publish);
-                                if publish.is_some() || on_create.is_some() {
-                                    // TODO check visibility
-                                    targets.push(PublishFn {
-                                        signature: impl_fn.sig.clone(),
-                                        on_create,
-                                        publish,
-                                        attrs: impl_fn.attrs.clone(),
-                                    });
-                                }
-                            }
-                            _ => {}
-                        }
+                    let publish = publish_all.clone().or(publish);
+                    if publish.is_some() || on_create.is_some() {
+                        // TODO check visibility
+                        targets.push(PublishFn {
+                            signature: impl_fn.sig.clone(),
+                            on_create,
+                            publish,
+                            attrs: impl_fn.attrs.clone(),
+                        });
                     }
                 }
-                _ => {}
             }
         }
-        _ => {}
     }
     Ok(())
 }
@@ -242,14 +232,14 @@ struct PublishTrait {
 /// This publishes a trait or struct impl block or a single fn within an impl block.
 #[manyhow]
 #[proc_macro_attribute]
-pub fn publish(_attr: TokenStream2, item: TokenStream2) -> manyhow::Result<TokenStream2> {
+pub fn publish(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenStream2> {
     bail!("the #[publish] attribute is being used in the wrong context, possibly #[module_handler] or #[account_handler] has not been applied to the enclosing module")
 }
 
 /// This attribute macro should be attached to a trait that implements a handler API.
 #[manyhow]
 #[proc_macro_attribute]
-pub fn handler_api(attr: TokenStream2, mut item_trait: ItemTrait) -> manyhow::Result<TokenStream2> {
+pub fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Result<TokenStream2> {
     let mut builder = APIBuilder::default();
     let trait_ident = &item_trait.ident;
     let dyn_trait = quote!(dyn #trait_ident);
@@ -377,7 +367,7 @@ impl APIBuilder {
 
 fn derive_api_method(
     handler_ident: &Ident,
-    handler_ty: &TokenStream2,
+    _handler_ty: &TokenStream2,
     publish_target: &PublishFn,
     builder: &mut APIBuilder,
 ) -> manyhow::Result<()> {
@@ -559,7 +549,7 @@ fn derive_api_method(
 /// This attribute macro should be attached to the fn which is called when an account is created.
 #[manyhow]
 #[proc_macro_attribute]
-pub fn on_create(_attr: TokenStream2, item: TokenStream2) -> manyhow::Result<TokenStream2> {
+pub fn on_create(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenStream2> {
     bail!("the #[on_create] attribute is being used in the wrong context, possibly #[module_handler] or #[account_handler] has not been applied to the enclosing module")
 }
 

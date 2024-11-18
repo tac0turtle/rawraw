@@ -81,7 +81,6 @@ pub struct Tx {
     current_frame: RefCell<Frame>,
 }
 
-const HAS_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.has");
 const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
@@ -145,7 +144,7 @@ impl Transaction for Tx {
 
     fn raw_kv_set(&self, account_id: AccountID, key: &[u8], value: &[u8]) {
         let mut current_frame = self.current_frame.borrow_mut();
-        let mut store = current_frame.get_kv_store(account_id);
+        let store = current_frame.get_kv_store(account_id);
         store.kv_store.insert(key.to_vec(), value.to_vec());
         current_frame.changes.push(Update {
             account: account_id,
@@ -156,7 +155,7 @@ impl Transaction for Tx {
 
     fn raw_kv_delete(&self, account_id: AccountID, key: &[u8]) {
         let mut current_frame = self.current_frame.borrow_mut();
-        let mut store = current_frame.get_kv_store(account_id);
+        let store = current_frame.get_kv_store(account_id);
         store.kv_store.remove(key);
         current_frame.changes.push(Update {
             account: account_id,
@@ -173,11 +172,10 @@ impl Transaction for Tx {
         unsafe {
             let header = message_packet.header();
             match header.message_selector {
-                HAS_SELECTOR => self.has(message_packet),
                 GET_SELECTOR => self.get(message_packet, allocator),
                 SET_SELECTOR => self.set(message_packet),
                 DELETE_SELECTOR => self.delete(message_packet),
-                _ => Err(todo!()),
+                _ => Err(ErrorCode::SystemCode(InvalidHandler)),
             }
         }
     }
@@ -189,12 +187,6 @@ enum Access {
 }
 
 impl Tx {
-    unsafe fn has(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
-        let key = packet.header().in_pointer1.get(packet);
-        // self.track_access(key, Access::Read)?;
-        todo!()
-    }
-
     unsafe fn get(
         &self,
         packet: &mut MessagePacket,
@@ -207,9 +199,9 @@ impl Tx {
         let account = current_frame.account;
         let current_store = current_frame.get_kv_store(account);
         match current_store.kv_store.get(key) {
-            None => unsafe {
+            None => {
                 return Err(HandlerCode(0)); // KV-stores should use handler code 0 to indicate not found
-            },
+            }
             Some(value) => unsafe {
                 let out = allocator
                     .allocate(Layout::from_size_align_unchecked(value.len(), 16))
@@ -230,7 +222,7 @@ impl Tx {
             .map_err(|_| SystemCode(InvalidHandler))?;
         let mut current_frame = self.current_frame.borrow_mut();
         let account = current_frame.account;
-        let mut current_store = current_frame.get_kv_store(account);
+        let current_store = current_frame.get_kv_store(account);
         current_store.kv_store.insert(key.to_vec(), value.to_vec());
         current_frame.changes.push(Update {
             account,
@@ -241,6 +233,18 @@ impl Tx {
     }
 
     unsafe fn delete(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
+        let key = packet.header().in_pointer1.get(packet);
+        self.track_access(key, Access::Write)
+            .map_err(|_| SystemCode(InvalidHandler))?;
+        let mut current_frame = self.current_frame.borrow_mut();
+        let account = current_frame.account;
+        let current_store = current_frame.get_kv_store(account);
+        current_store.kv_store.remove(key);
+        current_frame.changes.push(Update {
+            account,
+            key: key.to_vec(),
+            operation: Operation::Remove,
+        });
         todo!()
     }
 
