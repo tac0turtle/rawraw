@@ -22,12 +22,12 @@ use std::collections::BTreeMap;
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
-use ixc_stf::Hypervisor;
+use ixc_stf::STF;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
-    hypervisor: RefCell<Hypervisor>,
+    hypervisor: RefCell<STF>,
     state: RefCell<VersionedMultiStore>,
     native_vm: NativeVM,
     mem: MemoryManager,
@@ -36,7 +36,7 @@ pub struct TestApp {
 
 impl Default for TestApp {
     fn default() -> Self {
-        let mut hypervisor: Hypervisor = Default::default();
+        let mut hypervisor: STF = Default::default();
         let native_vm = NativeVM::new();
         hypervisor
             .register_vm("native", std::boxed::Box::new(native_vm.clone()))

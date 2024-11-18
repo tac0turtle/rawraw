@@ -7,7 +7,7 @@ use ixc_message_api::code::SystemCode::{FatalExecutionError, InvalidHandler};
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
-use ixc_stf::{CommitError, NewTxError, PopFrameError, PushFrameError, StateHandler, Transaction};
+use ixc_stf::{CommitError, NewTxError, PopFrameError, PushFrameError, StateHandler};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
