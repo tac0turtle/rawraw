@@ -8,10 +8,10 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
-ixc = { path = ".." }
+ixc = { path = "../crates/module_system/ixc" }
 
 [dev-dependencies]
-ixc_testing = { path = "../testing" }
+ixc_testing = { path = "../crates/module_system/testing" }
 
 [lints]
 workspace = true
