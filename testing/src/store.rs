@@ -2,7 +2,7 @@ use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
 use ixc_core_macros::message_selector;
 use ixc_hypervisor::{
-    CommitError, NewTxError, PopFrameError, PushFrameError, StateHandler, Transaction,
+    CommitError, NewTxError, PopFrameError, PushFrameError, StateHandler,
 };
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
@@ -19,14 +19,12 @@ pub struct VersionedMultiStore {
     versions: Vector<MultiStore>,
 }
 
-impl StateHandler for VersionedMultiStore {
-    type Tx = Tx;
-
-    fn new_transaction(
+impl VersionedMultiStore {
+    pub fn new_transaction(
         &self,
         account_id: AccountID,
         volatile: bool,
-    ) -> Result<Self::Tx, NewTxError> {
+    ) -> Result<Tx, NewTxError> {
         let latest = self.versions.last().map(|s| s.clone()).unwrap_or_default();
         Ok(Tx {
             call_stack: vec![],
@@ -40,7 +38,7 @@ impl StateHandler for VersionedMultiStore {
         })
     }
 
-    fn commit(&mut self, tx: Self::Tx) -> Result<(), CommitError> {
+    pub fn commit(&mut self, tx: Tx) -> Result<(), CommitError> {
         if !tx.call_stack.is_empty() {
             return Err(CommitError::UnfinishedCallStack);
         }
@@ -88,7 +86,7 @@ const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
 
-impl Transaction for Tx {
+impl StateHandler for Tx {
     fn init_account_storage(&mut self, account: AccountID) -> Result<(), PushFrameError> {
         self.push_frame(account, true)
     }

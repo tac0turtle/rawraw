@@ -12,39 +12,26 @@ use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{HandlerID, VM};
 use std::alloc::Layout;
-use std::cell::RefCell;
+use std::cell::{Cell, Ref, RefCell, UnsafeCell};
 use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::sync::Arc;
 
 /// Rust Cosmos SDK RFC 003 hypervisor implementation.
-pub struct Hypervisor<ST: StateHandler> {
+#[derive(Default)]
+pub struct Hypervisor {
     vmdata: Arc<VMData>,
-    state_handler: ST,
 }
 
-impl<ST: StateHandler + Default> Default for Hypervisor<ST> {
-    fn default() -> Self {
-        Self::new(ST::default())
-    }
-}
-
+#[derive(Default)]
 struct VMData {
     vms: HashMap<String, Box<dyn VM>>,
     default_vm: Option<String>,
 }
 
-impl<ST: StateHandler> Hypervisor<ST> {
+impl Hypervisor {
     /// Create a new hypervisor with the given state handler.
-    pub fn new(state_handler: ST) -> Self {
-        Self {
-            vmdata: Arc::from(VMData {
-                vms: HashMap::new(),
-                default_vm: None,
-            }),
-            state_handler,
-        }
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// This is a hack until we figure out a better way to reference handler IDs.
     pub fn set_default_vm(&mut self, name: &str) -> Result<(), ()> {
@@ -61,43 +48,17 @@ impl<ST: StateHandler> Hypervisor<ST> {
     }
 
     /// Invoke a message packet.
-    pub fn invoke(
+    pub fn invoke<ST: StateHandler>(
         &mut self,
+        state_handler: &mut ST,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let tx = self
-            .state_handler
-            .new_transaction(message_packet.header().caller, true)
-            .map_err(|_| SystemCode(FatalExecutionError))?;
-        let mut exec_context = ExecContext {
+        ExecContext {
             vmdata: self.vmdata.clone(),
-            tx: RefCell::new(tx),
-        };
-        let res = exec_context.invoke(message_packet, allocator);
-        let tx = exec_context.tx.into_inner();
-        if res.is_ok() {
-            self.state_handler
-                .commit(tx)
-                .map_err(|_| SystemCode(FatalExecutionError))?;
-        }
-
-        res
+            state_handler,
+        }.invoke(message_packet, allocator)
     }
-}
-
-/// The state handler traits the hypervisor expects.
-pub trait StateHandler {
-    /// The transaction type.
-    type Tx: Transaction;
-    /// Create a new transaction.
-    fn new_transaction(
-        &self,
-        account_id: AccountID,
-        volatile: bool,
-    ) -> Result<Self::Tx, NewTxError>;
-    /// Commit a transaction.
-    fn commit(&mut self, tx: Self::Tx) -> Result<(), CommitError>;
 }
 
 /// An error when creating a new transaction.
@@ -110,7 +71,7 @@ pub enum CommitError {
 }
 
 /// A transaction.
-pub trait Transaction {
+pub trait StateHandler {
     /// Initialize the account storage and push a new frame for the newly initialized storage.
     fn init_account_storage(&mut self, account: AccountID) -> Result<(), PushFrameError>;
     /// Push a new execution frame.
@@ -149,37 +110,35 @@ pub enum PopFrameError {
     NoFrames,
 }
 
-struct ExecContext<TX: Transaction> {
+struct ExecContext<'a, ST: StateHandler> {
     vmdata: Arc<VMData>,
-    tx: RefCell<TX>,
+    state_handler: &'a mut ST,
 }
 
-impl<'a, TX: Transaction> ExecContext<TX> {
+impl<'a, ST: StateHandler> ExecContext<'a, ST> {
     fn get_account_handler_id(&self, account_id: AccountID) -> Option<HandlerID> {
         let id: u128 = account_id.into();
         let key = format!("h:{}", id);
         let value = self
-            .tx
-            .borrow()
+            .state_handler
             .raw_kv_get(HYPERVISOR_ACCOUNT, key.as_bytes())?;
         self.parse_handler_id(&value)
     }
 
-    fn init_next_account(&self, handler_id: &HandlerID) -> Result<AccountID, PushFrameError> {
-        let mut tx = self.tx.borrow_mut();
-        let id = tx
+    fn init_next_account(&mut self, handler_id: &HandlerID) -> Result<AccountID, PushFrameError> {
+        let id = self.state_handler
             .raw_kv_get(HYPERVISOR_ACCOUNT, b"next_account_id")
             .map_or(ACCOUNT_ID_NON_RESERVED_START, |v| {
                 u128::from_le_bytes(v.try_into().unwrap())
             });
         // we push a new storage frame here because if initialization fails all of this gets rolled back
-        tx.init_account_storage(AccountID::new(id))?;
-        tx.raw_kv_set(
+        self.state_handler.init_account_storage(AccountID::new(id))?;
+        self.state_handler.raw_kv_set(
             HYPERVISOR_ACCOUNT,
             b"next_account_id",
             &(id + 1).to_le_bytes(),
         );
-        tx.raw_kv_set(
+        self.state_handler.raw_kv_set(
             HYPERVISOR_ACCOUNT,
             format!("h:{}", id).as_bytes(),
             format_handler_id(handler_id).as_bytes(),
@@ -187,14 +146,13 @@ impl<'a, TX: Transaction> ExecContext<TX> {
         Ok(AccountID::new(id))
     }
 
-    fn destroy_current_account_data(&self) -> Result<(), ()> {
-        let current_account = self.tx.borrow().active_account();
+    fn destroy_current_account_data(&mut self) -> Result<(), ()> {
+        let current_account = self.state_handler.active_account();
         let id: u128 = current_account.into();
         let key = format!("h:{}", id);
-        self.tx
-            .borrow()
+        self.state_handler
             .raw_kv_delete(HYPERVISOR_ACCOUNT, key.as_bytes());
-        self.tx.borrow_mut().self_destruct_account()
+        self.state_handler.self_destruct_account()
     }
 
     fn parse_handler_id(&self, value: &[u8]) -> Option<HandlerID> {
@@ -207,15 +165,25 @@ const ACCOUNT_ID_NON_RESERVED_START: u128 = u16::MAX as u128 + 1;
 const HYPERVISOR_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
-impl<TX: Transaction> HostBackend for ExecContext<TX> {
+impl<'a, ST: StateHandler> HostBackend for ExecContext<'a, ST> {
     fn invoke(
         &self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
+        (*self.exec_context.borrow_mut()).invoke(message_packet, allocator)
+    }
+}
+
+impl<'a, ST: StateHandler> ExecContext<'a, ST> {
+    fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         // get the mutable transaction from the RefCell
         // check if the caller matches the active account
-        let account = self.tx.borrow().active_account();
+        let account = self.state_handler.active_account();
         if message_packet.header().caller != account {
             return Err(SystemCode(UnauthorizedCallerAccess));
         }
@@ -225,7 +193,7 @@ impl<TX: Transaction> HostBackend for ExecContext<TX> {
         // check if the target account is a system account
         match target_account {
             HYPERVISOR_ACCOUNT => return self.handle_system_message(message_packet, allocator),
-            STATE_ACCOUNT => return self.tx.borrow().handle(message_packet, allocator),
+            STATE_ACCOUNT => return self.state_handler.handle(message_packet, allocator),
             _ => {}
         }
 
@@ -240,23 +208,21 @@ impl<TX: Transaction> HostBackend for ExecContext<TX> {
             .ok_or(SystemCode(HandlerNotFound))?;
 
         // push an execution frame for the target account
-        self.tx.borrow_mut().push_frame(target_account, false). // TODO add volatility support
+        self.state_handler.push_frame(target_account, false). // TODO add volatility support
             map_err(|_| SystemCode(InvalidHandler))?;
         // run the handler
-        let res = vm.run_handler(&handler_id.vm_handler_id, message_packet, self, allocator);
+        let backend = Backend { exec_context: RefCell::new(self) };
+        let res = vm.run_handler(&handler_id.vm_handler_id, message_packet, &backend, allocator);
         // pop the execution frame
-        self.tx
-            .borrow_mut()
+        self.state_handler
             .pop_frame(res.is_ok())
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         res
     }
-}
 
-impl<TX: Transaction> ExecContext<TX> {
     fn handle_system_message(
-        &self,
+        &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
@@ -276,7 +242,7 @@ impl<TX: Transaction> ExecContext<TX> {
                     .vms
                     .get(&handler_id.vm)
                     .ok_or(SystemCode(HandlerNotFound))?;
-                let desc = vm
+                let _ = vm
                     .describe_handler(&handler_id.vm_handler_id)
                     .ok_or(SystemCode(HandlerNotFound))?;
 
@@ -298,16 +264,15 @@ impl<TX: Transaction> ExecContext<TX> {
                 let res = vm.run_handler(
                     &handler_id.vm_handler_id,
                     &mut on_create_packet,
-                    self,
+                    &Backend { exec_context: RefCell::new(self) },
                     allocator,
                 );
                 let is_ok = match res {
                     Ok(_) => true,
-                    Err(SystemCode(ixc_message_api::code::SystemCode::MessageNotHandled)) => true,
+                    Err(SystemCode(MessageNotHandled)) => true,
                     _ => false,
                 };
-                self.tx
-                    .borrow_mut()
+                self.state_handler
                     .pop_frame(is_ok)
                     .map_err(|_| SystemCode(FatalExecutionError))?;
 

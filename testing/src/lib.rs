@@ -25,10 +25,12 @@ use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
 use ixc_hypervisor::Hypervisor;
+use ixc_message_api::code::SystemCode::FatalExecutionError;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
-    hypervisor: RefCell<Hypervisor<VersionedMultiStore>>,
+    hypervisor: RefCell<Hypervisor>,
+    state: RefCell<VersionedMultiStore>,
     native_vm: NativeVM,
     mem: MemoryManager,
     mock_id: Cell<u64>,
@@ -36,18 +38,20 @@ pub struct TestApp {
 
 impl Default for TestApp {
     fn default() -> Self {
-        let mut hypervisor: Hypervisor<VersionedMultiStore> = Default::default();
+        let mut hypervisor: Hypervisor = Default::default();
         let native_vm = NativeVM::new();
         hypervisor
             .register_vm("native", std::boxed::Box::new(native_vm.clone()))
             .unwrap();
         hypervisor.set_default_vm("native").unwrap();
         let mem = MemoryManager::new();
+        let state = VersionedMultiStore::default();
         let mut test_app = Self {
             hypervisor: RefCell::new(hypervisor),
             native_vm,
             mem,
             mock_id: Cell::new(0),
+            state: RefCell::new(state),
         };
         test_app
             .register_handler::<default_account::DefaultAccount>()
@@ -136,9 +140,16 @@ impl HostBackend for TestApp {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
+        let mut state = self.state.borrow_mut();
+        let mut tx = state
+            .new_transaction(message_packet.header().caller, true)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+
         self.hypervisor
             .borrow_mut()
-            .invoke(message_packet, allocator)
+            .invoke(&mut tx, message_packet, allocator)?;
+
+        state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 }
 
