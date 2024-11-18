@@ -41,7 +41,7 @@ impl Default for TestApp {
             .unwrap();
         hypervisor.set_default_vm("native").unwrap();
         let mem = MemoryManager::new();
-        let mut test_app = Self {
+        let test_app = Self {
             hypervisor: RefCell::new(hypervisor),
             native_vm,
             mem,
@@ -143,6 +143,12 @@ pub struct MockHandler {
     mocks: Vec<std::boxed::Box<dyn RawHandler>>,
 }
 
+impl Default for MockHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockHandler {
     /// Creates a new mock handler.
     pub fn new() -> Self {
@@ -201,7 +207,7 @@ mod default_account {
 
     impl DefaultAccount {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+        pub fn create(&self, _ctx: &mut Context) -> Result<()> {
             Ok(())
         }
     }

@@ -9,14 +9,13 @@ use ixc_message_api::code::SystemCode::{
     AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled,
     UnauthorizedCallerAccess,
 };
-use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
+use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{HandlerID, VM};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::sync::Arc;
 
 /// Rust Cosmos SDK RFC 003 hypervisor implementation.
@@ -50,14 +49,14 @@ impl<ST: StateHandler> Hypervisor<ST> {
 
     /// This is a hack until we figure out a better way to reference handler IDs.
     pub fn set_default_vm(&mut self, name: &str) -> Result<(), ()> {
-        let mut vmdata = Arc::get_mut(&mut self.vmdata).ok_or(())?;
+        let vmdata = Arc::get_mut(&mut self.vmdata).ok_or(())?;
         vmdata.default_vm = Some(name.to_string());
         Ok(())
     }
 
     /// Register a VM with the hypervisor.
     pub fn register_vm(&mut self, name: &str, vm: Box<dyn VM>) -> Result<(), ()> {
-        let mut vmdata = Arc::get_mut(&mut self.vmdata).ok_or(())?;
+        let vmdata = Arc::get_mut(&mut self.vmdata).ok_or(())?;
         vmdata.vms.insert(name.to_string(), vm);
         Ok(())
     }
@@ -72,7 +71,7 @@ impl<ST: StateHandler> Hypervisor<ST> {
             .state_handler
             .new_transaction(message_packet.header().caller, true)
             .map_err(|_| SystemCode(FatalExecutionError))?;
-        let mut exec_context = ExecContext {
+        let exec_context = ExecContext {
             vmdata: self.vmdata.clone(),
             tx: RefCell::new(tx),
         };
@@ -290,7 +289,7 @@ impl<TX: Transaction> ExecContext<TX> {
                 // create a packet for calling on_create
                 let mut on_create_packet = MessagePacket::allocate(allocator, 0)
                     .map_err(|_| SystemCode(FatalExecutionError))?;
-                let mut on_create_header = on_create_packet.header_mut();
+                let on_create_header = on_create_packet.header_mut();
                 // TODO: how do we specify a selector that can only be called by the system?
                 on_create_header.account = id;
                 on_create_header.caller = create_header.caller;

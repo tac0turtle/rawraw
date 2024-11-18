@@ -2,12 +2,12 @@
 
 use crate::context::Context;
 use crate::error::ClientError;
-use crate::handler::{Client, Handler, InitMessage, Service};
+use crate::handler::{Handler, InitMessage, Service};
 use crate::low_level::create_packet;
 use crate::result::ClientResult;
 use ixc_core_macros::message_selector;
+use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::SystemCode::EncodingError;
-use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
 

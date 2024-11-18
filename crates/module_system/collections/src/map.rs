@@ -69,7 +69,6 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
 
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
-const HAS_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.has");
 const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");

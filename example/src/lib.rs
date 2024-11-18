@@ -15,7 +15,7 @@ pub mod counter {
     #[publish]
     impl Counter {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+        pub fn create(&self, _ctx: &mut Context) -> Result<()> {
             Ok(())
         }
 
@@ -38,7 +38,7 @@ mod tests {
     #[test]
     fn test_counter() {
         // create the test app
-        let mut app = TestApp::default();
+        let app = TestApp::default();
         // register the Counter handler type
         app.register_handler::<Counter>().unwrap();
         // create a new client context for a random user Alice

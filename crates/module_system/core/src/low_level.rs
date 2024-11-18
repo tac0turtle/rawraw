@@ -1,20 +1,17 @@
 //! Low-level utilities for working with message structs and message packets directly.
 
 use crate::error::{ClientError, HandlerError};
-use crate::handler::Handler;
 use crate::message::Message;
 use crate::result::ClientResult;
-use crate::{Context, Result};
+use crate::Context;
 use alloc::string::String;
 use allocator_api2::alloc::Allocator;
 use core::alloc::Layout;
-use core::fmt::Debug;
 use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_schema::buffer::WriterFactory;
 use ixc_schema::codec::Codec;
-use ixc_schema::encoder::EncodeError;
 use ixc_schema::value::OptionalValue;
 
 /// Dynamically invokes an account message.
