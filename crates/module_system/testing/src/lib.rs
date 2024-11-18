@@ -41,7 +41,7 @@ impl Default for TestApp {
             .unwrap();
         hypervisor.set_default_vm("native").unwrap();
         let mem = MemoryManager::new();
-        let mut test_app = Self {
+        let test_app = Self {
             hypervisor: RefCell::new(hypervisor),
             native_vm,
             mem,

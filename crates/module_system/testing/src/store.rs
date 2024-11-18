@@ -245,7 +245,7 @@ impl Tx {
             key: key.to_vec(),
             operation: Operation::Remove,
         });
-        todo!()
+        Ok(())
     }
 
     fn track_access(&self, key: &[u8], access: Access) -> Result<(), AccessError> {
