@@ -14,6 +14,14 @@ impl<T> Default for EventBus<T> {
     }
 }
 
+impl Clone for EventBus<u8> {
+    fn clone(&self) -> Self {
+        Self {
+            events: self.events.clone(),
+        }
+    }
+}
+
 impl<T: Clone> EventBus<T> {
     /// Emits an event to the event bus.
     pub fn emit(&mut self, _ctx: &mut Context, event: &T) -> ClientResult<()> {

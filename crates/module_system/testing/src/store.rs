@@ -1,5 +1,6 @@
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
+use ixc_core::EventBus;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
@@ -39,6 +40,7 @@ impl StateHandler for VersionedMultiStore {
                     reads: HashSet::new(),
                     writes: HashSet::new(),
                 },
+                events: EventBus::default(),
             }),
         })
     }
@@ -106,6 +108,7 @@ impl Transaction for Tx {
             volatile,
             user_tx: false,
             access_set: self.current_frame.borrow().access_set.clone(),
+            events: self.current_frame.borrow().events.clone(),
         };
         self.call_stack.push(self.current_frame.borrow().clone());
         self.current_frame = RefCell::new(next_frame);
@@ -297,7 +300,7 @@ pub struct Frame {
     volatile: bool,
     user_tx: bool,
     access_set: AccessSet,
-    // TODO events
+    events: EventBus<u8>,
 }
 
 impl Frame {
