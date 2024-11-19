@@ -14,6 +14,7 @@ pub mod accumulator;
 mod ordered_map;
 mod ordered_set;
 mod table;
+mod uint_map;
 
 pub use map::Map;
 // pub use set::{Set};
