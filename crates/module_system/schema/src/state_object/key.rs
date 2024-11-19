@@ -7,15 +7,15 @@ use crate::state_object::KeyFieldValue;
 
 /// Encode an object key with the given prefix.
 pub fn encode_object_key<'a, 'b, K: ObjectKey>(
-    prefix: &[u8],
+    prefix: u8,
     key: &K::In<'a>,
     writer_factory: &'b dyn WriterFactory,
 ) -> Result<&'b [u8], EncodeError> {
-    let out_size = <K as ObjectKey>::out_size(key) + prefix.len();
+    let out_size = <K as ObjectKey>::out_size(key) + 1;
     let mut writer = writer_factory.new_reverse(out_size)?;
     <K as ObjectKey>::encode(key, &mut writer)?;
     // write the prefix last because we are encoding in reverse order
-    writer.write(prefix)?;
+    writer.write(&prefix.to_be_bytes())?;
     Ok(writer.finish())
 }
 
@@ -39,11 +39,11 @@ pub trait ObjectKey: ObjectValue {
     ) -> Result<Self::Out<'a>, DecodeError>;
 
     /// Compute the output buffer size for the key.
-    fn out_size<'a>(key: &Self::In<'a>) -> usize;
+    fn out_size(key: &Self::In<'_>) -> usize;
 }
 
 impl ObjectKey for () {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode<'a>(key: &Self::In<'a>, _writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         Ok(())
     }
 
@@ -54,7 +54,7 @@ impl ObjectKey for () {
         Ok(())
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         0
     }
 }
@@ -94,7 +94,7 @@ impl<A: KeyFieldValue> ObjectKey for (A,) {
         Ok((a,))
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         A::out_size_terminal(&key.0)
     }
 }

@@ -12,6 +12,14 @@ pub struct Item<V> {
     map: Map<(), V>,
 }
 
+impl<V> Item<V> {
+    pub const fn new(prefix: u8) -> Self {
+        Self{
+            map: Map::new(prefix),
+        }
+    }
+}
+
 impl<V: ObjectValue> Item<V>
 where
     for<'a> V::Out<'a>: Default,
@@ -29,12 +37,15 @@ where
     {
         self.map.set(ctx, (), value)
     }
+    pub fn delete(&self, ctx: &mut Context) -> ClientResult<()> {
+        self.map.delete(ctx, ())
+    }
 }
 
-unsafe impl<T> StateObjectResource for Item<T> {
-    unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
-        Ok(Self {
-            map: Map::new(scope, prefix)?,
-        })
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_item() {
+
     }
 }

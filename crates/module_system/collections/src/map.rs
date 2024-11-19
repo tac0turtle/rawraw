@@ -2,6 +2,7 @@
 
 use alloc::vec::Vec;
 use core::borrow::Borrow;
+use std::marker::PhantomData;
 use ixc_core::low_level::create_packet;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
@@ -19,22 +20,26 @@ pub struct Map<K, V> {
     _k: core::marker::PhantomData<K>,
     _v: core::marker::PhantomData<V>,
     #[cfg(feature = "std")]
-    prefix: Vec<u8>,
-    // TODO no_std prefix
+    prefix: u8,
+}
+
+impl<K, V> Map<K, V> {
+    pub const fn new(prefix: u8) -> Self {
+        Self{
+            _k: PhantomData::<K>,
+            _v: PhantomData::<V>,
+            prefix,
+        }
+    }
 }
 
 impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
-    // /// Checks if the map contains the given key.
-    // pub fn has<'key>(&self, ctx: &Context<'key>, key: K::Value<'key>) -> Result<bool> {
-    //     todo!()
-    // }
-
     /// Gets the value of the map at the given key.
     pub fn get<'a, 'b, L>(&self, ctx: &'a Context, key: L) -> ClientResult<Option<V::Out<'a>>>
     where
         L: Borrow<K::In<'b>>,
     {
-        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz = encode_object_key::<K>(self.prefix, key.borrow(), ctx.memory_manager())?;
 
         let value_bz = KVStoreClient.get(ctx, key_bz)?;
         let value_bz = match value_bz {
@@ -52,7 +57,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         L: Borrow<K::In<'a>>,
         U: Borrow<V::In<'a>>,
     {
-        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz = encode_object_key::<K>(self.prefix, key.borrow(), ctx.memory_manager())?;
         let value_bz = encode_object_value::<V>(value.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.set(ctx, key_bz, value_bz) }
     }
@@ -62,7 +67,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
     where
         L: Borrow<K::In<'a>>,
     {
-        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz = encode_object_key::<K>(self.prefix, key.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.delete(ctx, key_bz) }
     }
 }
@@ -120,15 +125,10 @@ impl KVStoreClient {
     }
 }
 
-unsafe impl<K, V> StateObjectResource for Map<K, V> {
-    unsafe fn new(scope: &[u8], p: u8) -> core::result::Result<Self, InitializationError> {
-        let mut prefix = Vec::from(scope);
-        prefix.push(p);
-        Ok(Self {
-            _k: core::marker::PhantomData,
-            _v: core::marker::PhantomData,
-            #[cfg(feature = "std")]
-            prefix,
-        })
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_map() {
+
     }
 }
