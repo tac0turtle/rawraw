@@ -16,18 +16,11 @@ use ixc_vm_api::{HandlerID, VM};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::borrow::BorrowMut;
 
 /// Rust Cosmos SDK RFC 003 hypervisor/state-handler function implementation.
 #[derive(Default)]
 pub struct STF {
-    // internally we use an Arc so that this doesn't need to be managed by the caller
-    inner: Arc<STFInner>,
-}
-
-#[derive(Default)]
-struct STFInner {
     vms: HashMap<String, Box<dyn VM>>,
     default_vm: Option<String>,
 }
@@ -38,15 +31,13 @@ impl STF {
 
     /// This is a hack until we figure out a better way to reference handler IDs.
     pub fn set_default_vm(&mut self, name: &str) -> Result<(), ()> {
-        let vmdata = Arc::get_mut(&mut self.inner).ok_or(())?;
-        vmdata.default_vm = Some(name.to_string());
+        self.default_vm = Some(name.to_string());
         Ok(())
     }
 
     /// Register a VM with the hypervisor.
     pub fn register_vm(&mut self, name: &str, vm: Box<dyn VM>) -> Result<(), ()> {
-        let vmdata = Arc::get_mut(&mut self.inner).ok_or(())?;
-        vmdata.vms.insert(name.to_string(), vm);
+        self.vms.insert(name.to_string(), vm);
         Ok(())
     }
 }
@@ -101,7 +92,7 @@ pub enum PopFrameError {
 }
 
 struct ExecContext<'a, ST: StateHandler> {
-    stf_inner: Arc<STFInner>,
+    stf: &'a STF,
     state_handler: RefCell<&'a mut ST>,
 }
 
@@ -145,7 +136,7 @@ impl STF {
     }
 
     fn parse_handler_id(&self, value: &[u8]) -> Option<HandlerID> {
-        parse_handler_id(value, &self.inner.default_vm)
+        parse_handler_id(value, &self.default_vm)
     }
 }
 
@@ -160,9 +151,8 @@ impl<'a, ST: StateHandler> HostBackend for ExecContext<'a, ST> {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let stf = STF { inner: self.stf_inner.clone() };
         let mut state_handler = self.state_handler.borrow_mut();
-        stf.invoke::<ST>(state_handler.borrow_mut(), message_packet, allocator)
+        self.stf.invoke::<ST>(state_handler.borrow_mut(), message_packet, allocator)
     }
 }
 
@@ -195,7 +185,6 @@ impl STF {
             .get_account_handler_id(state_handler, target_account)
             .ok_or(SystemCode(AccountNotFound))?;
         let vm = self
-            .inner
             .vms
             .get(&handler_id.vm)
             .ok_or(SystemCode(HandlerNotFound))?;
@@ -231,7 +220,6 @@ impl STF {
                     .parse_handler_id(handler_id)
                     .ok_or(SystemCode(HandlerNotFound))?;
                 let vm = self
-                    .inner
                     .vms
                     .get(&handler_id.vm)
                     .ok_or(SystemCode(HandlerNotFound))?;
@@ -287,9 +275,9 @@ impl STF {
         }
     }
 
-    fn wrap_backend<'a, ST: StateHandler>(&self, state_handler: &'a mut ST) -> ExecContext<'a, ST> {
+    fn wrap_backend<'a, ST: StateHandler>(&'a self, state_handler: &'a mut ST) -> ExecContext<'a, ST> {
         ExecContext {
-            stf_inner: self.inner.clone(),
+            stf: self,
             state_handler: RefCell::new(state_handler),
         }
     }
