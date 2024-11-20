@@ -15,13 +15,6 @@ where
     const SORTED_ROUTES: &'static [Route<Self>];
 }
 
-/// A router for dynamic trait objects.
-// pub unsafe trait DynRouter> where Self: 'static
-// {
-//     /// The routes by message selector.
-//     const ROUTES: &'static [Route<Self>];
-// }
-
 /// A route for a message packet.
 pub type Route<T> = (
     u64,

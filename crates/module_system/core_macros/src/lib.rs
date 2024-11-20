@@ -563,16 +563,16 @@ pub fn derive_state(input: DeriveInput) -> manyhow::Result<TokenStream2> {
         _ => bail!("can only derive Resources on structs"),
     };
     let mut field_inits = vec![];
-    let mut prefix_index = 0u8;
+    let mut index = 0u8;
     for field in str.fields.iter_mut() {
         let field_name = field.ident.as_ref().unwrap().clone();
         let ty = &field.ty.clone();
         if let Some(prefix) = maybe_extract_attribute::<_, Prefix>(field)? {
-            prefix_index = prefix.index.unwrap_or(prefix_index);
+            index = prefix.index.unwrap_or(index);
             field_inits.push(quote! {
-                #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #prefix_index)?
+                #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #index)?
             });
-            prefix_index += 1;
+            index += 1;
         } else {
             // TODO handle case where both #[state] and #[client] are present
             bail!("only fields with #[state]  attributes are supported currently");
