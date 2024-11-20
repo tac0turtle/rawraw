@@ -568,7 +568,7 @@ pub fn derive_state(input: DeriveInput) -> manyhow::Result<TokenStream2> {
         let field_name = field.ident.as_ref().unwrap().clone();
         let ty = &field.ty.clone();
         if let Some(prefix) = maybe_extract_attribute::<_, Prefix>(field)? {
-            prefix_index = prefix.prefix.unwrap_or(prefix_index);
+            prefix_index = prefix.index.unwrap_or(prefix_index);
             field_inits.push(quote! {
                 #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #prefix_index)?
             });
@@ -626,7 +626,7 @@ pub fn derive_client(input: DeriveInput) -> manyhow::Result<TokenStream2> {
 #[derive(deluxe::ExtractAttributes, Debug)]
 #[deluxe(attributes(state))]
 struct Prefix {
-    prefix: Option<u8>,
+    index: Option<u8>,
 }
 
 #[derive(deluxe::ExtractAttributes, Debug)]
