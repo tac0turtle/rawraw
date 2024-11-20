@@ -41,7 +41,7 @@ fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult
         packet.header_mut().in_pointer2.set_slice(init);
 
         ctx.host_backend()
-            .invoke(&mut packet, ctx.memory_manager())?;
+            .invoke_msg(&mut packet, ctx.memory_manager())?;
 
         let res = packet.header().in_pointer1.get(&packet);
         if res.len() != size_of::<u128>() {

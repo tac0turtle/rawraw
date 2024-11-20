@@ -68,12 +68,18 @@ pub trait StateHandler {
     /// Directly read a key from the account's KV store.
     fn raw_kv_get(&self, account_id: AccountID, key: &[u8]) -> Option<Vec<u8>>;
     /// Directly write a key to the account's raw KV store.
-    fn raw_kv_set(&self, account_id: AccountID, key: &[u8], value: &[u8]);
+    fn raw_kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8]);
     /// Directly delete a key from the account's raw KV store.
-    fn raw_kv_delete(&self, account_id: AccountID, key: &[u8]);
+    fn raw_kv_delete(&mut self, account_id: AccountID, key: &[u8]);
     /// Handle a message packet.
-    fn handle(
+    fn handle_query(
         &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>;
+    /// Handle a message packet.
+    fn handle_msg(
+        &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
@@ -95,7 +101,7 @@ pub enum PopFrameError {
 
 struct ExecContext<'a, ST: StateHandler> {
     stf: &'a STF,
-    state_handler: RefCell<&'a mut ST>,
+    state_handler: &'a mut ST,
 }
 
 impl STF {
@@ -154,22 +160,82 @@ const HYPERVISOR_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
 impl<ST: StateHandler> HostBackend for ExecContext<'_, ST> {
-    fn invoke(
+    fn invoke_query(
         &self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let mut state_handler = self.state_handler.borrow_mut();
+        let state_handler = self.state_handler;
         self.stf
-            .invoke::<ST>(state_handler.borrow_mut(), message_packet, allocator)
+            .invoke_query::<ST>(&state_handler, message_packet, allocator)
+    }
+    fn invoke_msg(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let state_handler = self.state_handler.borrow_mut();
+        self.stf
+            .invoke_msg::<ST>(state_handler.borrow_mut(), message_packet, allocator)
     }
 }
 
 impl STF {
     /// Invoke a message packet in the context of the provided state handler.
-    pub fn invoke<ST: StateHandler>(
+    pub fn invoke_query<ST: StateHandler>(
         &self,
-        state_handler: &mut ST,
+        state_handler: &ST,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        // get the mutable transaction from the RefCell
+        // check if the caller matches the active account
+        let account = state_handler.active_account();
+        if message_packet.header().caller != account {
+            return Err(SystemCode(UnauthorizedCallerAccess));
+        }
+        // TODO support authorization middleware
+
+        let target_account = message_packet.header().account;
+        // check if the target account is a system account
+        match target_account {
+            HYPERVISOR_ACCOUNT => {
+                return self.handle_system_message(state_handler, message_packet, allocator)
+            }
+            STATE_ACCOUNT => return state_handler.handle(message_packet, allocator),
+            _ => {}
+        }
+
+        // find the account's handler ID and retrieve its VM
+        let handler_id = self
+            .get_account_handler_id(state_handler, target_account)
+            .ok_or(SystemCode(AccountNotFound))?;
+        let vm = self
+            .vms
+            .get(&handler_id.vm)
+            .ok_or(SystemCode(HandlerNotFound))?;
+
+        // push an execution frame for the target account
+        state_handler.push_frame(target_account, false). // TODO add volatility support
+            map_err(|_| SystemCode(InvalidHandler))?;
+        // run the handler
+        let res = vm.run_handler(
+            &handler_id.vm_handler_id,
+            message_packet,
+            &self.wrap_backend(state_handler),
+            allocator,
+        );
+        // pop the execution frame
+        state_handler
+            .pop_frame(res.is_ok())
+            .map_err(|_| SystemCode(InvalidHandler))?;
+
+        res
+    }
+
+    pub fn invoke_msg<ST: StateHandler>(
+        &self,
+        state_handler: &ST,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
@@ -297,7 +363,7 @@ impl STF {
     ) -> ExecContext<'a, ST> {
         ExecContext {
             stf: self,
-            state_handler: RefCell::new(state_handler),
+            state_handler: state_handler,
         }
     }
 }
