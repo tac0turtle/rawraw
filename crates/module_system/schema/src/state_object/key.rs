@@ -1,3 +1,4 @@
+#![allow(unused_variables)] //TODO remove
 use crate::buffer::{Reader, ReverseSliceWriter, Writer, WriterFactory};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;

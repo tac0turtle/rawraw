@@ -1,9 +1,9 @@
+#![allow(unused)]
 use crate::buffer::{Writer, WriterFactory};
 use crate::codec::ValueEncodeVisitor;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
 use crate::list::ListEncodeVisitor;
-use crate::state_object::ObjectValue;
 use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::SchemaValue;
 use ixc_message_api::AccountID;

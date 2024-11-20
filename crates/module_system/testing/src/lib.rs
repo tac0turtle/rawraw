@@ -30,6 +30,7 @@ pub struct TestApp {
     hypervisor: RefCell<STF>,
     state: RefCell<VersionedMultiStore>,
     native_vm: NativeVM,
+    #[allow(unused)]
     mem: MemoryManager,
     mock_id: Cell<u64>,
 }
@@ -98,10 +99,8 @@ impl TestApp {
 
     /// Creates a new client for the given account.
     pub fn client_context_for(&self, account_id: AccountID) -> Context {
-        unsafe {
-            let ctx = Context::new(account_id, account_id, 0, self);
-            ctx
-        }
+        let ctx = Context::new(account_id, account_id, 0, self);
+        ctx
     }
 
     /// Adds a mock account handler to the test harness, instantiates it as an account and returns the account ID.

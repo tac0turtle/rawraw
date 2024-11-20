@@ -1,3 +1,4 @@
+#![allow(unused_variables)]
 use crate::binary::encoder::encode_value;
 use crate::buffer::WriterFactory;
 use crate::codec::ValueEncodeVisitor;

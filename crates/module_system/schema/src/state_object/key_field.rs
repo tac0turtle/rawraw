@@ -1,3 +1,4 @@
+#![allow(unused_variables)]
 use crate::buffer::{Reader, ReverseSliceWriter, Writer};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;

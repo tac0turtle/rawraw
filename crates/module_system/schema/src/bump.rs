@@ -57,7 +57,7 @@ unsafe impl Allocator for Bump {
         }
     }
 
-    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+    unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {
         // we don't need to deallocate, because this is a bump allocator
         // and we deallocate everything at once when the allocator is dropped
     }

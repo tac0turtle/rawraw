@@ -53,7 +53,7 @@ impl<'a> SchemaValue<'a> for u8 {
 
     fn finish_decode_state(
         state: Self::DecodeState,
-        mem: &'a MemoryManager,
+        _mem: &'a MemoryManager,
     ) -> Result<Self, DecodeError>
     where
         Self: Sized,

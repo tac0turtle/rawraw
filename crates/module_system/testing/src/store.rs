@@ -1,3 +1,4 @@
+#![allow(unused)]
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
 use ixc_core_macros::message_selector;

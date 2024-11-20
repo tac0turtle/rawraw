@@ -48,9 +48,9 @@ impl MemoryManager {
             let (dropper, _) = Box::into_non_null(Box::new_in(vec, &self.bump));
             let drop_cell = Box::new_in(
                 DropCell {
-                    /// Rust doesn't know what the lifetime of this data is, but we do because
-                    /// we allocated it and own the allocator,
-                    /// so we transmute it to have the appropriate lifetime
+                    // Rust doesn't know what the lifetime of this data is, but we do because
+                    // we allocated it and own the allocator,
+                    // so we transmute it to have the appropriate lifetime
                     dropper: transmute(dropper as NonNull<dyn DeferDrop>),
                     next: self.drop_cells.get(),
                 },

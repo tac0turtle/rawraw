@@ -61,7 +61,7 @@ pub trait Decoder<'a> {
     /// Decode an account ID.
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError>;
     /// Encode an enum value.
-    fn decode_enum(&mut self, enum_type: &EnumType) -> Result<i32, DecodeError> {
+    fn decode_enum(&mut self, _enum_type: &EnumType) -> Result<i32, DecodeError> {
         self.decode_i32()
     }
     /// Decode time.
@@ -101,7 +101,7 @@ impl Display for DecodeError {
 impl Error for DecodeError {}
 
 impl From<DecodeError> for ErrorCode {
-    fn from(value: DecodeError) -> Self {
+    fn from(_value: DecodeError) -> Self {
         ErrorCode::SystemCode(SystemCode::EncodingError)
     }
 }

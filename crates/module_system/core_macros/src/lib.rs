@@ -1,6 +1,6 @@
 //! **WARNING: This is an API preview! Expect major bugs, glaring omissions, and breaking changes!**
 //! This is a macro utility crate for ixc_core.
-
+#![allow(unused)] //TODO remove
 use blake2::{Blake2b512, Digest};
 use heck::ToUpperCamelCase;
 use manyhow::{bail, ensure, manyhow};
@@ -188,6 +188,7 @@ fn collect_publish_targets(
 
 #[derive(deluxe::ExtractAttributes, Clone, Debug)]
 #[deluxe(attributes(publish))]
+
 struct Publish {
     package: Option<String>,
     name: Option<String>,

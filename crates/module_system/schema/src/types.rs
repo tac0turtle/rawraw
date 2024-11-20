@@ -14,7 +14,7 @@ use crate::schema::SchemaType;
 use crate::structs::StructSchema;
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
-pub trait Type: Private {
+pub trait Type {
     /// The kind of the type.
     const KIND: Kind;
 
