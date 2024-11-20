@@ -1,4 +1,3 @@
-use crate::codec::ValueDecodeVisitor;
 use crate::decoder::DecodeError;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
@@ -8,11 +7,12 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::value::ValueCodec;
 
 pub fn decode_value<'a>(
     input: &'a [u8],
     memory_manager: &'a MemoryManager,
-    visitor: &mut dyn ValueDecodeVisitor<'a>,
+    visitor: &mut dyn ValueCodec<'a>,
 ) -> Result<(), DecodeError> {
     visitor.decode(&mut Decoder {
         buf: input,

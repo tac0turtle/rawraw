@@ -1,6 +1,7 @@
 #![allow(unused)]
+
+use crate::value::ValueCodec;
 use crate::buffer::{Writer, WriterFactory};
-use crate::codec::ValueEncodeVisitor;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
 use crate::list::ListEncodeVisitor;
@@ -10,7 +11,7 @@ use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 
 pub fn encode_value<'a>(
-    value: &dyn ValueEncodeVisitor,
+    value: &dyn ValueCodec,
     writer_factory: &'a dyn WriterFactory,
 ) -> Result<&'a [u8], EncodeError> {
     let mut sizer = EncodeSizer { size: 0 };

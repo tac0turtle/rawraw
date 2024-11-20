@@ -1,5 +1,4 @@
 #![allow(unused)]
-use crate::codec::ValueEncodeVisitor;
 use crate::encoder::EncodeError;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};

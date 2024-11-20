@@ -1,87 +1,52 @@
 //! This module contains traits that must be implemented by types that can be used in the schema.
 
 use crate::buffer::WriterFactory;
-use crate::codec::{decode_value, Codec, ValueDecodeVisitor};
+use crate::codec::{decode_value, Codec};
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::list::AllocatorVecBuilder;
 use crate::mem::MemoryManager;
 use crate::types::*;
 
-/// Any type used directly as a message function argument or struct field must implement this trait.
-/// Unlike [`ObjectFieldValue`](crate::state_object::ObjectFieldValue) it takes a lifetime parameter so value may already be borrowed where it is
-/// declared.
-pub trait SchemaValue<'a>
-where
-    Self: 'a,
-{
-    /// The type of the value.
-    type Type: Type;
+/// A visitor for decoding values. Unlike SchemaValue, this trait is object safe.
+pub trait ValueCodec<'a>: Default + 'a {
+    /// Visit the value.
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError>;
 
-    /// In progress decoding state.
-    type DecodeState: Default;
-
-    /// Decode the value from the decoder.
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError>;
-
-    /// Finish decoding the value, return it and return the memory handle if needed.
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem: &'a MemoryManager,
-    ) -> Result<Self, DecodeError>
-    where
-        Self: Sized;
-
-    /// Encode the value to the encoder.
+    /// Visit the value.
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError>;
 }
 
-impl<'a> SchemaValue<'a> for u8 {
-    type Type = u8;
-    type DecodeState = u8;
+/// Any type used directly as a message function argument or struct field must implement this trait.
+/// Unlike [`ObjectFieldValue`](crate::state_object::ObjectFieldValue) it takes a lifetime parameter so value may already be borrowed where it is
+/// declared.
+pub trait SchemaValue<'a>: ValueCodec<'a> {
+    /// The type of the value.
+    type Type: Type;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
+impl<'a> ValueCodec<'a> for u8 {
+    fn decode(
+        &mut self,
         decoder: &mut dyn Decoder<'a>,
     ) -> Result<(), DecodeError> {
-        *state = decoder.decode_u8()?;
+        *self = decoder.decode_u8()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _mem: &'a MemoryManager,
-    ) -> Result<Self, DecodeError>
-    where
-        Self: Sized,
-    {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         encoder.encode_u8(*self)
     }
 }
-impl<'a> SchemaValue<'a> for u16 {
-    type Type = u16;
-    type DecodeState = u16;
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_u16()?;
+impl<'a> SchemaValue<'a> for u8 {
+    type Type = u8;
+}
+
+impl<'a> ValueCodec<'a> for u16 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_u16()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -89,23 +54,14 @@ impl<'a> SchemaValue<'a> for u16 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u32 {
-    type Type = u32;
-    type DecodeState = u32;
+impl<'a> SchemaValue<'a> for u16 {
+    type Type = u16;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_u32()?;
+impl<'a> ValueCodec<'a> for u32 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_u32()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -113,23 +69,14 @@ impl<'a> SchemaValue<'a> for u32 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u64 {
-    type Type = u64;
-    type DecodeState = u64;
+impl<'a> SchemaValue<'a> for u32 {
+    type Type = u32;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_u64()?;
+impl<'a> ValueCodec<'a> for u64 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_u64()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -137,23 +84,14 @@ impl<'a> SchemaValue<'a> for u64 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u128 {
-    type Type = UIntNT<16>;
-    type DecodeState = u128;
+impl<'a> SchemaValue<'a> for u64 {
+    type Type = u64;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_u128()?;
+impl<'a> ValueCodec<'a> for u128 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_u128()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -161,23 +99,14 @@ impl<'a> SchemaValue<'a> for u128 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i8 {
-    type Type = i8;
-    type DecodeState = i8;
+impl<'a> SchemaValue<'a> for u128 {
+    type Type = UIntNT<16>;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_i8()?;
+impl<'a> ValueCodec<'a> for i8 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_i8()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -185,23 +114,14 @@ impl<'a> SchemaValue<'a> for i8 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i16 {
-    type Type = i16;
-    type DecodeState = i16;
+impl<'a> SchemaValue<'a> for i8 {
+    type Type = i8;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_i16()?;
+impl<'a> ValueCodec<'a> for i16 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_i16()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -209,23 +129,14 @@ impl<'a> SchemaValue<'a> for i16 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i32 {
-    type Type = i32;
-    type DecodeState = i32;
+impl<'a> SchemaValue<'a> for i16 {
+    type Type = i16;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_i32()?;
+impl<'a> ValueCodec<'a> for i32 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_i32()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -233,23 +144,14 @@ impl<'a> SchemaValue<'a> for i32 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i64 {
-    type Type = i64;
-    type DecodeState = i64;
+impl<'a> SchemaValue<'a> for i32 {
+    type Type = i32;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_i64()?;
+impl<'a> ValueCodec<'a> for i64 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_i64()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -257,23 +159,14 @@ impl<'a> SchemaValue<'a> for i64 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i128 {
-    type Type = IntNT<16>;
-    type DecodeState = i128;
+impl<'a> SchemaValue<'a> for i64 {
+    type Type = i64;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_i128()?;
+impl<'a> ValueCodec<'a> for i128 {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_i128()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -281,23 +174,14 @@ impl<'a> SchemaValue<'a> for i128 {
     }
 }
 
-impl<'a> SchemaValue<'a> for bool {
-    type Type = bool;
-    type DecodeState = bool;
+impl<'a> SchemaValue<'a> for i128 {
+    type Type = IntNT<16>;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_bool()?;
+impl<'a> ValueCodec<'a> for bool {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_bool()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -305,23 +189,30 @@ impl<'a> SchemaValue<'a> for bool {
     }
 }
 
-impl<'a> SchemaValue<'a> for &'a str {
-    type Type = StrT;
-    type DecodeState = &'a str;
+impl<'a> SchemaValue<'a> for bool {
+    type Type = bool;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_borrowed_str()?;
+impl<'a> ValueCodec<'a> for &'a str {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_borrowed_str()?;
         Ok(())
     }
 
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
+    fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
+        encoder.encode_str(self)
+    }
+}
+
+impl<'a> SchemaValue<'a> for &'a str {
+    type Type = StrT;
+}
+
+#[cfg(feature = "std")]
+impl<'a> ValueCodec<'a> for alloc::string::String {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_owned_str()?;
+        Ok(())
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -332,45 +223,12 @@ impl<'a> SchemaValue<'a> for &'a str {
 #[cfg(feature = "std")]
 impl<'a> SchemaValue<'a> for alloc::string::String {
     type Type = StrT;
-    type DecodeState = alloc::string::String;
-
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_owned_str()?;
-        Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
-    }
-
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-        encoder.encode_str(self)
-    }
 }
 
-impl<'a> SchemaValue<'a> for simple_time::Time {
-    type Type = TimeT;
-    type DecodeState = simple_time::Time;
-
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_time()?;
+impl<'a> ValueCodec<'a> for simple_time::Time {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_time()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -378,23 +236,14 @@ impl<'a> SchemaValue<'a> for simple_time::Time {
     }
 }
 
-impl<'a> SchemaValue<'a> for simple_time::Duration {
-    type Type = DurationT;
-    type DecodeState = simple_time::Duration;
+impl<'a> SchemaValue<'a> for simple_time::Time {
+    type Type = TimeT;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_duration()?;
+impl<'a> ValueCodec<'a> for simple_time::Duration {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_duration()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        _: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -402,65 +251,52 @@ impl<'a> SchemaValue<'a> for simple_time::Duration {
     }
 }
 
-impl<'a, V: SchemaValue<'a>> SchemaValue<'a> for Option<V> {
-    type Type = Option<V::Type>;
-    type DecodeState = Option<V::DecodeState>;
+impl<'a> SchemaValue<'a> for simple_time::Duration {
+    type Type = DurationT;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        struct Visitor<'b, U: SchemaValue<'b>>(U::DecodeState);
-        // TODO can we reduce the duplication between this and codec::decode_value?
-        impl<'b, U: SchemaValue<'b>> ValueDecodeVisitor<'b> for Visitor<'b, U> {
-            fn decode(&mut self, decoder: &mut dyn Decoder<'b>) -> Result<(), DecodeError> {
-                U::visit_decode_state(&mut self.0, decoder)
-            }
-        }
-        let mut visitor = Visitor::<V>(V::DecodeState::default());
-        if decoder.decode_option(&mut visitor)? {
-            *state = Some(visitor.0);
+impl<'a, V: SchemaValue<'a>> ValueCodec<'a> for Option<V> {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        let mut value = V::default();
+        if decoder.decode_option(&mut value)? {
+            *self = Some(value);
+        } else {
+            *self = None;
         }
         Ok(())
     }
 
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem: &'a MemoryManager,
-    ) -> Result<Self, DecodeError>
-    where
-        Self: Sized,
-    {
-        state
-            .map(|state| V::finish_decode_state(state, mem))
-            .transpose()
-    }
-
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         match self {
-            Some(value) => encoder.encode_option(Some(value)),
+            Some(value) => encoder.encode_option(Some(value as &dyn ValueCodec)),
             None => encoder.encode_option(None),
         }
     }
 }
 
-impl<'a> SchemaValue<'a> for &'a [u8] {
-    type Type = BytesT;
-    type DecodeState = &'a [u8];
+impl<'a, V: SchemaValue<'a>> SchemaValue<'a> for Option<V> {
+    type Type = Option<V::Type>;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_borrowed_bytes()?;
+impl<'a> ValueCodec<'a> for &'a [u8] {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_borrowed_bytes()?;
         Ok(())
     }
 
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
+    fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
+        encoder.encode_bytes(self)
+    }
+}
+
+impl<'a> SchemaValue<'a> for &'a [u8] {
+    type Type = BytesT;
+}
+
+impl<'a> ValueCodec<'a> for alloc::vec::Vec<u8> {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_owned_bytes()?;
+        Ok(())
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -470,28 +306,7 @@ impl<'a> SchemaValue<'a> for &'a [u8] {
 
 impl<'a> SchemaValue<'a> for alloc::vec::Vec<u8> {
     type Type = BytesT;
-    type DecodeState = alloc::vec::Vec<u8>;
-
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_owned_bytes()?;
-        Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
-    }
-
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-        encoder.encode_bytes(self)
-    }
 }
-
 /// A trait that must be implemented by value types that can be used as list elements.
 pub trait ListElementValue<'a>: SchemaValue<'a>
 where
@@ -499,28 +314,18 @@ where
 {
 }
 
-impl<'a, V: ListElementValue<'a>> SchemaValue<'a> for &'a [V]
+impl<'a, V: ListElementValue<'a>> ValueCodec<'a> for &'a [V]
 where
     V::Type: ListElementType,
 {
-    type Type = ListT<V::Type>;
-    type DecodeState = AllocatorVecBuilder<'a, V>;
-
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        decoder.decode_list(state)
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem_handle: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        match state.xs {
-            None => Ok(&[]),
-            Some(xs) => Ok(mem_handle.unpack_slice(xs)),
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        let mut builder = AllocatorVecBuilder::<'a, V>::default();
+        decoder.decode_list(&mut builder)?;
+        match builder.xs {
+            None => *self = &[],
+            Some(xs) => *self = decoder.mem_manager().unpack_slice(xs),
         }
+        Ok(())
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
@@ -528,34 +333,24 @@ where
     }
 }
 
-impl<'a, V: ListElementValue<'a>> SchemaValue<'a>
-    for allocator_api2::vec::Vec<V, &'a dyn allocator_api2::alloc::Allocator>
+impl<'a, V: ListElementValue<'a>> SchemaValue<'a> for &'a [V]
 where
     V::Type: ListElementType,
 {
     type Type = ListT<V::Type>;
-    type DecodeState = AllocatorVecBuilder<'a, V>;
+}
 
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        decoder.decode_list(state)
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem_handle: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        match state.xs {
-            None => Ok(allocator_api2::vec::Vec::new_in(mem_handle)),
-            Some(xs) => Ok(xs),
-        }
+#[cfg(feature = "std")]
+impl<'a, V: ListElementValue<'a>> ValueCodec<'a> for alloc::vec::Vec<V>
+where
+    V::Type: ListElementType,
+{
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        decoder.decode_list(self)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-        // encoder.encode_list(self)
-        todo!()
+        encoder.encode_list(self)
     }
 }
 
@@ -565,52 +360,21 @@ where
     V::Type: ListElementType,
 {
     type Type = ListT<V::Type>;
-    type DecodeState = alloc::vec::Vec<V>;
-
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        decoder.decode_list(state)
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem: &'a MemoryManager,
-    ) -> Result<Self, DecodeError>
-    where
-        Self: Sized,
-    {
-        Ok(state)
-    }
-
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-        encoder.encode_list(self)
-    }
 }
 
-impl<'a> SchemaValue<'a> for ixc_message_api::AccountID {
-    type Type = AccountIdT;
-    type DecodeState = ixc_message_api::AccountID;
-
-    fn visit_decode_state(
-        state: &mut Self::DecodeState,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
-        *state = decoder.decode_account_id()?;
+impl<'a> ValueCodec<'a> for ixc_message_api::AccountID {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
+        *self = decoder.decode_account_id()?;
         Ok(())
-    }
-
-    fn finish_decode_state(
-        state: Self::DecodeState,
-        mem: &'a MemoryManager,
-    ) -> Result<Self, DecodeError> {
-        Ok(state)
     }
 
     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         encoder.encode_account_id(*self)
     }
+}
+
+impl<'a> SchemaValue<'a> for ixc_message_api::AccountID {
+    type Type = AccountIdT;
 }
 
 #[cfg(feature = "arrayvec")]

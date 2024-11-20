@@ -1,6 +1,5 @@
 //! The decoder trait and error type.
 
-use crate::codec::ValueDecodeVisitor;
 use crate::enums::EnumType;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
@@ -9,6 +8,7 @@ use core::error::Error;
 use core::fmt::{Display, Formatter};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
+use crate::value::ValueCodec;
 
 /// The trait that decoders must implement.
 pub trait Decoder<'a> {
@@ -56,7 +56,7 @@ pub trait Decoder<'a> {
     /// Returns `true` if the value is present, `false` if it is not.
     fn decode_option(
         &mut self,
-        visitor: &mut dyn ValueDecodeVisitor<'a>,
+        visitor: &mut dyn ValueCodec<'a>,
     ) -> Result<bool, DecodeError>;
     /// Decode an account ID.
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError>;

@@ -1,7 +1,8 @@
 #![allow(unused_variables)]
+
+use crate::value::ValueCodec;
 use crate::binary::encoder::encode_value;
 use crate::buffer::WriterFactory;
-use crate::codec::ValueEncodeVisitor;
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::fields::FieldTypes;
@@ -16,13 +17,14 @@ pub fn encode_object_value<'a, V: ObjectValue>(
     value: &V::In<'_>,
     writer_factory: &'a dyn WriterFactory,
 ) -> Result<&'a [u8], EncodeError> {
-    struct Visitor<'c, 'd, U: ObjectValue>(&'c U::In<'d>);
-    impl<U: ObjectValue> ValueEncodeVisitor for Visitor<'_, '_, U> {
-        fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-            U::encode(self.0, encoder)
-        }
-    }
-    encode_value(&Visitor::<V>(value), writer_factory)
+    // struct Visitor<'c, 'd, U: ObjectValue>(&'c U::In<'d>);
+    // impl<'a, U: ObjectValue> ValueCodec<'a> for Visitor<'_, '_, U> {
+    //     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
+    //         U::encode(self.0, encoder)
+    //     }
+    // }
+    // encode_value(&Visitor::<V>(value), writer_factory)
+    todo!()
 }
 
 /// Decode an object value.
@@ -91,7 +93,7 @@ impl<A: ObjectFieldValue> ObjectValue for A {
                 encoder: &mut dyn Encoder,
             ) -> Result<(), EncodeError> {
                 match index {
-                    0 => <A as SchemaValue<'a>>::encode(self.0, encoder),
+                    0 => <A as ValueCodec<'a>>::encode(self.0, encoder),
                     _ => Err(EncodeError::UnknownError),
                 }
             }
@@ -104,7 +106,7 @@ impl<A: ObjectFieldValue> ObjectValue for A {
         decoder: &mut dyn Decoder<'a>,
         mem: &'a MemoryManager,
     ) -> Result<Self::Out<'a>, DecodeError> {
-        struct Visitor<'a, A: SchemaValue<'a>>(A::DecodeState);
+        struct Visitor<'a, A: SchemaValue<'a>>(A);
         unsafe impl<'a, A: SchemaValue<'a>> StructDecodeVisitor<'a> for Visitor<'a, A> {
             fn decode_field(
                 &mut self,
@@ -112,7 +114,7 @@ impl<A: ObjectFieldValue> ObjectValue for A {
                 decoder: &mut dyn Decoder<'a>,
             ) -> Result<(), DecodeError> {
                 match index {
-                    0 => <A as SchemaValue<'a>>::visit_decode_state(&mut self.0, decoder),
+                    0 => <A as ValueCodec<'a>>::decode(&mut self.0, decoder),
                     _ => Err(DecodeError::UnknownFieldNumber),
                 }
             }
@@ -120,7 +122,7 @@ impl<A: ObjectFieldValue> ObjectValue for A {
 
         let mut visitor: Visitor<'a, A::Out<'a>> = Visitor(Default::default());
         decoder.decode_struct(&mut visitor, &Self::PSEUDO_TYPE)?;
-        <A::Out<'a> as SchemaValue<'a>>::finish_decode_state(visitor.0, mem)
+        Ok(visitor.0)
     }
 }
 
@@ -190,7 +192,7 @@ impl<A: ObjectFieldValue, B: ObjectFieldValue> ObjectValue for (A, B) {
         decoder: &mut dyn Decoder<'a>,
         mem: &'a MemoryManager,
     ) -> Result<Self::Out<'a>, DecodeError> {
-        struct Visitor<'a, A: SchemaValue<'a>, B: SchemaValue<'a>>(A::DecodeState, B::DecodeState);
+        struct Visitor<'a, A: SchemaValue<'a>, B: SchemaValue<'a>>(A, B);
         unsafe impl<'a, A: SchemaValue<'a>, B: SchemaValue<'a>> StructDecodeVisitor<'a>
             for Visitor<'a, A, B>
         {
@@ -200,8 +202,8 @@ impl<A: ObjectFieldValue, B: ObjectFieldValue> ObjectValue for (A, B) {
                 decoder: &mut dyn Decoder<'a>,
             ) -> Result<(), DecodeError> {
                 match index {
-                    0 => <A as SchemaValue<'a>>::visit_decode_state(&mut self.0, decoder),
-                    1 => <B as SchemaValue<'a>>::visit_decode_state(&mut self.1, decoder),
+                    0 => <A as ValueCodec<'a>>::decode(&mut self.0, decoder),
+                    1 => <B as ValueCodec<'a>>::decode(&mut self.1, decoder),
                     _ => Err(DecodeError::UnknownFieldNumber),
                 }
             }
