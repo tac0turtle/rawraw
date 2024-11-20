@@ -2,9 +2,10 @@
 
 #[ixc::handler(Counter)]
 pub mod counter {
+    use borsh::{BorshDeserialize, BorshSerialize};
     use ixc::*;
 
-    #[derive(Resources)]
+    #[derive(State, BorshSerialize, BorshDeserialize)]
     pub struct Counter {
         #[state]
         value: Accumulator,

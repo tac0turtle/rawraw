@@ -1,26 +1,23 @@
 #![allow(missing_docs)]
 #[ixc::handler(Bank)]
 pub mod bank {
+    use borsh::{BorshDeserialize, BorshSerialize};
     use ixc::*;
     use ixc_core::error::unimplemented_ok;
     use ixc_core::handler::Service;
     use mockall::automock;
 
-    #[derive(Resources)]
+    #[derive(State, BorshSerialize, BorshDeserialize)]
     pub struct Bank {
-        #[state(prefix = 1, key(address, denom), value(amount))]
+        #[prefix(1)]
         pub(crate) balances: AccumulatorMap<(AccountID, Str)>,
-        #[state(prefix = 2, key(denom), value(total))]
+        #[prefix(2)]
         pub(crate) supply: AccumulatorMap<Str>,
-        #[state(prefix = 3)]
+        #[prefix(3)]
         super_admin: Item<AccountID>,
-        #[state(prefix = 4)]
         global_send_hook: Item<AccountID>,
-        #[state(prefix = 5)]
         denom_admins: Map<Str, AccountID>,
-        #[state(prefix = 6)]
         denom_send_hooks: Map<Str, AccountID>,
-        #[state(prefix = 6)]
         denom_burn_hooks: Map<Str, AccountID>,
     }
 

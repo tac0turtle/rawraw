@@ -1,9 +1,10 @@
 #![allow(missing_docs)]
 #[ixc::handler(SimpleAsset)]
 pub mod simple_asset {
+    use borsh::{BorshDeserialize, BorshSerialize};
     use ixc::*;
 
-    #[derive(Resources)]
+    #[derive(State, BorshSerialize, BorshDeserialize)]
     pub struct SimpleAsset {
         #[state]
         owner: Item<AccountID>,

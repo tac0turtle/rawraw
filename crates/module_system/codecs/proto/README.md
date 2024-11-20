@@ -1,4 +1,6 @@
-## Protobuf Mapping
+# Protobuf
+
+## Mapping
 
 The following table shows how Rust types are mapped to Protobuf types. Note that some
 types will have both a default and alternate mapping.
@@ -65,6 +67,7 @@ to configure the message names handlers correspond to.
 (Note that even though the Cosmos SDK uses `service` definitions,
 messages are actually routed by message name, not service method name.)
 Ex:
+
 ```rust
 #[module_api]
 trait BankMsg {

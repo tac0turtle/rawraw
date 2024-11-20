@@ -553,34 +553,63 @@ pub fn on_create(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<To
     bail!("the #[on_create] attribute is being used in the wrong context, possibly #[module_handler] or #[account_handler] has not been applied to the enclosing module")
 }
 
-/// Derive the `Resources` trait for a struct.
+/// Derive the `State` trait for a struct.
 #[manyhow]
-#[proc_macro_derive(Resources, attributes(state, client))]
-pub fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStream2> {
+#[proc_macro_derive(State, attributes(prefix))]
+pub fn derive_state(input: DeriveInput) -> manyhow::Result<TokenStream2> {
     let name = input.ident;
     let mut str = match input.data {
         Data::Struct(str) => str,
         _ => bail!("can only derive Resources on structs"),
     };
     let mut field_inits = vec![];
-    let mut prefix = 0u8;
+    let mut prefix_index = 0u8;
     for field in str.fields.iter_mut() {
         let field_name = field.ident.as_ref().unwrap().clone();
         let ty = &field.ty.clone();
-        if let Some(state) = maybe_extract_attribute::<_, State>(field)? {
-            prefix = state.prefix.unwrap_or(prefix);
+        if let Some(prefix) = maybe_extract_attribute::<_, Prefix>(field)? {
+            prefix_index = prefix.prefix.unwrap_or(prefix_index);
             field_inits.push(quote! {
-                #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #prefix)?
+                #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #prefix_index)?
             });
-            prefix += 1;
-        } else if let Some(client) = maybe_extract_attribute::<_, Client>(field)? {
-            let account_id = client.0;
+            prefix_index += 1;
+        } else {
+            // TODO handle case where both #[state] and #[client] are present
+            bail!("only fields with #[state]  attributes are supported currently");
+        }
+    }
+    Ok(quote! {
+        unsafe impl ::ixc::core::resource::Resources for #name {
+            unsafe fn new(scope: &::ixc::core::resource::ResourceScope) -> ::core::result::Result<Self, ::ixc::core::resource::InitializationError> {
+                Ok(Self {
+                    #(#field_inits),*
+                })
+            }
+        }
+    })
+}
+
+/// Derive the `Client` trait for a struct.
+#[manyhow]
+#[proc_macro_derive(Client, attributes(receiver))]
+pub fn derive_client(input: DeriveInput) -> manyhow::Result<TokenStream2> {
+    let name = input.ident;
+    let mut str = match input.data {
+        Data::Struct(str) => str,
+        _ => bail!("can only derive Resources on structs"),
+    };
+    let mut field_inits = vec![];
+    for field in str.fields.iter_mut() {
+        let field_name = field.ident.as_ref().unwrap().clone();
+        let ty = &field.ty.clone();
+        if let Some(receiver) = maybe_extract_attribute::<_, Receiver>(field)? {
+            let account_id = receiver.0;
             field_inits.push(quote! {
                 #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
             });
         } else {
             // TODO handle case where both #[state] and #[client] are present
-            bail!("only fields with #[state] or #[client] attributes are supported currently");
+            bail!("only fields with #[client] attributes are supported currently");
         }
     }
     Ok(quote! {
@@ -596,17 +625,13 @@ pub fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStream2> {
 
 #[derive(deluxe::ExtractAttributes, Debug)]
 #[deluxe(attributes(state))]
-struct State {
+struct Prefix {
     prefix: Option<u8>,
-    #[deluxe(default)]
-    key: Vec<Ident>,
-    #[deluxe(default)]
-    value: Vec<Ident>,
 }
 
 #[derive(deluxe::ExtractAttributes, Debug)]
-#[deluxe(attributes(client))]
-struct Client(u128);
+#[deluxe(attributes(receiver))]
+struct Receiver(u128);
 
 // /// This attribute bundles account and module handlers into a package root which can be
 // /// loaded into an application.

@@ -1,23 +1,28 @@
 #![allow(missing_docs)]
 #[ixc::handler(FixedVesting)]
 mod vesting {
+    use borsh::{BorshDeserialize, BorshSerialize};
     use ixc::*;
     use ixc_core::handler::{Client, Service};
     use mockall::automock;
     use num_enum::{IntoPrimitive, TryFromPrimitive};
     use thiserror::Error;
 
-    #[derive(Resources)]
-    pub struct FixedVesting {
-        #[state]
+    #[derive(State, BorshSerialize, BorshDeserialize)]
+    pub struct State {
+        #[prefix(1)]
         pub(crate) amount: Item<Option<Coin>>,
-        #[state]
+        #[prefix(2)]
         pub(crate) beneficiary: Item<AccountID>,
-        #[state]
+        #[prefix(3)]
         pub(crate) unlock_time: Item<Time>,
-        #[client(65536)]
+    }
+
+    #[derive(Client)]
+    pub struct Client {
+        #[receiver(65536)]
         bank_client: <dyn BankAPI as Service>::Client,
-        #[client(65537)]
+        #[receiver(65537)]
         block_client: <dyn BlockInfoAPI as Service>::Client,
     }
 
