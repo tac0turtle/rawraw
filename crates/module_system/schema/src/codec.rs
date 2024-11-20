@@ -1,6 +1,6 @@
 //! The codec trait.
 
-use crate::buffer::{Writer, WriterFactory};
+use crate::buffer::WriterFactory;
 use crate::decoder::DecodeError;
 use crate::decoder::Decoder;
 use crate::encoder::{EncodeError, Encoder};

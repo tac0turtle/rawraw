@@ -81,14 +81,11 @@ impl KVStoreClient {
         let header = packet.header_mut();
         unsafe {
             header.in_pointer1.set_slice(key);
-            match ctx
+            if let Err(ErrorCode::HandlerCode(0)) = ctx
                 .host_backend()
                 .invoke(&mut packet, &ctx.memory_manager())
             {
-                Err(ErrorCode::HandlerCode(0)) => {
-                    return Ok(None);
-                }
-                _ => {}
+                return Ok(None);
             }
         }
         let res_bz = unsafe { packet.header().out_pointer1.get(&packet) };

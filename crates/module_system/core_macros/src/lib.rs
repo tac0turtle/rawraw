@@ -1,6 +1,6 @@
 //! **WARNING: This is an API preview! Expect major bugs, glaring omissions, and breaking changes!**
 //! This is a macro utility crate for ixc_core.
-
+#![allow(unused)] //TODO remove
 use blake2::{Blake2b512, Digest};
 use heck::ToUpperCamelCase;
 use manyhow::{bail, ensure, manyhow};
@@ -188,6 +188,7 @@ fn collect_publish_targets(
 
 #[derive(deluxe::ExtractAttributes, Clone, Debug)]
 #[deluxe(attributes(publish))]
+
 struct Publish {
     package: Option<String>,
     name: Option<String>,
@@ -244,17 +245,14 @@ pub fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Resul
     let trait_ident = &item_trait.ident;
     let dyn_trait = quote!(dyn #trait_ident);
     for item in &item_trait.items {
-        match item {
-            TraitItem::Fn(f) => {
-                let publish_target = PublishFn {
-                    signature: f.sig.clone(),
-                    on_create: None,
-                    publish: None,
-                    attrs: f.attrs.clone(),
-                };
-                derive_api_method(trait_ident, &dyn_trait, &publish_target, &mut builder)?;
-            }
-            _ => {}
+        if let TraitItem::Fn(f) = item {
+            let publish_target = PublishFn {
+                signature: f.sig.clone(),
+                on_create: None,
+                publish: None,
+                attrs: f.attrs.clone(),
+            };
+            derive_api_method(trait_ident, &dyn_trait, &publish_target, &mut builder)?;
         }
     }
 
@@ -399,23 +397,19 @@ fn derive_api_method(
                         let mut ty = pat_type.ty.clone();
                         match ty.as_mut() {
                             Type::Reference(tyref) => {
-                                match tyref.elem.borrow() {
-                                    Type::Path(path) => {
-                                        if path.path.segments.first().unwrap().ident == "Context" {
-                                            context_name = Some(ident.ident.clone());
-                                            new_inputs.push(field.clone());
+                                if let Type::Path(path) = tyref.elem.borrow() {
+                                    if path.path.segments.first().unwrap().ident == "Context" {
+                                        context_name = Some(ident.ident.clone());
+                                        new_inputs.push(field.clone());
+                                        continue;
+                                    }
+
+                                    if let Some(s) = path.path.segments.first() {
+                                        if s.ident == "EventBus" {
+                                            fn_ctr_args.push(quote! { &mut Default::default(), });
                                             continue;
                                         }
-
-                                        if let Some(s) = path.path.segments.first() {
-                                            if s.ident == "EventBus" {
-                                                fn_ctr_args
-                                                    .push(quote! { &mut Default::default(), });
-                                                continue;
-                                            }
-                                        }
                                     }
-                                    _ => {}
                                 }
 
                                 have_lifetimes = true;
@@ -636,5 +630,5 @@ fn message_selector_from_str(msg: &str) -> TokenStream2 {
     let expanded = quote! {
         #hash
     };
-    expanded.into()
+    expanded
 }

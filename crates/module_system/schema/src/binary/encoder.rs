@@ -1,10 +1,10 @@
+#![allow(unused)]
 use crate::buffer::{Writer, WriterFactory};
 use crate::codec::ValueEncodeVisitor;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
 use crate::list::ListEncodeVisitor;
-use crate::state_object::ObjectValue;
-use crate::structs::{StructDecodeVisitor, StructEncodeVisitor, StructType};
+use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::SchemaValue;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
@@ -27,7 +27,7 @@ pub(crate) struct Encoder<'a, W> {
     pub(crate) writer: &'a mut W,
 }
 
-impl<'a, W: Writer> crate::encoder::Encoder for Encoder<'a, W> {
+impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
     fn encode_u32(&mut self, x: u32) -> Result<(), EncodeError> {
         self.writer.write(&x.to_le_bytes())
     }
@@ -362,7 +362,7 @@ pub(crate) struct InnerEncodeSizer<'a> {
     pub(crate) outer: &'a mut EncodeSizer,
 }
 
-impl<'a> crate::encoder::Encoder for InnerEncodeSizer<'a> {
+impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
     fn encode_u32(&mut self, x: u32) -> Result<(), EncodeError> {
         self.outer.size += 4;
         Ok(())

@@ -1,3 +1,4 @@
+#![allow(unused_variables)]
 use crate::buffer::{Reader, ReverseSliceWriter, Writer};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
@@ -8,11 +9,11 @@ use crate::Str;
 /// This trait is implemented for types that can be used as key fields in state objects.
 pub trait KeyFieldValue: ObjectFieldValue {
     /// Encode the key segment as a non-terminal segment.
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError>;
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError>;
 
     /// Encode the key segment as the terminal segment.
-    fn encode_terminal<'a>(
-        key: &Self::In<'a>,
+    fn encode_terminal(
+        key: &Self::In<'_>,
         writer: &mut ReverseSliceWriter,
     ) -> Result<(), EncodeError> {
         Self::encode(key, writer)
@@ -33,16 +34,16 @@ pub trait KeyFieldValue: ObjectFieldValue {
     }
 
     /// Get the size of the key segment as a non-terminal segment.
-    fn out_size<'a>(key: &Self::In<'a>) -> usize;
+    fn out_size(key: &Self::In<'_>) -> usize;
 
     /// Get the size of the key segment as the terminal segment.
-    fn out_size_terminal<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size_terminal(key: &Self::In<'_>) -> usize {
         Self::out_size(key)
     }
 }
 
 impl KeyFieldValue for u8 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         writer.write(&[*key])
     }
 
@@ -53,13 +54,13 @@ impl KeyFieldValue for u8 {
         Ok(reader.read_bytes(1)?[0])
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         1
     }
 }
 
 impl KeyFieldValue for u16 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         writer.write(&key.to_be_bytes())
     }
 
@@ -71,13 +72,13 @@ impl KeyFieldValue for u16 {
         Ok(u16::from_be_bytes(bz.try_into().unwrap()))
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         2
     }
 }
 
 impl KeyFieldValue for u32 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         writer.write(&key.to_be_bytes())
     }
 
@@ -89,13 +90,13 @@ impl KeyFieldValue for u32 {
         Ok(u32::from_be_bytes(bz.try_into().unwrap()))
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         4
     }
 }
 
 impl KeyFieldValue for u64 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         writer.write(&key.to_be_bytes())
     }
 
@@ -107,13 +108,13 @@ impl KeyFieldValue for u64 {
         Ok(u64::from_be_bytes(bz.try_into().unwrap()))
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         8
     }
 }
 
 impl KeyFieldValue for u128 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         writer.write(&key.to_be_bytes())
     }
 
@@ -125,13 +126,13 @@ impl KeyFieldValue for u128 {
         Ok(u128::from_be_bytes(bz.try_into().unwrap()))
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         16
     }
 }
 
 impl KeyFieldValue for i8 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         let x = *key as u8;
         // flip first bit for ordering
         writer.write(&[x ^ 0x80])
@@ -146,13 +147,13 @@ impl KeyFieldValue for i8 {
         Ok((x ^ 0x80) as i8)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         1
     }
 }
 
 impl KeyFieldValue for i16 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         // flip first bit for ordering
         let x = *key as u16 ^ 0x8000;
         writer.write(&x.to_be_bytes())
@@ -167,13 +168,13 @@ impl KeyFieldValue for i16 {
         Ok((x ^ 0x8000) as i16)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         2
     }
 }
 
 impl KeyFieldValue for i32 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         let x = *key as u32 ^ 0x80000000;
         writer.write(&x.to_be_bytes())
     }
@@ -186,13 +187,13 @@ impl KeyFieldValue for i32 {
         Ok((x ^ 0x80000000) as i32)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         4
     }
 }
 
 impl KeyFieldValue for i64 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         let x = *key as u64 ^ 0x8000000000000000;
         writer.write(&x.to_be_bytes())
     }
@@ -205,13 +206,13 @@ impl KeyFieldValue for i64 {
         Ok((x ^ 0x8000000000000000) as i64)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         8
     }
 }
 
 impl KeyFieldValue for i128 {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         let x = *key as u128 ^ 0x80000000000000000000000000000000;
         writer.write(&x.to_be_bytes())
     }
@@ -224,13 +225,13 @@ impl KeyFieldValue for i128 {
         Ok((x ^ 0x80000000000000000000000000000000) as i128)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         16
     }
 }
 
 impl KeyFieldValue for bool {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         writer.write(&[*key as u8])
     }
 
@@ -241,13 +242,13 @@ impl KeyFieldValue for bool {
         Ok(reader.read_bytes(1)?[0] != 0)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         1
     }
 }
 
 impl KeyFieldValue for simple_time::Time {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         // TODO we only need 12 bytes max
         <i128 as KeyFieldValue>::encode(&key.unix_nanos(), writer)
     }
@@ -260,13 +261,13 @@ impl KeyFieldValue for simple_time::Time {
             .map(simple_time::Time::from_unix_nanos)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         12
     }
 }
 
 impl KeyFieldValue for simple_time::Duration {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         // TODO we only need 12 bytes max
         <i128 as KeyFieldValue>::encode(&key.nanos(), writer)
     }
@@ -279,13 +280,13 @@ impl KeyFieldValue for simple_time::Duration {
             .map(simple_time::Duration::from_nanos)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         12
     }
 }
 
 impl KeyFieldValue for ixc_message_api::AccountID {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         let id: u128 = (*key).into();
         writer.write(&id.to_be_bytes())
     }
@@ -300,20 +301,20 @@ impl KeyFieldValue for ixc_message_api::AccountID {
         )))
     }
 
-    fn out_size<'a>(_key: &Self::In<'a>) -> usize {
+    fn out_size(_key: &Self::In<'_>) -> usize {
         16
     }
 }
 
 impl KeyFieldValue for Str {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         // write null terminator
         writer.write(&[0]);
         writer.write(key.as_bytes())
     }
 
-    fn encode_terminal<'a>(
-        key: &Self::In<'a>,
+    fn encode_terminal(
+        key: &Self::In<'_>,
         writer: &mut ReverseSliceWriter,
     ) -> Result<(), EncodeError> {
         // no null terminator needed
@@ -342,24 +343,24 @@ impl KeyFieldValue for Str {
         Ok(s)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         key.len() + 1
     }
 
-    fn out_size_terminal<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size_terminal(key: &Self::In<'_>) -> usize {
         key.len()
     }
 }
 
 impl KeyFieldValue for Bytes {
-    fn encode<'a>(key: &Self::In<'a>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
+    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         writer.write(key)?;
         // write length
         writer.write(&(key.len() as u32).to_be_bytes())
     }
 
-    fn encode_terminal<'a>(
-        key: &Self::In<'a>,
+    fn encode_terminal(
+        key: &Self::In<'_>,
         writer: &mut ReverseSliceWriter,
     ) -> Result<(), EncodeError> {
         writer.write(key)
@@ -381,10 +382,10 @@ impl KeyFieldValue for Bytes {
         Ok(reader)
     }
 
-    fn out_size<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size(key: &Self::In<'_>) -> usize {
         key.len() + 4
     }
-    fn out_size_terminal<'a>(key: &Self::In<'a>) -> usize {
+    fn out_size_terminal(key: &Self::In<'_>) -> usize {
         key.len()
     }
 }

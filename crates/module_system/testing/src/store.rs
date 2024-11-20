@@ -1,3 +1,4 @@
+#![allow(unused)]
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
 use ixc_core_macros::message_selector;
@@ -18,12 +19,8 @@ pub struct VersionedMultiStore {
 }
 
 impl VersionedMultiStore {
-    pub fn new_transaction(
-        &self,
-        account_id: AccountID,
-        volatile: bool,
-    ) -> Result<Tx, NewTxError> {
-        let latest = self.versions.last().map(|s| s.clone()).unwrap_or_default();
+    pub fn new_transaction(&self, account_id: AccountID, volatile: bool) -> Result<Tx, NewTxError> {
+        let latest = self.versions.last().cloned().unwrap_or_default();
         Ok(Tx {
             call_stack: vec![],
             current_frame: RefCell::new(Frame {

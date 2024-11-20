@@ -57,8 +57,7 @@ fn encode_enum<E: EnumSchema>(x: &E, encoder: &mut dyn Encoder) -> Result<(), En
 where
     E::NumericType: Into<i32>,
 {
-    let value = encoder.encode_i32(E::into(x.clone()).into());
-    value
+    encoder.encode_i32(E::into(x.clone()).into())
 }
 
 fn decode_enum<E: EnumSchema>(decoder: &mut dyn Decoder) -> Result<E, DecodeError>

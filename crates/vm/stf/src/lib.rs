@@ -14,9 +14,9 @@ use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{HandlerID, VM};
 use std::alloc::Layout;
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::borrow::BorrowMut;
 
 /// Rust Cosmos SDK RFC 003 hypervisor/state-handler function implementation.
 #[derive(Default)]
@@ -27,7 +27,9 @@ pub struct STF {
 
 impl STF {
     /// Create a new hypervisor with the given state handler.
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// This is a hack until we figure out a better way to reference handler IDs.
     pub fn set_default_vm(&mut self, name: &str) -> Result<(), ()> {
@@ -97,15 +99,22 @@ struct ExecContext<'a, ST: StateHandler> {
 }
 
 impl STF {
-    fn get_account_handler_id<ST: StateHandler>(&self, state_handler: &ST, account_id: AccountID) -> Option<HandlerID> {
+    fn get_account_handler_id<ST: StateHandler>(
+        &self,
+        state_handler: &ST,
+        account_id: AccountID,
+    ) -> Option<HandlerID> {
         let id: u128 = account_id.into();
         let key = format!("h:{}", id);
-        let value = state_handler
-            .raw_kv_get(HYPERVISOR_ACCOUNT, key.as_bytes())?;
+        let value = state_handler.raw_kv_get(HYPERVISOR_ACCOUNT, key.as_bytes())?;
         self.parse_handler_id(&value)
     }
 
-    fn init_next_account<ST: StateHandler>(&self, state_handler: &mut ST, handler_id: &HandlerID) -> Result<AccountID, PushFrameError> {
+    fn init_next_account<ST: StateHandler>(
+        &self,
+        state_handler: &mut ST,
+        handler_id: &HandlerID,
+    ) -> Result<AccountID, PushFrameError> {
         let id = state_handler
             .raw_kv_get(HYPERVISOR_ACCOUNT, b"next_account_id")
             .map_or(ACCOUNT_ID_NON_RESERVED_START, |v| {
@@ -130,8 +139,7 @@ impl STF {
         let current_account = state_handler.active_account();
         let id: u128 = current_account.into();
         let key = format!("h:{}", id);
-        state_handler
-            .raw_kv_delete(HYPERVISOR_ACCOUNT, key.as_bytes());
+        state_handler.raw_kv_delete(HYPERVISOR_ACCOUNT, key.as_bytes());
         state_handler.self_destruct_account()
     }
 
@@ -145,14 +153,15 @@ const ACCOUNT_ID_NON_RESERVED_START: u128 = u16::MAX as u128 + 1;
 const HYPERVISOR_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
-impl<'a, ST: StateHandler> HostBackend for ExecContext<'a, ST> {
+impl<ST: StateHandler> HostBackend for ExecContext<'_, ST> {
     fn invoke(
         &self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         let mut state_handler = self.state_handler.borrow_mut();
-        self.stf.invoke::<ST>(state_handler.borrow_mut(), message_packet, allocator)
+        self.stf
+            .invoke::<ST>(state_handler.borrow_mut(), message_packet, allocator)
     }
 }
 
@@ -175,7 +184,9 @@ impl STF {
         let target_account = message_packet.header().account;
         // check if the target account is a system account
         match target_account {
-            HYPERVISOR_ACCOUNT => return self.handle_system_message(state_handler, message_packet, allocator),
+            HYPERVISOR_ACCOUNT => {
+                return self.handle_system_message(state_handler, message_packet, allocator)
+            }
             STATE_ACCOUNT => return state_handler.handle(message_packet, allocator),
             _ => {}
         }
@@ -193,7 +204,12 @@ impl STF {
         state_handler.push_frame(target_account, false). // TODO add volatility support
             map_err(|_| SystemCode(InvalidHandler))?;
         // run the handler
-        let res = vm.run_handler(&handler_id.vm_handler_id, message_packet, &self.wrap_backend(state_handler), allocator);
+        let res = vm.run_handler(
+            &handler_id.vm_handler_id,
+            message_packet,
+            &self.wrap_backend(state_handler),
+            allocator,
+        );
         // pop the execution frame
         state_handler
             .pop_frame(res.is_ok())
@@ -275,7 +291,10 @@ impl STF {
         }
     }
 
-    fn wrap_backend<'a, ST: StateHandler>(&'a self, state_handler: &'a mut ST) -> ExecContext<'a, ST> {
+    fn wrap_backend<'a, ST: StateHandler>(
+        &'a self,
+        state_handler: &'a mut ST,
+    ) -> ExecContext<'a, ST> {
         ExecContext {
             stf: self,
             state_handler: RefCell::new(state_handler),

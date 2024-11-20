@@ -27,9 +27,9 @@ impl AccountID {
     }
 }
 
-impl Into<u128> for AccountID {
-    fn into(self) -> u128 {
-        self.0
+impl From<AccountID> for u128 {
+    fn from(val: AccountID) -> Self {
+        val.0
     }
 }
 
