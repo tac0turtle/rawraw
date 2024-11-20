@@ -683,21 +683,21 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
     }
 }
 
-impl<'a> ListElementValue<'a> for u16 {}
-impl<'a> ListElementValue<'a> for u32 {}
-impl<'a> ListElementValue<'a> for u64 {}
-impl<'a> ListElementValue<'a> for u128 {}
-impl<'a> ListElementValue<'a> for i8 {}
-impl<'a> ListElementValue<'a> for i16 {}
-impl<'a> ListElementValue<'a> for i32 {}
-impl<'a> ListElementValue<'a> for i64 {}
-impl<'a> ListElementValue<'a> for i128 {}
-impl<'a> ListElementValue<'a> for bool {}
+impl ListElementValue<'_> for u16 {}
+impl ListElementValue<'_> for u32 {}
+impl ListElementValue<'_> for u64 {}
+impl ListElementValue<'_> for u128 {}
+impl ListElementValue<'_> for i8 {}
+impl ListElementValue<'_> for i16 {}
+impl ListElementValue<'_> for i32 {}
+impl ListElementValue<'_> for i64 {}
+impl ListElementValue<'_> for i128 {}
+impl ListElementValue<'_> for bool {}
 impl<'a> ListElementValue<'a> for &'a str {}
 #[cfg(feature = "std")]
-impl<'a> ListElementValue<'a> for alloc::string::String {}
+impl ListElementValue<'_> for alloc::string::String {}
 impl<'a> ListElementValue<'a> for &'a [u8] {}
 #[cfg(feature = "std")]
-impl<'a> ListElementValue<'a> for alloc::vec::Vec<u8> {}
-impl<'a> ListElementValue<'a> for simple_time::Time {}
-impl<'a> ListElementValue<'a> for simple_time::Duration {}
+impl ListElementValue<'_> for alloc::vec::Vec<u8> {}
+impl ListElementValue<'_> for simple_time::Time {}
+impl ListElementValue<'_> for simple_time::Duration {}

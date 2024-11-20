@@ -122,7 +122,7 @@ mod vesting {
         }
     }
 
-    #[derive(SchemaValue)]
+    #[derive(SchemaValue, Clone)]
     #[non_exhaustive]
     pub struct UnlockEvent {
         pub to: AccountID,

@@ -40,7 +40,7 @@ pub fn dynamic_invoke<'a, 'b, M: Message<'b>>(
 
         match res {
             Ok(_) => {
-                let res = M::Response::<'a>::decode_value(&cdc, &out1, mem)?;
+                let res = M::Response::<'a>::decode_value(&cdc, out1, mem)?;
                 Ok(res)
             }
             Err(e) => {

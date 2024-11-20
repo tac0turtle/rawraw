@@ -70,11 +70,11 @@ impl<'a> Context<'a> {
 
     /// Get the memory manager.
     pub fn memory_manager(&self) -> &MemoryManager {
-        &self.mem.get()
+        self.mem.get()
     }
 }
 
-impl<'a> MemHandle<'a> {
+impl MemHandle<'_> {
     pub fn get(&self) -> &MemoryManager {
         match self {
             MemHandle::Borrowed(mem) => mem,

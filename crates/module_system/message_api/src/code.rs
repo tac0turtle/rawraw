@@ -72,9 +72,9 @@ impl<E: HandlerCode> From<u16> for ErrorCode<E> {
     }
 }
 
-impl<E: HandlerCode> Into<u16> for ErrorCode<E> {
-    fn into(self) -> u16 {
-        match self {
+impl<E: HandlerCode> From<ErrorCode<E>> for u16 {
+    fn from(val: ErrorCode<E>) -> Self {
+        match val {
             ErrorCode::SystemCode(e) => e as u16,
             ErrorCode::HandlerCode(e) => e.into() as u16 + 256,
             ErrorCode::Unknown(e) => e,

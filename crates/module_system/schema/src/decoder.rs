@@ -5,7 +5,6 @@ use crate::enums::EnumType;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::structs::{StructDecodeVisitor, StructType};
-use crate::value::SchemaValue;
 use core::error::Error;
 use core::fmt::{Display, Formatter};
 use ixc_message_api::code::{ErrorCode, SystemCode};

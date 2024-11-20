@@ -23,7 +23,7 @@ impl VersionedMultiStore {
         account_id: AccountID,
         volatile: bool,
     ) -> Result<Tx, NewTxError> {
-        let latest = self.versions.last().map(|s| s.clone()).unwrap_or_default();
+        let latest = self.versions.last().cloned().unwrap_or_default();
         Ok(Tx {
             call_stack: vec![],
             current_frame: RefCell::new(Frame {

@@ -31,13 +31,13 @@ impl<'a> SchemaType<'a> {
     }
 }
 
-impl<'a> PartialOrd for SchemaType<'a> {
+impl PartialOrd for SchemaType<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.name().partial_cmp(other.name())
     }
 }
 
-impl<'a> Ord for SchemaType<'a> {
+impl Ord for SchemaType<'_> {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.name().cmp(other.name())
     }

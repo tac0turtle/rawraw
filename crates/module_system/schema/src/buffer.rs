@@ -5,7 +5,6 @@ use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
 use allocator_api2::alloc::Allocator;
 use core::alloc::Layout;
-use core::ptr::slice_from_raw_parts_mut;
 
 /// A factory for creating writers.
 pub trait WriterFactory {
@@ -35,7 +34,7 @@ impl<'a> WriterFactory for MemoryManager {
     }
 }
 
-impl<'a> WriterFactory for &'a dyn Allocator {
+impl WriterFactory for &dyn Allocator {
     fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter, EncodeError> {
         unsafe {
             let ptr = self
@@ -55,7 +54,7 @@ pub struct ReverseSliceWriter<'a> {
     pos: usize,
 }
 
-impl<'a> Writer for ReverseSliceWriter<'a> {
+impl Writer for ReverseSliceWriter<'_> {
     fn write(&mut self, bytes: &[u8]) -> Result<(), EncodeError> {
         if self.pos < bytes.len() {
             return Err(EncodeError::OutOfSpace);

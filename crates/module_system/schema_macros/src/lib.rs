@@ -90,7 +90,7 @@ fn derive_struct_schema(
             let #field_name = <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::finish_decode_state(state.#tuple_index, mem)?;
         }
     });
-    let field_inits = str.fields.iter().enumerate().map(|(_index, field)| {
+    let field_inits = str.fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         quote! {
             #field_name,
@@ -160,7 +160,7 @@ fn derive_struct_schema(
             type In< #lifetime2 > = #struct_name #ty_generics2;
             type Out< #lifetime2 > = #struct_name #ty_generics2;
         }
-    }.into())
+    })
 }
 
 fn has_attribute<I>(attrs: &Vec<Attribute>, ident: &I) -> bool

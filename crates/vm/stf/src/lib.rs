@@ -145,7 +145,7 @@ const ACCOUNT_ID_NON_RESERVED_START: u128 = u16::MAX as u128 + 1;
 const HYPERVISOR_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
-impl<'a, ST: StateHandler> HostBackend for ExecContext<'a, ST> {
+impl<ST: StateHandler> HostBackend for ExecContext<'_, ST> {
     fn invoke(
         &self,
         message_packet: &mut MessagePacket,
