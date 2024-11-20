@@ -405,8 +405,7 @@ fn derive_api_method(
 
                                     if let Some(s) = path.path.segments.first() {
                                         if s.ident == "EventBus" {
-                                            fn_ctr_args
-                                                .push(quote! { &mut Default::default(), });
+                                            fn_ctr_args.push(quote! { &mut Default::default(), });
                                             continue;
                                         }
                                     }

@@ -83,7 +83,8 @@ impl KVStoreClient {
             header.in_pointer1.set_slice(key);
             if let Err(ErrorCode::HandlerCode(0)) = ctx
                 .host_backend()
-                .invoke(&mut packet, &ctx.memory_manager()) {
+                .invoke(&mut packet, &ctx.memory_manager())
+            {
                 return Ok(None);
             }
         }

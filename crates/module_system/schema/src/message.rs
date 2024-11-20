@@ -1,4 +1,3 @@
-
 #[non_exhaustive]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MessageDescriptor<'a> {

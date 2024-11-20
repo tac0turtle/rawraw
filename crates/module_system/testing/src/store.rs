@@ -18,11 +18,7 @@ pub struct VersionedMultiStore {
 }
 
 impl VersionedMultiStore {
-    pub fn new_transaction(
-        &self,
-        account_id: AccountID,
-        volatile: bool,
-    ) -> Result<Tx, NewTxError> {
+    pub fn new_transaction(&self, account_id: AccountID, volatile: bool) -> Result<Tx, NewTxError> {
         let latest = self.versions.last().cloned().unwrap_or_default();
         Ok(Tx {
             call_stack: vec![],

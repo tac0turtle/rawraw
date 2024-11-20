@@ -57,7 +57,6 @@ fn encode_enum<E: EnumSchema>(x: &E, encoder: &mut dyn Encoder) -> Result<(), En
 where
     E::NumericType: Into<i32>,
 {
-    
     encoder.encode_i32(E::into(x.clone()).into())
 }
 

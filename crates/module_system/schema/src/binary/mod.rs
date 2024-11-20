@@ -43,7 +43,6 @@ mod tests {
     use ixc_schema_macros::SchemaValue;
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
-    
 
     #[derive(SchemaValue, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]

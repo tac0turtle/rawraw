@@ -388,8 +388,7 @@ mod tests {
         ];
         let mem = MemoryManager::new();
         let res = encode_value(&coins, &mem).unwrap();
-        let decoded =
-            crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, res, &mem).unwrap();
+        let decoded = crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, res, &mem).unwrap();
         assert_eq!(decoded, coins);
     }
 }

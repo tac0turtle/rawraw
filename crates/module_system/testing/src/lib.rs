@@ -22,8 +22,8 @@ use std::collections::BTreeMap;
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
-use ixc_stf::STF;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
+use ixc_stf::STF;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
@@ -145,7 +145,9 @@ impl HostBackend for TestApp {
             .borrow_mut()
             .invoke(&mut tx, message_packet, allocator)?;
 
-        state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+        state
+            .commit(tx)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 }
 

@@ -119,9 +119,7 @@ impl<A: ObjectFieldValue> ObjectValue for A {
 
         let mut visitor: Visitor<'a, A::Out<'a>> = Visitor(Default::default());
         decoder.decode_struct(&mut visitor, &Self::PSEUDO_TYPE)?;
-        <A::Out<'a> as SchemaValue<'a>>::finish_decode_state(
-            visitor.0, mem,
-        )
+        <A::Out<'a> as SchemaValue<'a>>::finish_decode_state(visitor.0, mem)
     }
 }
 
