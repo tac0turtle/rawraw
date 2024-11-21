@@ -9,7 +9,7 @@ use crate::mem::MemoryManager;
 use crate::types::*;
 
 /// A visitor for decoding values. Unlike SchemaValue, this trait is object safe.
-pub trait ValueCodec<'a>: Default + 'a {
+pub trait ValueCodec<'a> {
     /// Visit the value.
     fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError>;
 
@@ -20,7 +20,7 @@ pub trait ValueCodec<'a>: Default + 'a {
 /// Any type used directly as a message function argument or struct field must implement this trait.
 /// Unlike [`ObjectFieldValue`](crate::state_object::ObjectFieldValue) it takes a lifetime parameter so value may already be borrowed where it is
 /// declared.
-pub trait SchemaValue<'a>: ValueCodec<'a> {
+pub trait SchemaValue<'a>: ValueCodec<'a> + Default + 'a {
     /// The type of the value.
     type Type: Type;
 }

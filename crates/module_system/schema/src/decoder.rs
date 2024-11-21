@@ -8,6 +8,7 @@ use core::error::Error;
 use core::fmt::{Display, Formatter};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
+use crate::SchemaValue;
 use crate::value::ValueCodec;
 
 /// The trait that decoders must implement.
@@ -104,4 +105,13 @@ impl From<DecodeError> for ErrorCode {
     fn from(_value: DecodeError) -> Self {
         ErrorCode::SystemCode(SystemCode::EncodingError)
     }
+}
+
+/// Decode a single value.
+pub fn decode_one<'a, V: SchemaValue<'a>>(
+    decoder: &mut dyn Decoder<'a>,
+) -> Result<V, DecodeError> {
+    let mut x = V::default();
+    x.decode(decoder)?;
+    Ok(x)
 }

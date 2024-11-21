@@ -123,7 +123,7 @@ fn derive_struct_schema(
         impl < #lifetime > #ixc_schema_path::value::ValueCodec < #lifetime > for #struct_name #ty_generics #where_clause {
             fn decode(
                 &mut self,
-                decoder: &mut dyn Decoder<'a>,
+                decoder: &mut dyn Decoder< #lifetime >,
             ) -> Result<(), DecodeError> {
                 todo!();
             }
