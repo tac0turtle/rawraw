@@ -6,7 +6,7 @@ use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Attribute, Data, DataStruct, Lifetime};
 
-/// This derives a struct codec.
+/// This derives a struct codec. The struct must implement Default.
 #[manyhow]
 #[proc_macro_derive(SchemaValue, attributes(sealed, schema, proto))]
 pub fn derive_schema_value(input: syn::DeriveInput) -> manyhow::Result<TokenStream2> {
@@ -119,7 +119,7 @@ fn derive_struct_schema(
             fn decode(
                 &mut self,
                 decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >,
-            ) -> core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
+            ) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
                 decoder.decode_struct(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
             }
 
@@ -132,10 +132,6 @@ fn derive_struct_schema(
             type Type = #ixc_schema_path::types::StructT< #struct_name #ty_generics >;
         }
 
-
-        // impl < #lifetime > #ixc_schema_path::SchemaValue < #lifetime > for &#lifetime #struct_name #ty_generics #where_clause {
-        //     type Type = #ixc_schema_path::types::StructT< #struct_name #ty_generics >;
-        // }
 
         impl < #lifetime > #ixc_schema_path::value::ListElementValue < #lifetime > for #struct_name #ty_generics #where_clause {}
         impl #impl_generics #ixc_schema_path::state_object::ObjectFieldValue for #struct_name #ty_generics #where_clause {

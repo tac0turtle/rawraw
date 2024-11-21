@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 
-use crate::binary::encoder::encode_value;
+use crate::binary::encoder::{encode_value, EncodeSizer};
 use crate::buffer::WriterFactory;
 use crate::decoder::{decode_one, DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
@@ -17,14 +17,14 @@ pub fn encode_object_value<'a, V: ObjectValue>(
     value: &V::In<'_>,
     writer_factory: &'a dyn WriterFactory,
 ) -> Result<&'a [u8], EncodeError> {
-    // struct Visitor<'c, 'd, U: ObjectValue>(&'c U::In<'d>);
-    // impl<'a, U: ObjectValue> ValueCodec<'a> for Visitor<'_, '_, U> {
-    //     fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-    //         U::encode(self.0, encoder)
-    //     }
-    // }
-    // encode_value(&Visitor::<V>(value), writer_factory)
-    todo!()
+    let mut sizer = EncodeSizer { size: 0 };
+    V::encode_reverse(value, &mut sizer)?;
+    let mut writer = writer_factory.new_reverse(sizer.size)?;
+    let mut encoder = crate::binary::encoder::Encoder {
+        writer: &mut writer,
+    };
+    V::encode_reverse(value, &mut encoder)?;
+    Ok(writer.finish())
 }
 
 /// Decode an object value.

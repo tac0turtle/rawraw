@@ -18,6 +18,15 @@ The basic types supported intrinsically are:
 Custom types may be derived using the [`SchemaValue`] derive macro.
 As a general rule, if a type implements [`SchemaValue`] it can be 
 used as a function or struct parameter.
+Type that implement [`SchemaValue`] must also implement [`Default`].
+Example:
+```rust
+#[derive(SchemaValue, Default)]
+pub struct MyStruct {
+    pub a: u8,
+    pub b: u16,
+}
+```
 
 ## Supported Encodings
 
