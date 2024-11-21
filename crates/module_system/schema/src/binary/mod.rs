@@ -45,7 +45,7 @@ mod tests {
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
 
-    #[derive(SchemaValue, Debug, Eq, PartialEq, Arbitrary)]
+    #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]
     struct ABitOfEverything {
         primitives: Prims,
@@ -60,7 +60,7 @@ mod tests {
         op: Option<Prims>,
     }
 
-    #[derive(SchemaValue, Debug, Eq, PartialEq, Arbitrary)]
+    #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]
     struct Prims {
         a_u8: u8,

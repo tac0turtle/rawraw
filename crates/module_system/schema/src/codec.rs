@@ -32,14 +32,8 @@ pub fn decode_value<'a, V: SchemaValue<'a>>(
     input: &'a [u8],
     mem: &'a MemoryManager,
 ) -> Result<V, DecodeError> {
-    // struct Visitor<'b, U: SchemaValue<'b>>(U::DecodeState);
-    // impl<'b, U: SchemaValue<'b>> ValueDecodeVisitor<'b> for Visitor<'b, U> {
-    //     fn decode(&mut self, decoder: &mut dyn Decoder<'b>) -> Result<(), DecodeError> {
-    //         U::visit_decode_state(&mut self.0, decoder)
-    //     }
-    // }
-    // let mut visitor = Visitor::<V>(V::DecodeState::default());
-    // codec.decode_value(input, mem, &mut visitor)?;
-    // V::finish_decode_state(visitor.0, mem)
-    todo!()
+    let mut visitor = V::default();
+    codec.decode_value(input, mem, &mut visitor)?;
+    Ok(visitor)
+
 }

@@ -465,7 +465,7 @@ fn derive_api_method(
     push_item(
         &mut builder.items,
         quote! {
-            #[derive(::ixc::SchemaValue)]
+            #[derive(::ixc::SchemaValue, Default)]
             #[sealed]
             pub struct #msg_struct_name #opt_lifetime {
                 #(#msg_fields)*

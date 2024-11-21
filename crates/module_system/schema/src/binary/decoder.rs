@@ -349,7 +349,7 @@ mod tests {
         assert_eq!(x, "hello");
     }
 
-    #[derive(Debug, PartialEq, SchemaValue)]
+    #[derive(Debug, PartialEq, Default, SchemaValue)]
     #[sealed]
     struct Coin<'b> {
         denom: &'b str,

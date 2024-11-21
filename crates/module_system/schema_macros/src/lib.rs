@@ -69,25 +69,11 @@ fn derive_struct_schema(
             #index => <#field_type as #ixc_schema_path::value::ValueCodec<'_>>::encode(&self.#field_name, encoder),
         }
     });
-    let decode_states = str.fields.iter().map(|field| {
-        let field_type = &field.ty;
-        quote! {
-            <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::DecodeState,
-        }
-    });
     let decode_matchers = str.fields.iter().enumerate().map(|(index, field)| {
         let field_type = &field.ty;
-        let tuple_index = syn::Index::from(index);
-        quote! {
-            #index => <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::visit_decode_state(&mut self.state.#tuple_index, decoder),
-        }
-    });
-    let finishers = str.fields.iter().enumerate().map(|(index, field)| {
         let field_name = field.ident.as_ref().unwrap();
-        let field_type = &field.ty;
-        let tuple_index = syn::Index::from(index);
         quote! {
-            let #field_name = <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::finish_decode_state(state.#tuple_index, mem)?;
+            #index => <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::decode(&mut self.#field_name, decoder),
         }
     });
     let field_inits = str.fields.iter().map(|field| {
@@ -120,36 +106,22 @@ fn derive_struct_schema(
             }
         }
 
+        unsafe impl< #lifetime > #ixc_schema_path::structs::StructDecodeVisitor< #lifetime > for #struct_name #ty_generics #where_clause {
+            fn decode_field(&mut self, index: usize, decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
+                match index {
+                    #(#decode_matchers)*
+                    _ => Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
+                }
+            }
+        }
+
         impl < #lifetime > #ixc_schema_path::value::ValueCodec < #lifetime > for #struct_name #ty_generics #where_clause {
             fn decode(
                 &mut self,
-                decoder: &mut dyn Decoder< #lifetime >,
-            ) -> Result<(), DecodeError> {
-                todo!();
+                decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >,
+            ) -> core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
+                decoder.decode_struct(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
             }
-            // type DecodeState = (#(#decode_states)*);
-            //
-            // fn visit_decode_state(state: &mut Self::DecodeState, decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
-            //     struct Visitor< #lifetime2 , #lifetime : #lifetime2 > {
-            //         state: &#lifetime2 mut < #struct_name #ty_generics as #ixc_schema_path::SchemaValue< #lifetime >>::DecodeState,
-            //     }
-            //     unsafe impl< #lifetime2, #lifetime : #lifetime2 > #ixc_schema_path::structs::StructDecodeVisitor< #lifetime > for Visitor< #lifetime2, #lifetime > {
-            //         fn decode_field(&mut self, index: usize, decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
-            //             match index {
-            //                 #(#decode_matchers)*
-            //                 _ => Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
-            //             }
-            //         }
-            //     }
-            //     decoder.decode_struct(&mut Visitor { state }, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
-            // }
-            //
-            // fn finish_decode_state(state: Self::DecodeState, mem: &#lifetime #ixc_schema_path::mem::MemoryManager) -> ::core::result::Result<Self, #ixc_schema_path::decoder::DecodeError> {
-            //     #(#finishers)*
-            //     Ok( #struct_name {
-            //         #(#field_inits)*
-            //     })
-            // }
 
             fn encode(&self, encoder: &mut dyn #ixc_schema_path::encoder::Encoder) -> ::core::result::Result<(), #ixc_schema_path::encoder::EncodeError> {
                 encoder.encode_struct(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
