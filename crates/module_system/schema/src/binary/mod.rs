@@ -37,13 +37,18 @@ impl Codec for NativeBinaryCodec {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use crate::codec::{decode_value, Codec};
     use crate::mem::MemoryManager;
     use alloc::string::String;
+    use alloc::vec;
     use alloc::vec::Vec;
     use ixc_schema_macros::SchemaValue;
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
+    use crate::binary::encoder::encode_value;
+    use crate::binary::NativeBinaryCodec;
 
     #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]
@@ -85,5 +90,86 @@ mod tests {
             let value2 = decode_value(&cdc, bz, &mem).unwrap();
             assert_eq!(value, value2);
         }
+    }
+
+    #[test]
+    fn test_u32_decode() {
+        let buf: [u8; 4] = [10, 0, 0, 0];
+        let mem = MemoryManager::new();
+        let x = crate::codec::decode_value::<u32>(&NativeBinaryCodec, &buf, &mem).unwrap();
+        assert_eq!(x, 10);
+    }
+
+    #[test]
+    fn test_decode_borrowed_string() {
+        let str = "hello";
+        let mem = MemoryManager::new();
+        let x =
+            crate::codec::decode_value::<&str>(&NativeBinaryCodec, str.as_bytes(), &mem).unwrap();
+        assert_eq!(x, "hello");
+    }
+
+    #[test]
+    fn test_decode_owned_string() {
+        let str = "hello";
+        let mem = MemoryManager::new();
+        let x = crate::codec::decode_value::<alloc::string::String>(
+            &NativeBinaryCodec,
+            str.as_bytes(),
+            &mem,
+        )
+            .unwrap();
+        assert_eq!(x, "hello");
+    }
+
+    #[derive(Debug, PartialEq, Eq, Default, SchemaValue)]
+    #[sealed]
+    struct Coin<'b> {
+        denom: &'b str,
+        amount: u128,
+    }
+
+    impl Drop for Coin<'_> {
+        fn drop(&mut self) {
+            std::println!("drop Coin");
+        }
+    }
+
+    #[test]
+    fn test_coin() {
+        let coin = Coin {
+            denom: "uatom",
+            amount: 1234567890,
+        };
+        let mem = MemoryManager::new();
+        let res = encode_value(&coin, &mem).unwrap();
+        let decoded = crate::codec::decode_value::<Coin>(&NativeBinaryCodec, res, &mem).unwrap();
+        assert_eq!(decoded, coin);
+    }
+
+    #[test]
+    fn test_coins() {
+        let coins = vec![
+            Coin {
+                denom: "uatom",
+                amount: 1234567890,
+            },
+            Coin {
+                denom: "foo",
+                amount: 9876543210,
+            },
+        ];
+        let mem = MemoryManager::new();
+        let res = encode_value(&coins, &mem).unwrap();
+        let decoded = crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, res, &mem).unwrap();
+        assert_eq!(decoded, coins);
+    }
+
+    #[derive(SchemaValue, Default, PartialEq, Eq, Debug)]
+    #[sealed]
+    struct MsgSend<'a> {
+        from: &'a str,
+        to: &'a str,
+        amount: &'a [Coin<'a>],
     }
 }
