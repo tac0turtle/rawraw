@@ -4,6 +4,7 @@ use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::value::ValueCodec;
 
 struct Encoder {}
 
@@ -86,7 +87,7 @@ impl crate::encoder::Encoder for Encoder {
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         todo!()
     }

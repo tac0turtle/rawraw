@@ -124,7 +124,7 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
@@ -244,7 +244,7 @@ impl crate::encoder::Encoder for EncodeSizer {
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
@@ -347,7 +347,7 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)?;
@@ -457,7 +457,7 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         self.outer.size += 1;
         if let Some(visitor) = visitor {

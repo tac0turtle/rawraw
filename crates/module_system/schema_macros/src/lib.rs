@@ -66,7 +66,7 @@ fn derive_struct_schema(
         let field_name = field.ident.as_ref().unwrap();
         let field_type = &field.ty;
         quote! {
-            #index => <#field_type as #ixc_schema_path::SchemaValue<'_>>::encode(&self.#field_name, encoder),
+            #index => <#field_type as #ixc_schema_path::value::ValueCodec<'_>>::encode(&self.#field_name, encoder),
         }
     });
     let decode_states = str.fields.iter().map(|field| {
@@ -79,7 +79,7 @@ fn derive_struct_schema(
         let field_type = &field.ty;
         let tuple_index = syn::Index::from(index);
         quote! {
-            #index => <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::visit_decode_state(&mut self.state.#tuple_index, decoder),
+            #index => <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::visit_decode_state(&mut self.state.#tuple_index, decoder),
         }
     });
     let finishers = str.fields.iter().enumerate().map(|(index, field)| {
@@ -87,7 +87,7 @@ fn derive_struct_schema(
         let field_type = &field.ty;
         let tuple_index = syn::Index::from(index);
         quote! {
-            let #field_name = <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::finish_decode_state(state.#tuple_index, mem)?;
+            let #field_name = <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::finish_decode_state(state.#tuple_index, mem)?;
         }
     });
     let field_inits = str.fields.iter().map(|field| {
@@ -120,10 +120,7 @@ fn derive_struct_schema(
             }
         }
 
-        impl < #lifetime > #ixc_schema_path::ValueCodec < #lifetime > for #struct_name #ty_generics #where_clause {
-            type Type = #ixc_schema_path::types::StructT< #struct_name #ty_generics >;
-
-
+        impl < #lifetime > #ixc_schema_path::value::ValueCodec < #lifetime > for #struct_name #ty_generics #where_clause {
             fn decode(
                 &mut self,
                 decoder: &mut dyn Decoder<'a>,

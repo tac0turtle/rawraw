@@ -167,7 +167,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_option(
         &mut self,
-        visitor: &mut dyn ValueDecodeVisitor<'a>,
+        visitor: &mut dyn ValueCodec<'a>,
     ) -> Result<bool, DecodeError> {
         if self.buf.is_empty() {
             Ok(false)
@@ -295,7 +295,7 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
 
     fn decode_option(
         &mut self,
-        visitor: &mut dyn ValueDecodeVisitor<'a>,
+        visitor: &mut dyn ValueCodec<'a>,
     ) -> Result<bool, DecodeError> {
         let present = self.decode_bool()?;
         if present {
