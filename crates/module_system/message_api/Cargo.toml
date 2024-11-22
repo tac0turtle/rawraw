@@ -13,3 +13,4 @@ workspace = true
 allocator-api2 = "0.2.18"
 num_enum = "0.7.3"
 thiserror = "1.0.64"
+serde = { version = "1.0.215", features = ["derive"] }

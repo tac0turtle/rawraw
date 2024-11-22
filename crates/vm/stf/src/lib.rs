@@ -1,6 +1,8 @@
 //! Rust Cosmos SDK RFC 003 hypervisor/state-handler function implementation.
 
 mod state;
+mod stf;
+mod mocks;
 
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
