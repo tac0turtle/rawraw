@@ -49,20 +49,20 @@ impl MockTx {
 }
 
 impl Tx for MockTx {
-    fn get_sender(&self) -> &AccountID {
+    fn sender(&self) -> &AccountID {
         &self.sender
     }
 
-    fn get_recipient(&self) -> &AccountID {
-        &self.recipient
+    fn recipient(&self) -> &AccountID {
+       &self.recipient
     }
 
-    fn get_msg(&self) -> Vec<u8> {
-        self.msg.clone()
+    fn msg(&self) -> &[u8] {
+       &self.msg
     }
 
-    fn get_selector(&self) -> &MessageSelector {
-       &self.selector
+    fn selector(&self) -> &MessageSelector {
+        &self.selector
     }
 }
 
@@ -110,11 +110,11 @@ impl Default for MockAccountCodesBuilder {
 }
 
 impl AccountCodes for MockAccountCodes {
-    fn get_code_for_account(&self, account: &AccountID, _state: &dyn State) -> Result<Box<dyn Account>, String> {
+    fn get_code_for_account(&self, account: &AccountID, _state: &dyn State) -> Result<&dyn Account, String> {
         self.accounts
             .get(account)
-            .cloned()
             .ok_or_else(|| alloc::format!("No code found for account: {:?}", account))
+            .map(|ac| ac as &dyn Account)
     }
 }
 
@@ -164,7 +164,7 @@ impl Account for MockTokenAccount {
        match ctx.selector() {
            &Self::BALANCE_SELECTOR => {
                let req  = serde_json::from_slice::<QueryBalance>(ctx.raw_request_msg()).unwrap();
-
+               panic!("ok")
            }
            _ => Err("unknown query request".to_string()),
        }
@@ -175,7 +175,7 @@ struct KVStore;
 
 impl KVStore {
     pub fn get(ctx: &dyn Context) -> Result<Option<Vec<u8>>, String> {
-
+        panic!("ok")
     }
 
     pub fn set(ctx: &mut dyn Context, key: Vec<u8>, value: Vec<u8>) -> Result<(), String> {

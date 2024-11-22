@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 /// Account ID is a unique integer identifier for an account.
 /// Every account has one and only one account identifier.
 /// This is distinct from an account's "address".
@@ -6,7 +8,7 @@
 /// an external user, but an account always has one unique account ID.
 /// The account ID zero is reserved for the "null account" meaning
 /// that the account is not valid or does not exist.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct AccountID(u128);
 
@@ -24,6 +26,10 @@ impl AccountID {
     /// that the account is not valid or does not exist.
     pub fn is_empty(&self) -> bool {
         self.0 == 0
+    }
+
+    pub fn bytes(&self) -> [u8; 32] {
+        self.0.to_be_bytes()
     }
 }
 

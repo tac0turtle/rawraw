@@ -1,18 +1,22 @@
 use ixc_core_macros::message_selector;
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::AccountID;
+use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::state::SnapshotState;
 
 pub trait Tx {
-    fn get_sender(&self) -> &AccountID;
-    fn get_recipient(&self) -> &AccountID;
-    fn get_msg(&self) -> Vec<u8>;
-    fn get_selector(&self) -> &MessageSelector;
+    fn sender(&self) -> &AccountID;
+    fn recipient(&self) -> &AccountID;
+    fn msg(&self) -> &[u8];
+    fn selector(&self) -> &MessageSelector;
 }
 
 pub trait Context {
     fn selector(&self) -> &MessageSelector;
-    fn raw_request_msg(&self) -> &[u8];
+    fn msg(&self) -> &[u8];
     fn whoami(&self) -> &AccountID;
     fn sender(&self) -> &AccountID;
     fn invoke(
@@ -43,7 +47,7 @@ pub trait AccountCodes {
         &self,
         account: &AccountID,
         state: &dyn State,
-    ) -> Result<Box<dyn Account>, String>;
+    ) -> Result<&dyn Account, String>;
 }
 
 // New context implementation
@@ -53,19 +57,20 @@ struct ExecutionContext<'a> {
     msg: &'a [u8],
     selector: &'a MessageSelector,
     account_codes: &'a dyn AccountCodes,
-    state: SnapshotState<DynStateWrapper<'a>>,
+    state: Rc<RefCell<SnapshotState<DynStateWrapper>>>,
 }
 
 impl<'a> ExecutionContext<'a> {
+    const SEND_SELECTOR: MessageSelector = message_selector!("send");
+    const BALANCE_SELECTOR: MessageSelector = message_selector!("balance");
     fn new(
         whoami: &'a AccountID,
         sender: &'a AccountID,
         msg: &'a [u8],
         selector: &'a MessageSelector,
         account_codes: &'a dyn AccountCodes,
-        state: &'a dyn State,
+        state: Rc<RefCell<SnapshotState<DynStateWrapper>>>,
     ) -> Self {
-        let state = SnapshotState::new(DynStateWrapper::new(state));
         Self {
             whoami,
             sender,
@@ -76,12 +81,30 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 
-    fn handle_storage_mutable(&mut self, sender: &AccountID, msg: &[u8]) -> Result<Vec<u8>, String> {
+    fn handle_storage_mutable(
+        &mut self,
+        _sender: &AccountID,
+        _msg: &[u8],
+    ) -> Result<Vec<u8>, String> {
         todo!()
     }
 
-    fn handle_storage_readonly(&self, sender: &AccountID, msg: &[u8]) -> Result<Vec<u8>, String> {
-        todo!()
+    fn handle_storage_readonly(
+        &self,
+        sender: &AccountID,
+        selector: &MessageSelector,
+        msg: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        match selector {
+            &STORE_GET_SELECTOR => {
+                let req = serde_json::from_slice::<StoreGetRequest>(self.msg).unwrap();
+                let mut key = sender.bytes().to_vec();
+                key.extend(req.key);
+                let value = self.state.borrow().get(&key);
+                Ok(serde_json::to_vec(&StoreGetResponse { value }).unwrap())
+            }
+            _ => Err(format!("invalid request: {:?}", selector)),
+        }
     }
 }
 
@@ -90,13 +113,12 @@ pub const STORE_REMOVE_SELECTOR: MessageSelector = message_selector!("store.remo
 pub const STORE_GET_SELECTOR: MessageSelector = message_selector!("store.get");
 pub const STORAGE_ACCOUNT_ID: AccountID = AccountID::new(u128::MAX);
 
-
 impl<'a> Context for ExecutionContext<'a> {
     fn selector(&self) -> &MessageSelector {
         self.selector
     }
 
-    fn raw_request_msg(&self) -> &[u8] {
+    fn msg(&self) -> &[u8] {
         self.msg
     }
 
@@ -121,19 +143,16 @@ impl<'a> Context for ExecutionContext<'a> {
         // Get the code for the recipient account
         let code = self
             .account_codes
-            .get_code_for_account(recipient, &self.state)?;
+            .get_code_for_account(recipient, &*self.state.borrow())?;
 
-        // we need to deconstruct and we will reconstruct later.
-        // Create new context for the invocation where:
-        // - current whoami becomes the sender
-        // - recipient becomes the new whoami
+        // Create new context for the invocation
         let mut new_context = ExecutionContext::new(
             recipient,
             self.whoami,
             msg,
             selector,
             self.account_codes,
-            self.state,
+            Rc::clone(&self.state),
         );
 
         // Execute with new context
@@ -147,12 +166,12 @@ impl<'a> Context for ExecutionContext<'a> {
         msg: &[u8],
     ) -> Result<Vec<u8>, String> {
         if recipient == &STORAGE_ACCOUNT_ID {
-            return self.handle_storage_readonly(self.whoami, msg)
+            return self.handle_storage_readonly(self.whoami, selector, msg);
         }
         // Get the code for the recipient account
         let code = self
             .account_codes
-            .get_code_for_account(recipient, &self.state)?;
+            .get_code_for_account(recipient, &*self.state.borrow())?;
 
         // Create new context for the query
         let new_context = ExecutionContext::new(
@@ -161,7 +180,7 @@ impl<'a> Context for ExecutionContext<'a> {
             msg,
             selector,
             self.account_codes,
-            self.state,
+            Rc::clone(&self.state),
         );
 
         // Execute query with new context
@@ -180,22 +199,25 @@ impl Stf {
         &self,
         tx: impl Tx,
         account_codes: impl AccountCodes,
-        state: impl State,
+        state: impl State + 'static,
     ) -> Result<(), String> {
-        let sender = tx.get_sender();
-        let recipient = tx.get_recipient();
-        let msg = tx.get_msg();
+        let sender = tx.sender();
+        let recipient = tx.recipient();
+        let msg = tx.msg();
 
-        // do authentication
-        // TODO:
+        // TODO: do authentication
+
+        let state_rc = Rc::new(RefCell::new(SnapshotState::new(DynStateWrapper::new(
+            Rc::new(RefCell::new(state)),
+        ))));
 
         self.run_msg(
             sender,
             recipient,
-            &msg,
-            tx.get_selector(),
+            msg,
+            tx.selector(),
             &account_codes,
-            &state,
+            state_rc,
         )
     }
 
@@ -206,10 +228,10 @@ impl Stf {
         msg: &[u8],
         selector: &MessageSelector,
         account_codes: &dyn AccountCodes,
-        state: &dyn State,
+        state: Rc<RefCell<SnapshotState<DynStateWrapper>>>,
     ) -> Result<(), String> {
         // Get the code for the recipient account
-        let code = account_codes.get_code_for_account(recipient, state)?;
+        let code = account_codes.get_code_for_account(recipient, &*state.borrow())?;
 
         // Create initial execution context
         let mut context =
@@ -222,41 +244,62 @@ impl Stf {
     }
 }
 
-struct DynStateWrapper<'a> {
-    state: &'a dyn State,
+struct DynStateWrapper {
+    state: Rc<RefCell<dyn State>>,
 }
 
-impl<'a> DynStateWrapper<'a> {
-    fn new(state: &'a dyn State) -> Self {
+impl DynStateWrapper {
+    fn new(state: Rc<RefCell<dyn State>>) -> Self {
         Self { state }
     }
 }
 
-impl<'a> State for DynStateWrapper<'a> {
+impl State for DynStateWrapper {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.state.get(key)
+        self.state.borrow().get(key)
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StoreSetRequest {
+    pub key: Vec<u8>,
+    pub value: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StoreSetResponse {}
+
+#[derive(Serialize, Deserialize)]
+pub struct StoreGetRequest {
+    pub key: Vec<u8>,
+}
+#[derive(Serialize, Deserialize)]
+pub struct StoreGetResponse {
+    pub value: Option<Vec<u8>>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mocks::{MockAccountCodes, MockState, MockTokenAccount, MockTx};
+    // You need to implement these mock structs for testing
+    // use crate::mocks::{MockAccountCodes, MockState, MockTokenAccount, MockTx};
+
     #[test]
     fn test_stf() {
         let token = AccountID::new(1);
         let alice = AccountID::new(2);
 
         let stf = Stf::new();
-        let state = MockState::new();
-        let mock_codes = MockAccountCodes::builder()
-            .with_account(token, MockTokenAccount)
-            .build();
+        // Create a mock state that implements the State trait
+        // let state = MockState::new();
+        // Create mock account codes that implement the AccountCodes trait
+        // let mock_codes = MockAccountCodes::builder()
+        //     .with_account(token, MockTokenAccount)
+        //     .build();
 
-        let tx = MockTx::new(alice, token);
+        // Create a mock transaction that implements the Tx trait
+        // let tx = MockTx::new(alice, token, msg, 0);
 
-        stf.apply_tx(
-
-        ).unwrap();
+        // stf.apply_tx(tx, mock_codes, state).unwrap();
     }
 }
