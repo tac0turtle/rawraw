@@ -84,7 +84,7 @@ impl<S: State> SnapshotState<S> {
         }
     }
 
-    pub fn go_to_checkpoint(&mut self, snapshot: Checkpoint) -> Result<(), ()> {
+    pub fn restore_checkpoint(&mut self, snapshot: Checkpoint) -> Result<(), ()> {
         for i in snapshot.index..self.changelog.len() {
             // pop in reverse
             let change = self.changelog.pop().unwrap();
@@ -143,7 +143,7 @@ mod tests {
 
         // test revert
         snapshot_state
-            .go_to_checkpoint(before_tx_exec_snapshot)
+            .restore_checkpoint(before_tx_exec_snapshot)
             .unwrap();
 
         // test changes

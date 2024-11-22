@@ -146,6 +146,7 @@ impl<'a> Context for ExecutionContext<'a> {
             .get_code_for_account(recipient, &*self.state.borrow())?;
 
         // Create new context for the invocation
+        let checkpoint = self.state.borrow_mut().checkpoint();
         let mut new_context = ExecutionContext::new(
             recipient,
             self.whoami,
@@ -156,7 +157,16 @@ impl<'a> Context for ExecutionContext<'a> {
         );
 
         // Execute with new context
-        code.execute(&mut new_context)
+        let res = code.execute(&mut new_context);
+        match res {
+            Ok(res) => {
+                Ok(res)
+            }
+            Err(e) => {
+                self.state.borrow_mut().restore_checkpoint(checkpoint).unwrap();
+                Err(e)
+            }
+        }
     }
 
     fn query(
@@ -281,25 +291,27 @@ pub struct StoreGetResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // You need to implement these mock structs for testing
-    // use crate::mocks::{MockAccountCodes, MockState, MockTokenAccount, MockTx};
+    use crate::mocks::{MockAccountCodes, MockState, MockTokenAccount, MockTx, MsgSend};
 
     #[test]
     fn test_stf() {
         let token = AccountID::new(1);
         let alice = AccountID::new(2);
+        let bob = AccountID::new(3);
 
         let stf = Stf::new();
-        // Create a mock state that implements the State trait
-        // let state = MockState::new();
-        // Create mock account codes that implement the AccountCodes trait
-        // let mock_codes = MockAccountCodes::builder()
-        //     .with_account(token, MockTokenAccount)
-        //     .build();
+        let mut state = MockState::new();
+        let mock_codes = MockAccountCodes::builder()
+            .with_account(token, MockTokenAccount)
+            .build();
 
-        // Create a mock transaction that implements the Tx trait
-        // let tx = MockTx::new(alice, token, msg, 0);
+        let msg = serde_json::to_vec(&MsgSend{
+            to: bob,
+            amount: 100,
+        }).unwrap();
 
-        // stf.apply_tx(tx, mock_codes, state).unwrap();
+        let tx = MockTx::new(alice, token, msg, MsgSend::selector());
+
+        stf.apply_tx(tx, mock_codes, state).unwrap();
     }
 }

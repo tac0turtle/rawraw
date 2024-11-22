@@ -28,7 +28,8 @@ impl AccountID {
         self.0 == 0
     }
 
-    pub fn bytes(&self) -> [u8; 32] {
+    /// Bytes returns the bytes representation of the account ID.
+    pub fn bytes(&self) -> [u8; 16] {
         self.0.to_be_bytes()
     }
 }
