@@ -186,8 +186,7 @@ struct KVStore;
 
 impl KVStore {
     pub fn get(ctx: &dyn Context) -> Result<Option<Vec<u8>>, String> {
-        let req =
-        let r = ctx.query(&STORAGE_ACCOUNT_ID, StoreGetRequest::selector(), StoreGetResponse::default());
+        todo!()
     }
 
     pub fn set(ctx: &mut dyn Context, key: Vec<u8>, value: Vec<u8>) -> Result<(), String> {
