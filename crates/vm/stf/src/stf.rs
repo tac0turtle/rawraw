@@ -1,5 +1,7 @@
-use ixc_message_api::AccountID;
+use ixc_core_macros::message_selector;
 use ixc_message_api::header::MessageSelector;
+use ixc_message_api::AccountID;
+use crate::state::SnapshotState;
 
 pub trait Tx {
     fn get_sender(&self) -> &AccountID;
@@ -10,11 +12,21 @@ pub trait Tx {
 
 pub trait Context {
     fn selector(&self) -> &MessageSelector;
-    fn raw_request_msg(&self) -> (&[u8]);
+    fn raw_request_msg(&self) -> &[u8];
     fn whoami(&self) -> &AccountID;
     fn sender(&self) -> &AccountID;
-    fn invoke(&mut self, recipient: &AccountID, selector: &MessageSelector, msg: &[u8]) -> Result<Vec<u8>, String>;
-    fn query(&self, recipient: &AccountID, selector: &MessageSelector, msg: &[u8]) -> Result<Vec<u8>, String>;
+    fn invoke(
+        &mut self,
+        recipient: &AccountID,
+        selector: &MessageSelector,
+        msg: &[u8],
+    ) -> Result<Vec<u8>, String>;
+    fn query(
+        &self,
+        recipient: &AccountID,
+        selector: &MessageSelector,
+        msg: &[u8],
+    ) -> Result<Vec<u8>, String>;
 }
 
 pub trait Account {
@@ -27,7 +39,11 @@ pub trait State {
 }
 
 pub trait AccountCodes {
-    fn get_code_for_account(&self, account: &AccountID, state: &dyn State) -> Result<Box<dyn Account>, String>;
+    fn get_code_for_account(
+        &self,
+        account: &AccountID,
+        state: &dyn State,
+    ) -> Result<Box<dyn Account>, String>;
 }
 
 // New context implementation
@@ -37,7 +53,7 @@ struct ExecutionContext<'a> {
     msg: &'a [u8],
     selector: &'a MessageSelector,
     account_codes: &'a dyn AccountCodes,
-    state: &'a dyn State,
+    state: SnapshotState<DynStateWrapper<'a>>,
 }
 
 impl<'a> ExecutionContext<'a> {
@@ -49,6 +65,7 @@ impl<'a> ExecutionContext<'a> {
         account_codes: &'a dyn AccountCodes,
         state: &'a dyn State,
     ) -> Self {
+        let state = SnapshotState::new(DynStateWrapper::new(state));
         Self {
             whoami,
             sender,
@@ -58,11 +75,25 @@ impl<'a> ExecutionContext<'a> {
             state,
         }
     }
+
+    fn handle_storage_mutable(&mut self, sender: &AccountID, msg: &[u8]) -> Result<Vec<u8>, String> {
+        todo!()
+    }
+
+    fn handle_storage_readonly(&self, sender: &AccountID, msg: &[u8]) -> Result<Vec<u8>, String> {
+        todo!()
+    }
 }
+
+pub const STORE_SET_SELECTOR: MessageSelector = message_selector!("store.set");
+pub const STORE_REMOVE_SELECTOR: MessageSelector = message_selector!("store.remove");
+pub const STORE_GET_SELECTOR: MessageSelector = message_selector!("store.get");
+pub const STORAGE_ACCOUNT_ID: AccountID = AccountID::new(u128::MAX);
+
 
 impl<'a> Context for ExecutionContext<'a> {
     fn selector(&self) -> &MessageSelector {
-        todo!()
+        self.selector
     }
 
     fn raw_request_msg(&self) -> &[u8] {
@@ -77,10 +108,22 @@ impl<'a> Context for ExecutionContext<'a> {
         self.sender
     }
 
-    fn invoke(&mut self, recipient: &AccountID, selector: &MessageSelector, msg: &[u8]) -> Result<Vec<u8>, String> {
-        // Get the code for the recipient account
-        let code = self.account_codes.get_code_for_account(recipient, self.state)?;
+    fn invoke(
+        &mut self,
+        recipient: &AccountID,
+        selector: &MessageSelector,
+        msg: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        if recipient == &STORAGE_ACCOUNT_ID {
+            return self.handle_storage_mutable(recipient, msg);
+        }
 
+        // Get the code for the recipient account
+        let code = self
+            .account_codes
+            .get_code_for_account(recipient, &self.state)?;
+
+        // we need to deconstruct and we will reconstruct later.
         // Create new context for the invocation where:
         // - current whoami becomes the sender
         // - recipient becomes the new whoami
@@ -97,9 +140,19 @@ impl<'a> Context for ExecutionContext<'a> {
         code.execute(&mut new_context)
     }
 
-    fn query(&self, recipient: &AccountID, selector: &MessageSelector, msg: &[u8]) -> Result<Vec<u8>, String> {
+    fn query(
+        &self,
+        recipient: &AccountID,
+        selector: &MessageSelector,
+        msg: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        if recipient == &STORAGE_ACCOUNT_ID {
+            return self.handle_storage_readonly(self.whoami, msg)
+        }
         // Get the code for the recipient account
-        let code = self.account_codes.get_code_for_account(recipient, self.state)?;
+        let code = self
+            .account_codes
+            .get_code_for_account(recipient, &self.state)?;
 
         // Create new context for the query
         let new_context = ExecutionContext::new(
@@ -123,12 +176,27 @@ impl Stf {
         Self
     }
 
-    pub fn apply_tx(&self, tx: impl Tx, account_codes: impl AccountCodes, state: impl State) -> Result<(), String> {
+    pub fn apply_tx(
+        &self,
+        tx: impl Tx,
+        account_codes: impl AccountCodes,
+        state: impl State,
+    ) -> Result<(), String> {
         let sender = tx.get_sender();
         let recipient = tx.get_recipient();
         let msg = tx.get_msg();
 
-        self.run_msg(sender, recipient, &msg, tx.selector(), &account_codes, &state)
+        // do authentication
+        // TODO:
+
+        self.run_msg(
+            sender,
+            recipient,
+            &msg,
+            tx.get_selector(),
+            &account_codes,
+            &state,
+        )
     }
 
     fn run_msg(
@@ -144,14 +212,8 @@ impl Stf {
         let code = account_codes.get_code_for_account(recipient, state)?;
 
         // Create initial execution context
-        let mut context = ExecutionContext::new(
-            recipient,
-            sender,
-            msg,
-            selector,
-            account_codes,
-            state,
-        );
+        let mut context =
+            ExecutionContext::new(recipient, sender, msg, selector, account_codes, state);
 
         // Execute the message with context
         code.execute(&mut context)?;
@@ -160,10 +222,26 @@ impl Stf {
     }
 }
 
+struct DynStateWrapper<'a> {
+    state: &'a dyn State,
+}
+
+impl<'a> DynStateWrapper<'a> {
+    fn new(state: &'a dyn State) -> Self {
+        Self { state }
+    }
+}
+
+impl<'a> State for DynStateWrapper<'a> {
+    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.state.get(key)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::mocks::{MockAccountCodes, MockState, MockTx};
     use super::*;
+    use crate::mocks::{MockAccountCodes, MockState, MockTokenAccount, MockTx};
     #[test]
     fn test_stf() {
         let token = AccountID::new(1);
@@ -172,14 +250,10 @@ mod tests {
         let stf = Stf::new();
         let state = MockState::new();
         let mock_codes = MockAccountCodes::builder()
-            .with_account(token, "")
+            .with_account(token, MockTokenAccount)
             .build();
 
-        let tx = MockTx::new(
-            alice,
-            token,
-
-        );
+        let tx = MockTx::new(alice, token);
 
         stf.apply_tx(
 

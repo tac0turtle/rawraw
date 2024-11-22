@@ -14,6 +14,7 @@ pub mod message;
 pub mod resource;
 pub mod result;
 pub mod routing;
+pub mod store;
 
 pub use account_api::create_account;
 pub use context::Context;

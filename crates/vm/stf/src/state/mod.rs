@@ -1,9 +1,6 @@
 #![allow(unused)]
 use std::collections::HashMap;
-
-pub trait ReaderKv {
-    fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
-}
+use crate::stf::State;
 
 enum Value {
     Deleted,
@@ -42,7 +39,7 @@ impl StateChange {
     }
 }
 
-pub struct Snapshot {
+pub struct Checkpoint {
     index: usize,
 }
 
@@ -62,20 +59,7 @@ impl<S> SnapshotState<S> {
     }
 }
 
-impl<S: ReaderKv> SnapshotState<S> {
-    pub fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        // try to get from values
-        match self.changes.get(key) {
-            // get from disk db
-            None => self.state.get(key),
-            // found in change list
-            Some(value) => match value {
-                Value::Updated(data) => Some(data.clone()),
-                Value::Deleted => None,
-            },
-        }
-    }
-
+impl<S: State> SnapshotState<S> {
     pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
         self.changes
             .insert(key.clone(), Value::Updated(value.clone()));
@@ -94,13 +78,13 @@ impl<S: ReaderKv> SnapshotState<S> {
         self.changelog
     }
 
-    pub fn snapshot(&mut self) -> Snapshot {
-        Snapshot {
+    pub fn checkpoint(&mut self) -> Checkpoint {
+        Checkpoint {
             index: self.changelog.len() - 1,
         }
     }
 
-    pub fn revert_to_snapshot(&mut self, snapshot: Snapshot) -> Result<(), ()> {
+    pub fn go_to_checkpoint(&mut self, snapshot: Checkpoint) -> Result<(), ()> {
         for i in snapshot.index..self.changelog.len() {
             // pop in reverse
             let change = self.changelog.pop().unwrap();
@@ -111,12 +95,27 @@ impl<S: ReaderKv> SnapshotState<S> {
     }
 }
 
+impl<S: State> State for SnapshotState<S> {
+    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+        // try to get from values
+        match self.changes.get(key) {
+            // get from disk db
+            None => self.state.get(key),
+            // found in change list
+            Some(value) => match value {
+                Value::Updated(data) => Some(data.clone()),
+                Value::Deleted => None,
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     // implement in memory disk db
-    impl ReaderKv for HashMap<Vec<u8>, Vec<u8>> {
+    impl State for HashMap<Vec<u8>, Vec<u8>> {
         fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
             self.get(key).cloned()
         }
@@ -133,18 +132,18 @@ mod tests {
         // set some values
         snapshot_state.set(b"begin_block".to_vec(), b"begin_block".to_vec());
 
-        let before_ante_handler_snapshot = snapshot_state.snapshot();
+        let before_ante_handler_snapshot = snapshot_state.checkpoint();
 
         snapshot_state.set(b"ante_handler".to_vec(), b"ante".to_vec());
         snapshot_state.set(b"bob".to_vec(), b"0ixc".to_vec());
         snapshot_state.delete(b"charlie_grant");
 
-        let before_tx_exec_snapshot = snapshot_state.snapshot();
+        let before_tx_exec_snapshot = snapshot_state.checkpoint();
         snapshot_state.set(b"alice".to_vec(), b"3ixc".to_vec());
 
         // test revert
         snapshot_state
-            .revert_to_snapshot(before_tx_exec_snapshot)
+            .go_to_checkpoint(before_tx_exec_snapshot)
             .unwrap();
 
         // test changes

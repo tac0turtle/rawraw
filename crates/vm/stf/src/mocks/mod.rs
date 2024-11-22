@@ -1,9 +1,11 @@
 extern crate alloc;
 
 use alloc::collections::BTreeMap;
+use ixc_core_macros::message_selector;
 use ixc_message_api::AccountID;
 use ixc_message_api::header::MessageSelector;
-use crate::stf::{Account, AccountCodes, State, Tx};
+use serde::{Deserialize, Serialize};
+use crate::stf::{Account, AccountCodes, Context, State, Tx};
 
 pub struct MockState {
     state: BTreeMap<Vec<u8>, Vec<u8>>
@@ -60,7 +62,7 @@ impl Tx for MockTx {
     }
 
     fn get_selector(&self) -> &MessageSelector {
-        todo!()
+       &self.selector
     }
 }
 
@@ -108,10 +110,78 @@ impl Default for MockAccountCodesBuilder {
 }
 
 impl AccountCodes for MockAccountCodes {
-    fn get_code_for_account(&self, account: &AccountID, _state: impl State) -> Result<Box<dyn Account>, String> {
+    fn get_code_for_account(&self, account: &AccountID, _state: &dyn State) -> Result<Box<dyn Account>, String> {
         self.accounts
             .get(account)
             .cloned()
             .ok_or_else(|| alloc::format!("No code found for account: {:?}", account))
     }
 }
+
+pub struct MockTokenAccount;
+
+impl MockTokenAccount {
+    pub const SEND_SELECTOR: MessageSelector = message_selector!("send");
+    pub const BALANCE_SELECTOR: MessageSelector = message_selector!("balance");
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MsgSend {
+    pub to: AccountID,
+    pub amount: u128
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MsgSendResponse {
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct QueryBalance {
+    pub account: AccountID,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct QueryBalanceResponse {
+    pub amount: u128
+}
+
+
+
+impl Account for MockTokenAccount {
+    fn execute(&self, ctx: &mut dyn Context) -> Result<Vec<u8>, String> {
+        match ctx.selector() {
+            &Self::SEND_SELECTOR => {
+                let send = serde_json::from_slice::<MsgSend>(ctx.raw_request_msg()).unwrap();
+                Ok(serde_json::to_vec(&MsgSendResponse{
+
+                }).unwrap())
+            }
+            _ => Err("unknown exec request".to_string()),
+        }
+    }
+
+    fn query(&self, ctx: &dyn Context) -> Result<Vec<u8>, String> {
+       match ctx.selector() {
+           &Self::BALANCE_SELECTOR => {
+               let req  = serde_json::from_slice::<QueryBalance>(ctx.raw_request_msg()).unwrap();
+
+           }
+           _ => Err("unknown query request".to_string()),
+       }
+    }
+}
+
+struct KVStore;
+
+impl KVStore {
+    pub fn get(ctx: &dyn Context) -> Result<Option<Vec<u8>>, String> {
+
+    }
+
+    pub fn set(ctx: &mut dyn Context, key: Vec<u8>, value: Vec<u8>) -> Result<(), String> {
+        todo!()
+    }
+}
+
+struct MockEOAccount;
+
