@@ -1,6 +1,7 @@
 #![allow(unused)]
+
+use crate::value::ValueCodec;
 use crate::buffer::{Writer, WriterFactory};
-use crate::codec::ValueEncodeVisitor;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
 use crate::list::ListEncodeVisitor;
@@ -10,7 +11,7 @@ use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 
 pub fn encode_value<'a>(
-    value: &dyn ValueEncodeVisitor,
+    value: &dyn ValueCodec,
     writer_factory: &'a dyn WriterFactory,
 ) -> Result<&'a [u8], EncodeError> {
     let mut sizer = EncodeSizer { size: 0 };
@@ -123,7 +124,7 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
@@ -243,7 +244,7 @@ impl crate::encoder::Encoder for EncodeSizer {
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
@@ -346,7 +347,7 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)?;
@@ -456,7 +457,7 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
 
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError> {
         self.outer.size += 1;
         if let Some(visitor) = visitor {

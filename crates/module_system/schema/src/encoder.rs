@@ -1,6 +1,5 @@
 //! Encoder trait and error type.
 
-use crate::codec::ValueEncodeVisitor;
 use crate::enums::EnumType;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
@@ -8,6 +7,7 @@ use core::error::Error;
 use core::fmt::Display;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
+use crate::value::ValueCodec;
 
 /// The trait that encoders must implement.
 pub trait Encoder {
@@ -48,7 +48,7 @@ pub trait Encoder {
     /// Encode a optional value.
     fn encode_option(
         &mut self,
-        visitor: Option<&dyn ValueEncodeVisitor>,
+        visitor: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError>;
     /// Encode an account ID.
     fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError>;
