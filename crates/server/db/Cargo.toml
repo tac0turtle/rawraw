@@ -10,6 +10,7 @@ rust-version.workspace = true
 async-trait = "0.1.83"
 sled = "1.0.0-alpha.124"
 thiserror = "2.0.3"
+jmt = "0.10.0"
 
 [lints]
 workspace = true
