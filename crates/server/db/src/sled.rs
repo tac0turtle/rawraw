@@ -11,8 +11,6 @@ pub enum DbError {
     Sled(#[from] std::io::Error),
     #[error("Height mismatch: expected {expected}, found {found}")]
     HeightMismatch { expected: u64, found: u64 },
-    #[error("Disallowed value")]
-    DisallowedValue,
 }
 
 pub enum DbChange {
