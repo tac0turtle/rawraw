@@ -1,0 +1,15 @@
+[package]
+name = "db"
+version = "0.1.0"
+edition = "2021"
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+async-trait = "0.1.83"
+sled = "1.0.0-alpha.124"
+thiserror = "2.0.3"
+
+[lints]
+workspace = true
