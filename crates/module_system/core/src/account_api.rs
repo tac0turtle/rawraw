@@ -41,6 +41,7 @@ fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult
         packet.header_mut().in_pointer2.set_slice(init);
 
         ctx.host_backend()
+            .unwrap()
             .invoke_msg(&mut packet, ctx.memory_manager())?;
 
         let res = packet.header().in_pointer1.get(&packet);
@@ -61,8 +62,9 @@ fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
     let mut packet = create_packet(ctx, ROOT_ACCOUNT, SELF_DESTRUCT_SELECTOR)?;
     unsafe {
-        ctx.host_backend()
-            .invoke(&mut packet, ctx.memory_manager())?;
+        ctx.host_backend_mut(ctx.host_backend())
+            .unwrap()
+            .invoke_msg(&mut packet, ctx.memory_manager())?;
         Ok(())
     }
 }

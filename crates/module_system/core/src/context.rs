@@ -1,9 +1,15 @@
+use crate::error::ClientError;
+use crate::low_level::create_packet;
 use crate::message::Message;
-use core::borrow::BorrowMut;
+use crate::result::ClientResult;
+use alloc::string::String;
 use core::cell::Cell;
+use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::AccountID;
+use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
+use ixc_schema::value::OptionalValue;
 
 /// Context wraps a single message request (and possibly response as well) along with
 /// the router callbacks necessary for making nested message calls.
@@ -35,7 +41,7 @@ impl<'a> Context<'a> {
     ) -> Self {
         Self {
             mem: MemHandle::Owned(MemoryManager::new()),
-            backend: host_callbacks,
+            backend: BackendHandle::Immutable(host_callbacks),
             account,
             caller,
             gas_left: Cell::new(gas_left),
@@ -52,7 +58,7 @@ impl<'a> Context<'a> {
     ) -> Self {
         Self {
             mem: MemHandle::Borrowed(mem),
-            backend: host_callbacks,
+            backend: BackendHandle::Immutable(host_callbacks),
             account,
             caller,
             gas_left: Cell::new(gas_left),
@@ -93,32 +99,42 @@ impl<'a> Context<'a> {
         }
     }
 
+    pub unsafe fn host_backend_mut(
+        &mut self,
+        host_backend: &mut dyn HostBackend,
+    ) -> Option<&mut dyn HostBackend> {
+        match self.backend {
+            BackendHandle::Immutable(_) => None,
+            BackendHandle::Mut(host_backend) => Some(host_backend),
+        }
+    }
+
     /// Get the memory manager.
     pub fn memory_manager(&self) -> &MemoryManager {
         self.mem.get()
     }
 
-    pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
-        context: &'a mut Context,
+    pub fn dynamic_invoke_msg<'b, M: Message<'b>>(
+        &self,
         account: AccountID,
         message: M,
     ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
         unsafe {
             // encode the message body
-            let mem = context.memory_manager();
+            let mem = self.memory_manager();
             let cdc = M::Codec::default();
             let msg_body = cdc.encode_value(&message, mem)?;
 
             // create the message packet and fill in call details
-            let mut packet = create_packet(context, account, M::SELECTOR)?;
+            let mut packet = create_packet(self, account, M::SELECTOR)?;
             let header = packet.header_mut();
             header.in_pointer1.set_slice(msg_body);
 
             // invoke the message
-            let res = context
-                .host_backend_mut()
-                .unwrap()
-                .invoke_msg(&mut packet, mem);
+            let res = match self.backend {
+                BackendHandle::Mut(host_backend) => host_backend.invoke_msg(&mut packet, mem),
+                _ => Err(ErrorCode::SystemCode(SystemCode::FatalExecutionError)),
+            };
 
             let out1 = header.out_pointer1.get(&packet);
 

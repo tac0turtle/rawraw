@@ -35,14 +35,6 @@ pub trait VM {
         callbacks: &dyn HostBackend,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
-    /// Run a query handler within the virtual machine.
-    fn run_handler_system(
-        &mut self,
-        vm_handler_id: &str,
-        message_packet: &mut MessagePacket,
-        callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
 }
 
 /// A descriptor for a handler.

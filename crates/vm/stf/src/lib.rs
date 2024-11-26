@@ -314,7 +314,7 @@ impl STF {
                 on_create_header.message_selector = ON_CREATE_SELECTOR;
                 on_create_header.in_pointer1.set_slice(init_data);
 
-                let res = vm.run_handler_system(
+                let res = vm.run_handler_msg(
                     &handler_id.vm_handler_id,
                     &mut on_create_packet,
                     &self.wrap_backend(state_handler),
