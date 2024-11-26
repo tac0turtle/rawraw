@@ -167,7 +167,7 @@ impl<ST: StateHandler> HostBackend for ExecContext<'_, ST> {
     ) -> Result<(), ErrorCode> {
         let state_handler = self.state_handler;
         self.stf
-            .invoke_query::<ST>(&state_handler, message_packet, allocator)
+            .invoke_query::<ST>(state_handler.borrow_mut(), message_packet, allocator)
     }
     fn invoke_msg(
         &mut self,
@@ -184,7 +184,7 @@ impl STF {
     /// Invoke a message packet in the context of the provided state handler.
     pub fn invoke_query<ST: StateHandler>(
         &self,
-        state_handler: &ST,
+        state_handler: &mut ST,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
@@ -198,13 +198,8 @@ impl STF {
 
         let target_account = message_packet.header().account;
         // check if the target account is a system account
-        match target_account {
-            HYPERVISOR_ACCOUNT => {
-                return self.handle_system_message(state_handler, message_packet, allocator)
-            }
-            STATE_ACCOUNT => return state_handler.handle(message_packet, allocator),
-            _ => {}
-        }
+
+        state_handler.handle_query(message_packet, allocator)?;
 
         // find the account's handler ID and retrieve its VM
         let handler_id = self
@@ -219,7 +214,7 @@ impl STF {
         state_handler.push_frame(target_account, false). // TODO add volatility support
             map_err(|_| SystemCode(InvalidHandler))?;
         // run the handler
-        let res = vm.run_handler(
+        let res = vm.run_handler_query(
             &handler_id.vm_handler_id,
             message_packet,
             &self.wrap_backend(state_handler),
@@ -235,7 +230,7 @@ impl STF {
 
     pub fn invoke_msg<ST: StateHandler>(
         &self,
-        state_handler: &ST,
+        state_handler: &mut ST,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
@@ -249,13 +244,8 @@ impl STF {
 
         let target_account = message_packet.header().account;
         // check if the target account is a system account
-        match target_account {
-            HYPERVISOR_ACCOUNT => {
-                return self.handle_system_message(state_handler, message_packet, allocator)
-            }
-            STATE_ACCOUNT => return state_handler.handle(message_packet, allocator),
-            _ => {}
-        }
+
+        state_handler.handle_msg(message_packet, allocator)?;
 
         // find the account's handler ID and retrieve its VM
         let handler_id = self
@@ -270,7 +260,7 @@ impl STF {
         state_handler.push_frame(target_account, false). // TODO add volatility support
             map_err(|_| SystemCode(InvalidHandler))?;
         // run the handler
-        let res = vm.run_handler(
+        let res = vm.run_handler_msg(
             &handler_id.vm_handler_id,
             message_packet,
             &self.wrap_backend(state_handler),
@@ -324,7 +314,7 @@ impl STF {
                 on_create_header.message_selector = ON_CREATE_SELECTOR;
                 on_create_header.in_pointer1.set_slice(init_data);
 
-                let res = vm.run_handler(
+                let res = vm.run_handler_system(
                     &handler_id.vm_handler_id,
                     &mut on_create_packet,
                     &self.wrap_backend(state_handler),

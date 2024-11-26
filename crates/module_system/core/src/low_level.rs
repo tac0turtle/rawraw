@@ -34,7 +34,10 @@ pub fn dynamic_invoke_query<'a, 'b, M: Message<'b>>(
         header.in_pointer1.set_slice(msg_body);
 
         // invoke the message
-        let res = context.host_backend().invoke_query(&mut packet, mem);
+        let res = context
+            .host_backend()
+            .unwrap()
+            .invoke_query(&mut packet, mem);
 
         let out1 = header.out_pointer1.get(&packet);
 

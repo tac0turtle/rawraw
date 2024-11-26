@@ -19,9 +19,25 @@ pub struct HandlerID {
 pub trait VM {
     /// Describe a handler within the virtual machine.
     fn describe_handler(&self, vm_handler_id: &str) -> Option<HandlerDescriptor>;
-    /// Run a handler within the virtual machine.
-    fn run_handler(
+    /// Run a query handler within the virtual machine.
+    fn run_handler_query(
         &self,
+        vm_handler_id: &str,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>;
+    /// Run a msg handler within the virtual machine.
+    fn run_handler_msg(
+        &mut self,
+        vm_handler_id: &str,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>;
+    /// Run a query handler within the virtual machine.
+    fn run_handler_system(
+        &mut self,
         vm_handler_id: &str,
         message_packet: &mut MessagePacket,
         callbacks: &dyn HostBackend,
