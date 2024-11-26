@@ -1,107 +1,112 @@
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 COMMENT = _{ "//" ~ (!"\n" ~ ANY)* }
 
-identifier = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
-type = { identifier ~ ("[" ~ "]")? }
-number = @{ ASCII_DIGIT+ }
-
-// Basic types
-str_type = { "Str" }
-u128_type = { "u128" }
-account_id = { "AccountID" }
-
-// Field definition
-field = { identifier ~ ":" ~ type }
-field_list = { field ~ ("," ~ field)* ~ ","? }
-
-// Event definition
-event_def = {
-    "event" ~ identifier ~ "{" ~ field_list ~ "}"
-}
-
-// Struct definition
-struct_def = {
-    "struct" ~ identifier ~ "{" ~ field_list ~ "}"
-}
-
-// Function parameters
-param = { ("key" ~ identifier | identifier) ~ ":" ~ type }
-param_list = { param ~ ("," ~ param)* }
-
-// Function definition
-events_clause = { "events" ~ "(" ~ identifier ~ ")" }
-tx_def = {
-    "tx" ~ identifier ~ "(" ~ param_list ~ ")" ~ events_clause? ~ ";"
-}
-query_def = {
-    "query" ~ identifier ~ "(" ~ param_list ~ ")" ~ type ~ ";"
-}
-
-// Interface definition
-interface_def = {
-    "interface" ~ identifier ~ "{" ~
-    (event_def | struct_def | tx_def | query_def)* ~
-    "}"
-}
-
-// Handler state definitions
-state_field = { identifier ~ ":" ~ type }
-state_def = {
-    identifier ~ ":" ~ state_field ~ ("," ~ state_field)* ~ "=>" ~ state_field ~ ";"
-}
-client_def = {
-    "client" ~ identifier ~ ":" ~ type ~ ";"
-}
-
-// Handler definition
-handler_def = {
-    "handler" ~ identifier ~ "{" ~
-    (state_def | client_def)* ~
-    "}"
-}
-
-// Implementation block
-block_stmt = {
-    identifier ~ "=" ~ expr ~ ";"
-}
-for_stmt = {
-    "for" ~ identifier ~ "in" ~ expr ~ "{" ~
-    stmt* ~
-    "}"
-}
-expr = {
-    identifier ~ ("." ~ identifier)* |
-    msg_sender |
-    number
-}
-msg_sender = { "msg.sender" }
-stmt = {
-    block_stmt |
-    for_stmt |
-    func_call ~ ";" |
-    emit_stmt ~ ";"
-}
-func_call = { identifier ~ "." ~ identifier ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
-emit_stmt = {
-    "emit" ~ identifier ~ "{" ~ (identifier ~ ("," ~ identifier)*) ~ "}"
-}
-
-func_body = {
-    "{" ~ stmt* ~ expr? ~ "}"
-}
-
-impl_func = {
-    (tx_def | query_def) ~ func_body
-}
-
-impl_def = {
-    "impl" ~ identifier ~ "for" ~ identifier ~ "{" ~
-    impl_func* ~
-    "}"
-}
-
 file = {
     SOI ~
-    (interface_def | handler_def | impl_def)* ~
+    item* ~
     EOI
 }
+
+item = {item_interface | item_handler }
+
+item_interface = { "interface" ~ identifier ~ "{" ~  "}" }
+// InterfaceBody = { InterfaceItem* }
+// InterfaceItem = { }
+
+item_handler = { "handler" ~ identifier ~ "{" ~  "}" }
+// HandlerBody = { HandlerItem* }
+// HandlerItem = { }
+
+identifier = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+typeexpr = { identifier ~ ("[" ~ "]")? }
+number = @{ ASCII_DIGIT+ }
+
+// // Field definition
+// field = { identifier ~ ":" ~ typeexpr }
+// field_list = { field ~ ("," ~ field)* ~ ","? }
+//
+// // Event definition
+// event_def = {
+//     "event" ~ identifier ~ "{" ~ field_list ~ "}"
+// }
+//
+// // Struct definition
+// struct_def = {
+//     "struct" ~ identifier ~ "{" ~ field_list ~ "}"
+// }
+//
+// // Function parameters
+// param = { ("key" ~ identifier | identifier) ~ ":" ~ typeexpr }
+// param_list = { param ~ ("," ~ param)* }
+//
+// // Function definition
+// events_clause = { "events" ~ "(" ~ identifier ~ ")" }
+// tx_decl = {
+//     "tx" ~ identifier ~ "(" ~ param_list ~ ")" ~ events_clause? ~ ";"
+// }
+// query_decl = {
+//     "query" ~ identifier ~ "(" ~ param_list ~ ")" ~ typeexpr ~ ";"
+// }
+//
+// // Interface definition
+// interface_def = {
+//     "interface" ~ identifier ~ "{" ~
+//     (event_def | struct_def | tx_decl | query_decl)* ~
+//     "}"
+// }
+//
+// // Handler state definitions
+// state_field = { identifier ~ ":" ~ typeexpr }
+// state_def = {
+//     identifier ~ ":" ~ state_field ~ ("," ~ state_field)* ~ "=>" ~ state_field ~ ";"
+// }
+// client_def = {
+//     "client" ~ identifier ~ ":" ~ typeexpr ~ ";"
+// }
+//
+// // Handler definition
+// handler_def = {
+//     "handler" ~ identifier ~ "{" ~
+//     (state_def | client_def)* ~
+//     "}"
+// }
+//
+// // Implementation block
+// block_stmt = {
+//     identifier ~ "=" ~ expr ~ ";"
+// }
+// for_stmt = {
+//     "for" ~ identifier ~ "in" ~ expr ~ "{" ~
+//     stmt* ~
+//     "}"
+// }
+// expr = {
+//     identifier ~ ("." ~ identifier)* |
+//     msg_sender |
+//     number
+// }
+// msg_sender = { "msg.sender" }
+// stmt = {
+//     block_stmt |
+//     for_stmt |
+//     func_call ~ ";" |
+//     emit_stmt ~ ";"
+// }
+// func_call = { identifier ~ "." ~ identifier ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
+// emit_stmt = {
+//     "emit" ~ identifier ~ "{" ~ (identifier ~ ("," ~ identifier)*) ~ "}"
+// }
+//
+// func_body = {
+//     "{" ~ stmt* ~ expr? ~ "}"
+// }
+//
+// impl_func = {
+//     (tx_decl | query_decl) ~ func_body
+// }
+//
+// impl_def = {
+//     "impl" ~ identifier ~ "for" ~ identifier ~ "{" ~
+//     impl_func* ~
+//     "}"
+// }
