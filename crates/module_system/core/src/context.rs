@@ -15,7 +15,7 @@ use ixc_schema::value::OptionalValue;
 /// the router callbacks necessary for making nested message calls.
 pub struct Context<'a> {
     pub(self) mem: MemHandle<'a>,
-    pub(crate) backend: BackendHandle<'a>,
+    pub(crate) backend: &'a mut dyn HostBackend,
     pub(crate) account: AccountID, // 16 bytes
     pub(crate) caller: AccountID,  // 16 bytes
     #[allow(unused)]
@@ -26,10 +26,10 @@ enum MemHandle<'a> {
     Borrowed(&'a MemoryManager),
     Owned(MemoryManager),
 }
-enum BackendHandle<'a> {
-    Mut(&'a mut dyn HostBackend),
-    Immutable(&'a dyn HostBackend),
-}
+// enum BackendHandle<'a> {
+//     Mut(&'a mut dyn HostBackend),
+//     Immutable(&'a dyn HostBackend),
+// }
 
 impl<'a> Context<'a> {
     /// Create a new context from a message packet and host callbacks.
@@ -39,13 +39,14 @@ impl<'a> Context<'a> {
         gas_left: u64,
         host_callbacks: &'a dyn HostBackend,
     ) -> Self {
-        Self {
-            mem: MemHandle::Owned(MemoryManager::new()),
-            backend: BackendHandle::Immutable(host_callbacks),
-            account,
-            caller,
-            gas_left: Cell::new(gas_left),
-        }
+        // Self {
+        //     mem: MemHandle::Owned(MemoryManager::new()),
+        //     backend: BackendHandle::Immutable(host_callbacks),
+        //     account,
+        //     caller,
+        //     gas_left: Cell::new(gas_left),
+        // }
+        todo!()
     }
 
     /// Create a new context from a message packet and host callbacks with a pre-allocated memory manager.
@@ -56,13 +57,14 @@ impl<'a> Context<'a> {
         host_callbacks: &'a dyn HostBackend,
         mem: &'a MemoryManager,
     ) -> Self {
-        Self {
-            mem: MemHandle::Borrowed(mem),
-            backend: BackendHandle::Immutable(host_callbacks),
-            account,
-            caller,
-            gas_left: Cell::new(gas_left),
-        }
+        // Self {
+        //     mem: MemHandle::Borrowed(mem),
+        //     backend: BackendHandle::Immutable(host_callbacks),
+        //     account,
+        //     caller,
+        //     gas_left: Cell::new(gas_left),
+        // }
+        todo!()
     }
 
     pub fn new_mut(
@@ -73,7 +75,7 @@ impl<'a> Context<'a> {
     ) -> Self {
         Self {
             mem: MemHandle::Owned(MemoryManager::new()),
-            backend: BackendHandle::Mut(host_callbacks),
+            backend: host_callbacks,
             account,
             caller,
             gas_left: Cell::new(gas_left),
@@ -93,20 +95,22 @@ impl<'a> Context<'a> {
 
     /// Get the host backend.
     pub unsafe fn host_backend(&self) -> Option<&dyn HostBackend> {
-        match self.backend {
-            BackendHandle::Immutable(backend) => Some(backend),
-            BackendHandle::Mut(_) => None,
-        }
+        // match self.backend {
+        //     BackendHandle::Immutable(backend) => Some(backend),
+        //     BackendHandle::Mut(_) => None,
+        // }
+        todo!()
     }
 
     pub unsafe fn host_backend_mut(
         &mut self,
         host_backend: &mut dyn HostBackend,
     ) -> Option<&mut dyn HostBackend> {
-        match self.backend {
-            BackendHandle::Immutable(_) => None,
-            BackendHandle::Mut(host_backend) => Some(host_backend),
-        }
+        // match self.backend {
+        //     BackendHandle::Immutable(_) => None,
+        //     BackendHandle::Mut(host_backend) => Some(host_backend),
+        // }
+        todo!()
     }
 
     /// Get the memory manager.
@@ -115,13 +119,14 @@ impl<'a> Context<'a> {
     }
 
     pub fn dynamic_invoke_msg<'b, M: Message<'b>>(
-        &self,
+        &mut self,
         account: AccountID,
         message: M,
     ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
         unsafe {
             // encode the message body
-            let mem = self.memory_manager();
+            let mem = &self.mem;
+            let mem = mem.get();
             let cdc = M::Codec::default();
             let msg_body = cdc.encode_value(&message, mem)?;
 
@@ -131,10 +136,7 @@ impl<'a> Context<'a> {
             header.in_pointer1.set_slice(msg_body);
 
             // invoke the message
-            let res = match self.backend {
-                BackendHandle::Mut(host_backend) => host_backend.invoke_msg(&mut packet, mem),
-                _ => Err(ErrorCode::SystemCode(SystemCode::FatalExecutionError)),
-            };
+            let res = self.backend.invoke_msg(&mut packet, mem);
 
             let out1 = header.out_pointer1.get(&packet);
 

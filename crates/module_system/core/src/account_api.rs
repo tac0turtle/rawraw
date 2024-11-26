@@ -34,26 +34,27 @@ pub fn create_account_raw<'a>(
 
 /// Creates a new account for the named handler with opaque initialization data.
 fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
-    let mut packet = create_packet(ctx, ROOT_ACCOUNT, CREATE_SELECTOR)?;
-
-    unsafe {
-        packet.header_mut().in_pointer1.set_slice(name.as_bytes());
-        packet.header_mut().in_pointer2.set_slice(init);
-
-        ctx.host_backend()
-            .unwrap()
-            .invoke_msg(&mut packet, ctx.memory_manager())?;
-
-        let res = packet.header().in_pointer1.get(&packet);
-        if res.len() != size_of::<u128>() {
-            return Err(ClientError::new(
-                ErrorCode::SystemCode(EncodingError),
-                "invalid account ID".into(),
-            ));
-        }
-
-        Ok(AccountID::new(u128::from_le_bytes(res.try_into().unwrap())))
-    }
+    // let mut packet = create_packet(ctx, ROOT_ACCOUNT, CREATE_SELECTOR)?;
+    //
+    // unsafe {
+    //     packet.header_mut().in_pointer1.set_slice(name.as_bytes());
+    //     packet.header_mut().in_pointer2.set_slice(init);
+    //
+    //     ctx.host_backend()
+    //         .unwrap()
+    //         .invoke_msg(&mut packet, ctx.memory_manager())?;
+    //
+    //     let res = packet.header().in_pointer1.get(&packet);
+    //     if res.len() != size_of::<u128>() {
+    //         return Err(ClientError::new(
+    //             ErrorCode::SystemCode(EncodingError),
+    //             "invalid account ID".into(),
+    //         ));
+    //     }
+    //
+    //     Ok(AccountID::new(u128::from_le_bytes(res.try_into().unwrap())))
+    // }
+    todo!()
 }
 
 /// Self-destructs the account.
@@ -61,12 +62,13 @@ fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult
 /// SAFETY: This function is unsafe because it can be used to destroy the account and all its state.
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
     let mut packet = create_packet(ctx, ROOT_ACCOUNT, SELF_DESTRUCT_SELECTOR)?;
-    unsafe {
-        ctx.host_backend_mut(ctx.host_backend())
-            .unwrap()
-            .invoke_msg(&mut packet, ctx.memory_manager())?;
-        Ok(())
-    }
+    // unsafe {
+    //     ctx.host_backend_mut(ctx.host_backend())
+    //         .unwrap()
+    //         .invoke_msg(&mut packet, ctx.memory_manager())?;
+    //     Ok(())
+    // }
+    todo!()
 }
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
