@@ -15,7 +15,7 @@ members = [
 #    "vm/wasmtime",
     "crates/vm/api",
     "crates/vm/stf",
-    "example",
+    "example", "crates/dsl/dsl",
 ]
 
 [workspace.package]

@@ -1,0 +1,21 @@
+[package]
+name = "dsl"
+version = "0.1.0"
+edition = "2021"
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+syn = "2.0.89"
+quote = "1.0.37"
+prettyplease = "0.2.25"
+anyhow = "1.0.93"
+logos = "0.14.2"
+lalrpop-util = "0.22.0"
+
+[build-dependencies]
+lalrpop = "0.22.0"
+
+[lints]
+workspace = true

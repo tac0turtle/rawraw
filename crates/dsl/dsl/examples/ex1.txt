@@ -1,0 +1,42 @@
+ // line comment
+ interface BankAPI {
+    event EventTransfer {
+        from: AccountID,
+        to: AccountID,
+        denom: Str,
+        amount: u128,
+    }
+
+    struct Coin {
+        denom: Str,
+        amount: u128,
+    }
+
+    tx send(key to: AccountID, coins: Coin[]) events(EventTransfer);
+    query get_balance(account: AccountID, denom: Str) u128;
+ }
+
+ handler Bank {
+    denom_admins: denom: Str => admin: AccountID;
+    balances: account: AccountID, denom: Str => amount: U128Accumulator;
+    supply: denom: Str => amount: U128Accumulator;
+    client block_info: BlockInfoAPI;
+ }
+
+ impl BankAPI for Bank {
+    tx send(to: AccountID, coins: Coin[]) {
+        from = msg.sender;
+        for coin in coins {
+            denom = coin.denom;
+            amount = coin.amount;
+            balances.safe_sub(from, denom, amount);
+            balances.add(to, denom, amount);
+            emit EventTransfer { from, to, denom, amount };
+        }
+    }
+
+    query get_balance(account: AccountID, denom: Str) u128 {
+        balances.get(account, denom)
+    }
+ }
+
