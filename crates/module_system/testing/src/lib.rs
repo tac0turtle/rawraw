@@ -18,16 +18,17 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
+use std::borrow::Borrow;
 
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_stf::STF;
+use ixc_stf::vm_manager::VMManager;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
-    hypervisor: RefCell<STF>,
+    vm_manager: RefCell<VMManager>,
     state: RefCell<VersionedMultiStore>,
     native_vm: NativeVM,
     #[allow(unused)]
@@ -37,7 +38,7 @@ pub struct TestApp {
 
 impl Default for TestApp {
     fn default() -> Self {
-        let mut hypervisor: STF = Default::default();
+        let mut hypervisor: VMManager = Default::default();
         let native_vm = NativeVM::new();
         hypervisor
             .register_vm("native", std::boxed::Box::new(native_vm.clone()))
@@ -46,7 +47,7 @@ impl Default for TestApp {
         let mem = MemoryManager::new();
         let state = VersionedMultiStore::default();
         let test_app = Self {
-            hypervisor: RefCell::new(hypervisor),
+            vm_manager: RefCell::new(hypervisor),
             native_vm,
             mem,
             mock_id: Cell::new(0),
@@ -140,9 +141,8 @@ impl HostBackend for TestApp {
             .new_transaction(message_packet.header().caller, true)
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
 
-        self.hypervisor
-            .borrow_mut()
-            .invoke(&mut tx, message_packet, allocator)?;
+        let vm_manager = self.vm_manager.borrow();
+        ixc_stf::invoke(&*vm_manager, &mut tx, message_packet, allocator)?;
 
         state
             .commit(tx)
