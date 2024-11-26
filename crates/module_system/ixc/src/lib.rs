@@ -3,7 +3,7 @@
 #[doc(inline)]
 pub use ixc_core::resource::Resources;
 #[doc(inline)]
-pub use ixc_core::{bail, create_account, ensure, error, Context, EventBus, Result, Service};
+pub use ixc_core::{bail, create_account, ensure, error, Context, EventBus, Result, Service, new_unique_id};
 
 #[doc(inline)]
 pub use ixc_collections::{Accumulator, AccumulatorMap, Item, Map};
