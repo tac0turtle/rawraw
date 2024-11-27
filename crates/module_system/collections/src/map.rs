@@ -12,16 +12,19 @@ use ixc_schema::state_object::{
 pub struct Map<K, V> {
     _k: core::marker::PhantomData<K>,
     _v: core::marker::PhantomData<V>,
-    prefix: u8,
+    prefix: Vec<u8>,
 }
 
 impl<K, V> Map<K, V> {
     /// Creates a new map with the given prefix.
-    pub const fn new(prefix: u8) -> Self {
+    pub fn new(scope: &[u8], prefix: u8) -> Self {
+        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
+        prefix_vec.push(prefix); // Add the prefix
+        prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Self {
             _k: core::marker::PhantomData,
             _v: core::marker::PhantomData,
-            prefix: prefix,
+            prefix: prefix_vec,
         }
     }
 }
@@ -32,7 +35,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
     where
         L: Borrow<K::In<'b>>,
     {
-        let key_bz = encode_object_key::<K>(self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
 
         let value_bz = KVStoreClient.get(ctx, key_bz)?;
         let value_bz = match value_bz {
@@ -50,7 +53,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         L: Borrow<K::In<'a>>,
         U: Borrow<V::In<'a>>,
     {
-        let key_bz = encode_object_key::<K>(self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
         let value_bz = encode_object_value::<V>(value.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.set(ctx, key_bz, value_bz) }
     }
@@ -60,17 +63,20 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
     where
         L: Borrow<K::In<'a>>,
     {
-        let key_bz = encode_object_key::<K>(self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.delete(ctx, key_bz) }
     }
 }
 
 unsafe impl<K, V> StateObjectResource for Map<K, V> {
-    unsafe fn new(_scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
+    unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
+        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
+        prefix_vec.push(prefix); // Add the prefix
+        prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Ok(Self {
             _k: core::marker::PhantomData,
             _v: core::marker::PhantomData,
-            prefix,
+            prefix: prefix_vec,
         })
     }
 }

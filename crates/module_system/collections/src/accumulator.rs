@@ -105,17 +105,17 @@ impl<K: ObjectKey> AccumulatorMap<K> {
 }
 
 unsafe impl StateObjectResource for Accumulator {
-    unsafe fn new(_scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
+    unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
         Ok(Accumulator {
-            item: Item::new(prefix),
+            item: Item::new(scope, prefix),
         })
     }
 }
 
 unsafe impl<K> StateObjectResource for AccumulatorMap<K> {
-    unsafe fn new(_scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
+    unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
         Ok(AccumulatorMap {
-            map: Map::new(prefix),
+            map: Map::new(scope, prefix),
         })
     }
 }

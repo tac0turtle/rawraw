@@ -11,9 +11,9 @@ pub struct Set<K> {
 }
 
 impl<K> Set<K> {
-    pub const fn new(prefix: u8) -> Self {
+    pub fn new(scope: &[u8], prefix: u8) -> Self {
         Self {
-            map: Map::new(prefix),
+            map: Map::new(scope, prefix),
         }
     }
 }
