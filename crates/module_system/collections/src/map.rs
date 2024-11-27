@@ -1,6 +1,7 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
 use crate::store_client::KVStoreClient;
 use core::borrow::Borrow;
+use core::marker::PhantomData;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
@@ -10,8 +11,7 @@ use ixc_schema::state_object::{
 
 /// A key-value map.
 pub struct Map<K, V> {
-    _k: core::marker::PhantomData<K>,
-    _v: core::marker::PhantomData<V>,
+    _phantom: (PhantomData<K>, PhantomData<V>),
     prefix: Vec<u8>,
 }
 
@@ -22,8 +22,7 @@ impl<K, V> Map<K, V> {
         prefix_vec.push(prefix); // Add the prefix
         prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Self {
-            _k: core::marker::PhantomData,
-            _v: core::marker::PhantomData,
+            _phantom: (PhantomData, PhantomData),
             prefix: prefix_vec,
         }
     }
@@ -74,8 +73,7 @@ unsafe impl<K, V> StateObjectResource for Map<K, V> {
         prefix_vec.push(prefix); // Add the prefix
         prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Ok(Self {
-            _k: core::marker::PhantomData,
-            _v: core::marker::PhantomData,
+            _phantom: (PhantomData, PhantomData),
             prefix: prefix_vec,
         })
     }
