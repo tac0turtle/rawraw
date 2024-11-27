@@ -3,11 +3,11 @@ use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::state_object::ObjectValue;
 use crate::structs::{StructDecodeVisitor, StructType};
+use crate::value::ValueCodec;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use crate::value::ValueCodec;
 
 pub fn decode_value<'a>(
     input: &'a [u8],
@@ -165,10 +165,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         Ok(i16::from_le_bytes(bz.try_into().unwrap()))
     }
 
-    fn decode_option(
-        &mut self,
-        visitor: &mut dyn ValueCodec<'a>,
-    ) -> Result<bool, DecodeError> {
+    fn decode_option(&mut self, visitor: &mut dyn ValueCodec<'a>) -> Result<bool, DecodeError> {
         if self.buf.is_empty() {
             Ok(false)
         } else {
@@ -293,10 +290,7 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         self.outer.decode_i16()
     }
 
-    fn decode_option(
-        &mut self,
-        visitor: &mut dyn ValueCodec<'a>,
-    ) -> Result<bool, DecodeError> {
+    fn decode_option(&mut self, visitor: &mut dyn ValueCodec<'a>) -> Result<bool, DecodeError> {
         let present = self.decode_bool()?;
         if present {
             visitor.decode(self)?;
