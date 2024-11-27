@@ -14,7 +14,7 @@ pub struct Item<V> {
 
 impl<V> Item<V> {
     pub const fn new(prefix: u8) -> Self {
-        Self{
+        Self {
             map: Map::new(prefix),
         }
     }
@@ -45,7 +45,5 @@ where
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_item() {
-
-    }
+    fn test_item() {}
 }

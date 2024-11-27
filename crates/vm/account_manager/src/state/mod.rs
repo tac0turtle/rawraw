@@ -27,16 +27,18 @@ pub enum StateChange {
 impl StateChange {
     fn revert(self, changes: &mut HashMap<Vec<u8>, Value>) {
         match self {
-            StateChange::Update { key, value, previous_value } => {
-                match previous_value {
-                    Some(previous_value) => {
-                        changes.insert(key, previous_value);
-                    }
-                    None => {
-                        changes.remove(&key);
-                    }
+            StateChange::Update {
+                key,
+                value,
+                previous_value,
+            } => match previous_value {
+                Some(previous_value) => {
+                    changes.insert(key, previous_value);
                 }
-            }
+                None => {
+                    changes.remove(&key);
+                }
+            },
 
             StateChange::Delete { key, old_value } => {
                 changes.insert(
@@ -86,9 +88,14 @@ impl<S: ReaderKv> SnapshotState<S> {
     }
 
     pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
-        let previous_value = self.changes
+        let previous_value = self
+            .changes
             .insert(key.clone(), Value::Updated(value.clone()));
-        self.changelog.push(StateChange::Update { key, value, previous_value });
+        self.changelog.push(StateChange::Update {
+            key,
+            value,
+            previous_value,
+        });
     }
 
     pub fn delete(&mut self, key: &[u8]) {

@@ -2,7 +2,6 @@
 
 use alloc::vec::Vec;
 use core::borrow::Borrow;
-use std::marker::PhantomData;
 use ixc_core::low_level::create_packet;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
@@ -14,6 +13,7 @@ use ixc_message_api::AccountID;
 use ixc_schema::state_object::{
     decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
 };
+use std::marker::PhantomData;
 
 /// A key-value map.
 pub struct Map<K, V> {
@@ -25,7 +25,7 @@ pub struct Map<K, V> {
 
 impl<K, V> Map<K, V> {
     pub const fn new(prefix: u8) -> Self {
-        Self{
+        Self {
             _k: PhantomData::<K>,
             _v: PhantomData::<V>,
             prefix,
@@ -124,7 +124,5 @@ impl KVStoreClient {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_map() {
-
-    }
+    fn test_map() {}
 }

@@ -40,7 +40,7 @@ impl<K: ObjectKey> Set<K> {
 
     pub fn delete<'a, L>(&mut self, ctx: &mut Context, key: L) -> ClientResult<()>
     where
-        L: Borrow<K::In<'a>>
+        L: Borrow<K::In<'a>>,
     {
         self.map.delete(ctx, key)
     }
