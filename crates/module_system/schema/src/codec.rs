@@ -2,8 +2,7 @@
 
 use crate::buffer::WriterFactory;
 use crate::decoder::DecodeError;
-use crate::decoder::Decoder;
-use crate::encoder::{EncodeError, Encoder};
+use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;

@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 
-use crate::binary::encoder::{encode_value, EncodeSizer};
+use crate::binary::encoder::EncodeSizer;
 use crate::buffer::WriterFactory;
 use crate::decoder::{decode_one, DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
@@ -8,7 +8,7 @@ use crate::fields::FieldTypes;
 use crate::mem::MemoryManager;
 use crate::state_object::field_types::unnamed_struct_type;
 use crate::state_object::value_field::ObjectFieldValue;
-use crate::structs::{StructDecodeVisitor, StructEncodeVisitor, StructType};
+use crate::structs::StructType;
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
 

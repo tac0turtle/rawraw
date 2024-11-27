@@ -188,7 +188,6 @@ fn collect_publish_targets(
 
 #[derive(deluxe::ExtractAttributes, Clone, Debug)]
 #[deluxe(attributes(publish))]
-
 struct Publish {
     package: Option<String>,
     name: Option<String>,
