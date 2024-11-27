@@ -47,8 +47,8 @@ unsafe impl<T> StateObjectResource for Item<T> {
             return Err(InitializationError::ExceedsLength);
         }
         let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
-        slice[0..scope.len()].copy_from_slice(scope);
-        slice[scope.len()] = prefix;
+        slice[0] = prefix;
+        slice[1..=scope.len()].copy_from_slice(scope);
 
         let bytes = Prefix {
             length: scope.len() as u8,
