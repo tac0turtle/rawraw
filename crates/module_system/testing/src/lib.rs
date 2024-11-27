@@ -20,10 +20,10 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
+use ixc_account_manager::STF;
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_stf::STF;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
