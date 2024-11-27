@@ -12,6 +12,15 @@ pub struct Item<V> {
     map: Map<(), V>,
 }
 
+impl<K> Item<K> {
+    /// Creates a new item with the given prefix.
+    pub const fn new(prefix: u8) -> Self {
+        Self {
+            map: Map::new(prefix),
+        }
+    }
+}
+
 impl<V: ObjectValue> Item<V>
 where
     for<'a> V::Out<'a>: Default,
@@ -32,9 +41,9 @@ where
 }
 
 unsafe impl<T> StateObjectResource for Item<T> {
-    unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
+    unsafe fn new(_scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
         Ok(Self {
-            map: Map::new(scope, prefix)?,
+            map: Map::new(prefix),
         })
     }
 }

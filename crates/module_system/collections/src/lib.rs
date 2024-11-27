@@ -4,16 +4,14 @@
 extern crate alloc;
 
 mod errors;
-mod index;
 mod item;
 mod map;
 mod set;
+mod store_client;
 mod unique;
 // mod uint_map;
 pub mod accumulator;
 mod ordered_map;
-mod ordered_set;
-mod table;
 
 pub use map::Map;
 // pub use set::{Set};
