@@ -52,7 +52,7 @@ pub enum InitializationError {
     AccountNotFound,
 }
 
-impl<'a> ResourceScope<'a> {
+impl ResourceScope<'_> {
     /// Resolves an account name to an account ID or returns a default account ID if provided.
     pub fn resolve_account(
         &self,

@@ -74,7 +74,6 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
 
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
-const HAS_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.has");
 const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
@@ -87,14 +86,11 @@ impl KVStoreClient {
         let header = packet.header_mut();
         unsafe {
             header.in_pointer1.set_slice(key);
-            match ctx
+            if let Err(ErrorCode::HandlerCode(0)) = ctx
                 .host_backend()
                 .invoke(&mut packet, &ctx.memory_manager())
             {
-                Err(ErrorCode::HandlerCode(0)) => {
-                    return Ok(None);
-                }
-                _ => {}
+                return Ok(None);
             }
         }
         let res_bz = unsafe { packet.header().out_pointer1.get(&packet) };

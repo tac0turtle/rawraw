@@ -12,10 +12,9 @@ use crate::field::Field;
 use crate::kind::Kind;
 use crate::schema::SchemaType;
 use crate::structs::StructSchema;
-use ixc_message_api::AccountID;
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
-pub trait Type: Private {
+pub trait Type {
     /// The kind of the type.
     const KIND: Kind;
 

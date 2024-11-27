@@ -2,24 +2,24 @@
 
 use crate::context::Context;
 use crate::error::ClientError;
-use crate::handler::{Client, Handler, InitMessage, Service};
+use crate::handler::{Handler, InitMessage, Service};
 use crate::low_level::create_packet;
 use crate::result::ClientResult;
 use ixc_core_macros::message_selector;
+use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::SystemCode::EncodingError;
-use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
 
 /// Creates a new account for the specified handler.
-pub fn create_account<'a, H: Handler>(
+pub fn create_account<H: Handler>(
     ctx: &mut Context,
-    init: H::Init<'a>,
+    init: H::Init<'_>,
 ) -> ClientResult<<H as Service>::Client> {
     let cdc = <<H as Handler>::Init<'_> as InitMessage<'_>>::Codec::default();
     let init_bz = cdc.encode_value(&init, ctx.memory_manager())?;
 
-    let account_id = do_create_account(ctx, <H as Handler>::NAME, &init_bz)?;
+    let account_id = do_create_account(ctx, <H as Handler>::NAME, init_bz)?;
     Ok(<H as Service>::new_client(account_id))
 }
 

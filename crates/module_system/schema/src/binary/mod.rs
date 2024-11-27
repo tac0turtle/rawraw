@@ -3,12 +3,11 @@
 use crate::binary::decoder::decode_value;
 use crate::binary::encoder::encode_value;
 use crate::buffer::WriterFactory;
-use crate::codec::{Codec, ValueDecodeVisitor, ValueEncodeVisitor};
+use crate::codec::Codec;
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
-use crate::state_object::{ObjectKey, ObjectValue};
-use crate::value::SchemaValue;
+use crate::value::ValueCodec;
 
 pub(crate) mod decoder;
 pub(crate) mod encoder;
@@ -20,7 +19,7 @@ pub struct NativeBinaryCodec;
 impl Codec for NativeBinaryCodec {
     fn encode_value<'a>(
         &self,
-        value: &dyn ValueEncodeVisitor,
+        value: &dyn ValueCodec,
         writer_factory: &'a dyn WriterFactory,
     ) -> Result<&'a [u8], EncodeError> {
         encode_value(value, writer_factory)
@@ -30,7 +29,7 @@ impl Codec for NativeBinaryCodec {
         &self,
         input: &'a [u8],
         memory_manager: &'a MemoryManager,
-        visitor: &mut dyn ValueDecodeVisitor<'a>,
+        visitor: &mut dyn ValueCodec<'a>,
     ) -> Result<(), DecodeError> {
         decode_value(input, memory_manager, visitor)
     }
@@ -45,9 +44,8 @@ mod tests {
     use ixc_schema_macros::SchemaValue;
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
-    use simple_time::{Duration, Time};
 
-    #[derive(SchemaValue, Debug, Eq, PartialEq, Arbitrary)]
+    #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]
     struct ABitOfEverything {
         primitives: Prims,
@@ -62,7 +60,7 @@ mod tests {
         op: Option<Prims>,
     }
 
-    #[derive(SchemaValue, Debug, Eq, PartialEq, Arbitrary)]
+    #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]
     struct Prims {
         a_u8: u8,
@@ -81,7 +79,7 @@ mod tests {
     proptest! {
         #[test]
         fn test_roundtrip(value: ABitOfEverything) {
-            let cdc = super::NativeBinaryCodec::default();
+            let cdc = super::NativeBinaryCodec;
             let mem = MemoryManager::new();
             let bz = cdc.encode_value(&value, &mem).unwrap();
             let value2 = decode_value(&cdc, bz, &mem).unwrap();

@@ -53,10 +53,9 @@ impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for AllocatorVecBuilder<'a, T
     }
 
     fn next(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
-        let mut state = T::DecodeState::default();
-        T::visit_decode_state(&mut state, decoder)?;
-        let value = T::finish_decode_state(state, decoder.mem_manager())?;
-        self.get_xs(decoder.mem_manager()).push(value);
+        let mut x = T::default();
+        x.decode(decoder)?;
+        self.get_xs(decoder.mem_manager()).push(x);
         Ok(())
     }
 }
@@ -69,9 +68,9 @@ impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for alloc::vec::Vec<T> {
     }
 
     fn next(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
-        let mut state = T::DecodeState::default();
-        T::visit_decode_state(&mut state, decoder)?;
-        self.push(T::finish_decode_state(state, decoder.mem_manager())?);
+        let mut x = T::default();
+        x.decode(decoder)?;
+        self.push(x);
         Ok(())
     }
 }

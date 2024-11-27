@@ -51,7 +51,7 @@ mod vesting {
                 eb.emit(
                     ctx,
                     &UnlockEvent {
-                        to: beneficiary.clone(),
+                        to: beneficiary,
                         amount,
                     },
                 )?;
@@ -74,7 +74,7 @@ mod vesting {
         ) -> Result<(), UnlockError>;
     }
 
-    #[derive(SchemaValue, Clone, PartialEq, Debug)]
+    #[derive(SchemaValue, Clone, PartialEq, Debug, Default)]
     #[sealed]
     pub struct Coin {
         pub denom: String,
@@ -105,11 +105,11 @@ mod vesting {
 
     #[publish]
     impl ReceiveHook for FixedVesting {
-        fn on_receive(&self, ctx: &mut Context, from: AccountID, amount: &[Coin]) -> Result<()> {
+        fn on_receive(&self, ctx: &mut Context, _from: AccountID, amount: &[Coin]) -> Result<()> {
             if ctx.caller() != self.bank_client.account_id() {
                 bail!("only the bank can send funds to this account");
             }
-            if let Some(_) = self.amount.get(ctx)? {
+            if (self.amount.get(ctx)?).is_some() {
                 bail!("already received deposit");
             }
             if amount.len() != 1 {
@@ -122,7 +122,7 @@ mod vesting {
         }
     }
 
-    #[derive(SchemaValue)]
+    #[derive(SchemaValue, Clone, Default)]
     #[non_exhaustive]
     pub struct UnlockEvent {
         pub to: AccountID,
