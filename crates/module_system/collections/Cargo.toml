@@ -15,6 +15,7 @@ bump-scope = "0.9.2"
 simple_time = { path = "../util/simple_time", version = "0.0.2" }
 num_enum = "0.7.3"
 thiserror = "1.0.63"
+constcat = "0.5.1"
 
 [lints]
 workspace = true

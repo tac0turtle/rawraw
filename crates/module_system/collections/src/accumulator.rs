@@ -1,4 +1,5 @@
 //! A u128 accumulator map.
+use crate::map::{Prefix, MAX_SIZE};
 use crate::{Item, Map};
 use core::borrow::Borrow;
 use ixc_core::error::{convert_client_error, ClientError};
@@ -106,22 +107,38 @@ impl<K: ObjectKey> AccumulatorMap<K> {
 
 unsafe impl StateObjectResource for Accumulator {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
-        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
-        prefix_vec.push(prefix); // Add the prefix
-        prefix_vec.extend_from_slice(scope); // Add the scope if needed
+        if scope.len() + 1 > MAX_SIZE {
+            return Err(InitializationError::ExceedsLength);
+        }
+        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
+        slice[0..scope.len()].copy_from_slice(scope);
+        slice[scope.len()] = prefix;
+
+        let bytes = Prefix {
+            length: scope.len() as u8,
+            data: slice,
+        };
         Ok(Accumulator {
-            item: Item::new(prefix_vec.leak()),
+            item: Item::new(bytes),
         })
     }
 }
 
 unsafe impl<K> StateObjectResource for AccumulatorMap<K> {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
-        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
-        prefix_vec.push(prefix); // Add the prefix
-        prefix_vec.extend_from_slice(scope); // Add the scope if needed
+        if scope.len() + 1 > MAX_SIZE {
+            return Err(InitializationError::ExceedsLength);
+        }
+        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
+        slice[0..scope.len()].copy_from_slice(scope);
+        slice[scope.len()] = prefix;
+
+        let bytes = Prefix {
+            length: scope.len() as u8,
+            data: slice,
+        };
         Ok(AccumulatorMap {
-            map: Map::new(prefix_vec.leak()),
+            map: Map::new(bytes),
         })
     }
 }
