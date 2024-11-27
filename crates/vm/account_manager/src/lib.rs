@@ -13,7 +13,6 @@ use ixc_message_api::code::SystemCode::{
 use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
-use ixc_vm_api::VM;
 use std::alloc::Layout;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
@@ -26,7 +25,13 @@ pub trait CodeManager {
     /// the handler actually exists.
     fn resolve_handler_id(&self, handler_id: &[u8]) -> Option<Vec<u8>>;
     /// Runs a handler with the provided message packet and host backend.
-    fn run_handler(&self, handler_id: &[u8], message_packet: &mut MessagePacket, backend: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode>;
+    fn run_handler(
+        &self,
+        handler_id: &[u8],
+        message_packet: &mut MessagePacket,
+        backend: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>;
 }
 
 /// An error when creating a new transaction.
@@ -169,8 +174,8 @@ pub fn invoke<C: CodeManager, ST: StateHandler>(
     }
 
     // find the account's handler ID
-    let handler_id = get_account_handler_id(state_handler, target_account)
-        .ok_or(SystemCode(AccountNotFound))?;
+    let handler_id =
+        get_account_handler_id(state_handler, target_account).ok_or(SystemCode(AccountNotFound))?;
 
     // push an execution frame for the target account
     state_handler.push_frame(target_account, false). // TODO add volatility support
@@ -204,7 +209,8 @@ fn handle_system_message<C: CodeManager, ST: StateHandler>(
             let init_data = create_header.in_pointer2.get(message_packet);
 
             // resolve the handler ID and retrieve the VM
-            let handler_id = code_handler.resolve_handler_id(handler_id)
+            let handler_id = code_handler
+                .resolve_handler_id(handler_id)
                 .ok_or(SystemCode(HandlerNotFound))?;
 
             // get the next account ID and initialize the account storage
@@ -248,8 +254,9 @@ fn handle_system_message<C: CodeManager, ST: StateHandler>(
                 res
             }
         },
-        SELF_DESTRUCT_SELECTOR => destroy_current_account_data(state_handler)
-            .map_err(|_| SystemCode(FatalExecutionError)),
+        SELF_DESTRUCT_SELECTOR => {
+            destroy_current_account_data(state_handler).map_err(|_| SystemCode(FatalExecutionError))
+        }
         _ => Err(SystemCode(MessageNotHandled)),
     }
 }

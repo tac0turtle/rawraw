@@ -14,13 +14,14 @@ pub mod message;
 pub mod resource;
 pub mod result;
 pub mod routing;
+mod unique_id;
 
 pub use account_api::create_account;
 pub use context::Context;
 pub use events::EventBus;
 pub use handler::Service;
-
 pub use result::Result;
+pub use unique_id::new_unique_id;
 
 /// Create an error.
 #[macro_export]

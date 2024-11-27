@@ -18,13 +18,12 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use std::borrow::Borrow;
 
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
+use ixc_account_manager::vm_manager::VMManager;
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_stf::vm_manager::VMManager;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
@@ -142,7 +141,7 @@ impl HostBackend for TestApp {
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
 
         let vm_manager = self.vm_manager.borrow();
-        ixc_stf::invoke(&*vm_manager, &mut tx, message_packet, allocator)?;
+        ixc_account_manager::invoke(&*vm_manager, &mut tx, message_packet, allocator)?;
 
         state
             .commit(tx)

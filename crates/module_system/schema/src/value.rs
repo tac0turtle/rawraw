@@ -26,10 +26,7 @@ pub trait SchemaValue<'a>: ValueCodec<'a> + Default + 'a {
 }
 
 impl<'a> ValueCodec<'a> for u8 {
-    fn decode(
-        &mut self,
-        decoder: &mut dyn Decoder<'a>,
-    ) -> Result<(), DecodeError> {
+    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
         *self = decoder.decode_u8()?;
         Ok(())
     }

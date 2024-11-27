@@ -4,12 +4,12 @@ use crate::enums::EnumType;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::structs::{StructDecodeVisitor, StructType};
+use crate::value::ValueCodec;
+use crate::SchemaValue;
 use core::error::Error;
 use core::fmt::{Display, Formatter};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
-use crate::SchemaValue;
-use crate::value::ValueCodec;
 
 /// The trait that decoders must implement.
 pub trait Decoder<'a> {
@@ -55,10 +55,7 @@ pub trait Decoder<'a> {
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError>;
     /// Decode an optional value. The visitor will only be called if the value is present.
     /// Returns `true` if the value is present, `false` if it is not.
-    fn decode_option(
-        &mut self,
-        visitor: &mut dyn ValueCodec<'a>,
-    ) -> Result<bool, DecodeError>;
+    fn decode_option(&mut self, visitor: &mut dyn ValueCodec<'a>) -> Result<bool, DecodeError>;
     /// Decode an account ID.
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError>;
     /// Encode an enum value.
@@ -108,9 +105,7 @@ impl From<DecodeError> for ErrorCode {
 }
 
 /// Decode a single value.
-pub fn decode_one<'a, V: SchemaValue<'a>>(
-    decoder: &mut dyn Decoder<'a>,
-) -> Result<V, DecodeError> {
+pub fn decode_one<'a, V: SchemaValue<'a>>(decoder: &mut dyn Decoder<'a>) -> Result<V, DecodeError> {
     let mut x = V::default();
     x.decode(decoder)?;
     Ok(x)
