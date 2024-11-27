@@ -11,10 +11,8 @@ syn = "2.0.89"
 quote = "1.0.37"
 prettyplease = "0.2.25"
 anyhow = "1.0.93"
-pest = "2.7.14"
-pest_derive = "2.7.14"
 logos = "0.14.2"
-lalrpop-util = "0.22.0"
+lalrpop-util = { version = "0.22.0", features = ["lexer", "unicode"] }
 
 [build-dependencies]
 lalrpop = "0.22.0"

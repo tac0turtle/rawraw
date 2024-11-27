@@ -1,12 +1,14 @@
 #![allow(missing_docs)]
 
 mod lex;
+mod ast;
+
 use logos::Logos;
 use std::io::Read;
 use std::ops::Range;
-use pest::Parser;
-use pest_derive::Parser;
+use lalrpop_util::lalrpop_mod;
 
+lalrpop_mod!(grammar);
 
 struct File {
     items: Vec<Item>,
@@ -93,10 +95,6 @@ struct ExprCall {
 }
 
 fn parse(input: &str) -> Result<File, anyhow::Error> {
-    let res = DSLParser::parse(Rule::file, &input)?;
-    for pair in res {
-        pair.as_rule();
-    }
     Ok(File { items: vec![] })
 }
 
@@ -109,10 +107,6 @@ fn parse(input: &str) -> Result<File, anyhow::Error> {
 //     })
 // }
 //
-
-#[derive(Parser)]
-#[grammar = "grammar.pest"]
-struct DSLParser;
 
 fn compile() -> anyhow::Result<()> {
     let mut input = String::new();

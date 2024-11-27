@@ -1,3 +1,4 @@
+use std::fmt;
 use logos::{Logos, SpannedIter};
 
 #[derive(Logos, Debug, PartialEq, Eq)]
@@ -76,9 +77,31 @@ pub enum Token<'a> {
     #[token("?")]
     Question,
 }
+
+impl <'a> fmt::Display for Token<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+// pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 //
 // pub struct Lexer<'a> {
 //     token_stream: SpannedIter<'a, Token<'a>>,
 // }
-
-// impl <'a> Lexer
+//
+// impl<'input> Lexer<'input> {
+//     pub fn new(input: &'input str) -> Self {
+//         Self { token_stream: Token::lexer(input).spanned() }
+//     }
+// }
+//
+// impl<'input> Iterator for Lexer<'input> {
+//     type Item = Result<Token<'input>, LexicalError>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.token_stream
+//             .next()
+//             .map(|(token, span)| Ok((span.start, token?, span.end)))
+//     }
+// }
