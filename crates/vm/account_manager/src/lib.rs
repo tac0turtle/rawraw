@@ -1,8 +1,19 @@
 //! Rust Cosmos SDK RFC 003 hypervisor/state-handler function implementation.
 
+mod authz;
+mod code_manager;
+mod id_generator;
 mod state;
+mod state_handler;
+mod store;
 pub mod vm_manager;
 
+use crate::authz::AuthorizationMiddleware;
+use crate::code_manager::CodeManager;
+use crate::id_generator::IDGenerator;
+use crate::state_handler::{
+    destroy_account_data, get_account_handler_id, init_next_account, StateHandler,
+};
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
@@ -16,57 +27,97 @@ use ixc_message_api::AccountID;
 use std::alloc::Layout;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use crate::PushFrameError::VolatileAccessError;
 
-/// A code manager is responsible for resolving handler IDs to code.
-pub trait CodeManager {
-    /// Resolves a handler ID provided by a caller to the handler ID which should be stored in state
-    /// or return None if the handler ID is not valid.
-    /// This allows for multiple ways of addressing a single handler in code and for ensuring that
-    /// the handler actually exists.
-    fn resolve_handler_id(&self, handler_id: &[u8]) -> Option<Vec<u8>>;
-    /// Runs a handler with the provided message packet and host backend.
-    fn run_handler(
-        &self,
-        handler_id: &[u8],
-        message_packet: &mut MessagePacket,
-        backend: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+pub fn invoke<
+    'a,
+    CM: CodeManager,
+    ST: StateHandler,
+    IDG: IDGenerator,
+    AUTHZ: AuthorizationMiddleware,
+>(
+    id_generator: &'a mut IDG,
+    code_handler: &'a CM,
+    state_handler: &'a mut ST,
+    authz: &'a AUTHZ,
+    message_packet: &mut MessagePacket,
+    allocator: &dyn Allocator,
+) -> Result<(), ErrorCode> {
+    let mut exec_context = ExecContext::new(id_generator, code_handler, state_handler, authz);
+    let mut exec_frame = ExecFrame::new(message_packet.header().account, &mut exec_context);
+    todo!()
 }
 
-/// An error when creating a new transaction.
-pub struct NewTxError;
+struct ExecContext<
+    'a,
+    CM: CodeManager,
+    ST: StateHandler,
+    IDG: IDGenerator,
+    AUTHZ: AuthorizationMiddleware,
+> {
+    id_generator: &'a mut IDG,
+    code_manager: &'a CM,
+    state_handler: &'a mut ST,
+    authz: &'a AUTHZ,
+}
+
+impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
+    ExecContext<'a, CM, ST, IDG, AUTHZ>
+{
+    fn new(
+        id_generator: &'a mut IDG,
+        code_handler: &'a CM,
+        state_handler: &'a mut ST,
+        authz: &'a AUTHZ,
+    ) -> Self {
+        Self {
+            id_generator,
+            code_manager: code_handler,
+            state_handler,
+            authz,
+        }
+    }
+}
+
+struct ExecFrame<
+    'a,
+    CM: CodeManager,
+    ST: StateHandler,
+    IDG: IDGenerator,
+    AUTHZ: AuthorizationMiddleware,
+> {
+    active_account: AccountID,
+    exec_context: &'a mut ExecContext<'a, CM, ST, IDG, AUTHZ>,
+}
+
+impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
+    ExecFrame<'a, CM, ST, IDG, AUTHZ>
+{
+    fn new(
+        active_account: AccountID,
+        exec_context: &'a mut ExecContext<'a, CM, ST, IDG, AUTHZ>,
+    ) -> Self {
+        Self {
+            active_account,
+            exec_context,
+        }
+    }
+}
+
+struct QueryContext<'a, CM: CodeManager, ST: StateHandler> {
+    code_manager: &'a CM,
+    state_handler: &'a ST,
+}
+
+struct QueryFrame<'a, CM: CodeManager, ST: StateHandler> {
+    active_account: AccountID,
+    query_context: &'a QueryContext<'a, CM, ST>,
+}
 
 /// An error when committing a transaction.
 pub enum CommitError {
     /// Attempted to commit when the call stack was not empty.
     UnfinishedCallStack,
-}
-
-/// A transaction.
-pub trait StateHandler {
-    /// Initialize the account storage and push a new frame for the newly initialized storage.
-    fn init_account_storage(&mut self, account: AccountID) -> Result<(), PushFrameError>;
-    /// Push a new execution frame.
-    fn push_frame(&mut self, account: AccountID, volatile: bool) -> Result<(), PushFrameError>;
-    /// Pop the current execution frame.
-    fn pop_frame(&mut self, commit: bool) -> Result<(), PopFrameError>;
-    /// Get the active account.
-    fn active_account(&self) -> AccountID;
-    /// Removes the data for the active account.
-    fn self_destruct_account(&mut self) -> Result<(), ()>;
-    /// Directly read a key from the account's KV store.
-    fn raw_kv_get(&self, account_id: AccountID, key: &[u8]) -> Option<Vec<u8>>;
-    /// Directly write a key to the account's raw KV store.
-    fn raw_kv_set(&self, account_id: AccountID, key: &[u8], value: &[u8]);
-    /// Directly delete a key from the account's raw KV store.
-    fn raw_kv_delete(&self, account_id: AccountID, key: &[u8]);
-    /// Handle a message packet.
-    fn handle(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
 }
 
 /// A push frame error.
@@ -83,191 +134,274 @@ pub enum PopFrameError {
     NoFrames,
 }
 
-struct ExecContext<'a, C: CodeManager, ST: StateHandler> {
-    code_handler: &'a C,
-    state_handler: RefCell<&'a mut ST>,
-}
-
-fn get_account_handler_id<ST: StateHandler>(
-    state_handler: &ST,
-    account_id: AccountID,
-) -> Option<Vec<u8>> {
-    let id: u128 = account_id.into();
-    let key = format!("h:{}", id);
-    state_handler.raw_kv_get(HYPERVISOR_ACCOUNT, key.as_bytes())
-}
-
-fn init_next_account<ST: StateHandler>(
-    state_handler: &mut ST,
-    handler_id: &[u8],
-) -> Result<AccountID, PushFrameError> {
-    let id = state_handler
-        .raw_kv_get(HYPERVISOR_ACCOUNT, b"next_account_id")
-        .map_or(ACCOUNT_ID_NON_RESERVED_START, |v| {
-            u128::from_le_bytes(v.try_into().unwrap())
-        });
-    // we push a new storage frame here because if initialization fails all of this gets rolled back
-    state_handler.init_account_storage(AccountID::new(id))?;
-    state_handler.raw_kv_set(
-        HYPERVISOR_ACCOUNT,
-        b"next_account_id",
-        &(id + 1).to_le_bytes(),
-    );
-    state_handler.raw_kv_set(
-        HYPERVISOR_ACCOUNT,
-        format!("h:{}", id).as_bytes(),
-        handler_id,
-    );
-    Ok(AccountID::new(id))
-}
-
-fn destroy_current_account_data<ST: StateHandler>(state_handler: &mut ST) -> Result<(), ()> {
-    let current_account = state_handler.active_account();
-    let id: u128 = current_account.into();
-    let key = format!("h:{}", id);
-    state_handler.raw_kv_delete(HYPERVISOR_ACCOUNT, key.as_bytes());
-    state_handler.self_destruct_account()
-}
-
-const ACCOUNT_ID_NON_RESERVED_START: u128 = u16::MAX as u128 + 1;
-const HYPERVISOR_ACCOUNT: AccountID = AccountID::new(1);
+const ROOT_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
-impl<'a, C: CodeManager, ST: StateHandler> HostBackend for ExecContext<'a, C, ST> {
+// impl<'a, C: CodeManager, ST: StateHandler> HostBackend for ExecContext<'a, C, ST> {
+//     fn invoke(
+//         &self,
+//         message_packet: &mut MessagePacket,
+//         allocator: &dyn Allocator,
+//     ) -> Result<(), ErrorCode> {
+//         let mut state_handler = self.state_handler.borrow_mut();
+//         self.invoke::<C, ST>(message_packet, allocator)
+//         invoke::<C, ST>(
+//             self.active_account,
+//             self.code_handler,
+//             state_handler.borrow_mut(),
+//             message_packet,
+//             allocator,
+//         )
+//     }
+// }
+
+/// Invoke a message packet in the context of the provided state handler.
+impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
+    ExecFrame<'a, CM, ST, IDG, AUTHZ>
+{
     fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let caller = message_packet.header().caller;
+        let target_account = message_packet.header().account;
+
+        // check if the caller matches the active account
+        if caller != self.active_account {
+            if target_account == STATE_ACCOUNT {
+                // when calling the state handler, we NEVER allow impersonation
+                return Err(SystemCode(UnauthorizedCallerAccess));
+            }
+            // otherwise we check the authorization middleware to see if impersonation is allowed
+            self.exec_context
+                .authz
+                .authorize(message_packet.header().caller, message_packet)?;
+        }
+
+        self.exec_context.invoke(message_packet, allocator)
+    }
+}
+
+impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
+    HostBackend for ExecFrame<'a, CM, ST, IDG, AUTHZ>
+{
+    fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        self.invoke(message_packet, allocator)
+    }
+
+    fn invoke_query(
         &self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let mut state_handler = self.state_handler.borrow_mut();
-        invoke::<C, ST>(
-            self.code_handler,
-            state_handler.borrow_mut(),
-            message_packet,
-            allocator,
-        )
+        self.exec_context.invoke_query(message_packet, allocator)
     }
 }
 
-/// Invoke a message packet in the context of the provided state handler.
-pub fn invoke<C: CodeManager, ST: StateHandler>(
-    code_handler: &C,
-    state_handler: &mut ST,
-    message_packet: &mut MessagePacket,
-    allocator: &dyn Allocator,
-) -> Result<(), ErrorCode> {
-    // check if the caller matches the active account
-    let account = state_handler.active_account();
-    if message_packet.header().caller != account {
-        return Err(SystemCode(UnauthorizedCallerAccess));
+impl<'a, CM: CodeManager, ST: StateHandler>
+    HostBackend for QueryFrame<'a, CM, ST>
+{
+    fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        Err(SystemCode(SystemCode::VolatileAccessError))
     }
-    // TODO support authorization middleware
 
-    let target_account = message_packet.header().account;
-    // check if the target account is a system account
-    match target_account {
-        HYPERVISOR_ACCOUNT => {
-            return handle_system_message(code_handler, state_handler, message_packet, allocator)
+    fn invoke_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let target_account = message_packet.header().account;
+        message_packet.header_mut().caller = self.active_account;
+        if target_account == STATE_ACCOUNT {
+            return self.query_context.state_handler.handler_query(message_packet, allocator);
         }
-        STATE_ACCOUNT => return state_handler.handle(message_packet, allocator),
-        _ => {}
+
+        message_packet.header_mut().caller = AccountID::EMPTY;
+
+        // find the account's handler ID
+        let handler_id = get_account_handler_id(self.query_context.state_handler, target_account)
+            .ok_or(SystemCode(AccountNotFound))?;
+
+        // create a nested execution frame for the target account
+        let frame = QueryFrame {
+            active_account: target_account,
+            query_context: self,
+        };
+
+        // run the handler
+        self.query_context.code_manager
+            .run_query(&handler_id, message_packet, &frame, allocator)
     }
-
-    // find the account's handler ID
-    let handler_id =
-        get_account_handler_id(state_handler, target_account).ok_or(SystemCode(AccountNotFound))?;
-
-    // push an execution frame for the target account
-    state_handler.push_frame(target_account, false). // TODO add volatility support
-            map_err(|_| SystemCode(InvalidHandler))?;
-    // run the handler
-    let res = code_handler.run_handler(
-        &handler_id,
-        message_packet,
-        &wrap_backend(code_handler, state_handler),
-        allocator,
-    );
-    // pop the execution frame
-    state_handler
-        .pop_frame(res.is_ok())
-        .map_err(|_| SystemCode(InvalidHandler))?;
-
-    res
 }
 
-fn handle_system_message<C: CodeManager, ST: StateHandler>(
-    code_handler: &C,
-    state_handler: &mut ST,
-    message_packet: &mut MessagePacket,
-    allocator: &dyn Allocator,
-) -> Result<(), ErrorCode> {
-    match message_packet.header().message_selector {
-        CREATE_SELECTOR => unsafe {
-            // get the input data
-            let create_header = message_packet.header_mut();
-            let handler_id = create_header.in_pointer1.get(message_packet);
-            let init_data = create_header.in_pointer2.get(message_packet);
+impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
+    ExecContext<'a, CM, ST, IDG, AUTHZ>
+{
+    fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let target_account = message_packet.header().account;
+        if target_account == STATE_ACCOUNT {
+            return self.state_handler.handle(message_packet, allocator);
+        }
 
-            // resolve the handler ID and retrieve the VM
-            let handler_id = code_handler
-                .resolve_handler_id(handler_id)
-                .ok_or(SystemCode(HandlerNotFound))?;
+        // begin a transaction
+        self.state_handler
+            .begin_tx()
+            .map_err(|_| SystemCode(InvalidHandler))?;
 
-            // get the next account ID and initialize the account storage
-            let id = init_next_account(state_handler, &handler_id)
+        let res = if target_account == ROOT_ACCOUNT {
+            // if the target account is the root account, we can just run the system message
+            self.handle_system_message(message_packet, allocator)
+        } else {
+            // find the account's handler ID
+            let handler_id = get_account_handler_id(self.state_handler, target_account)
+                .ok_or(SystemCode(AccountNotFound))?;
+
+            // create a nested execution frame for the target account
+            let mut frame = ExecFrame::new(target_account, self);
+
+            // run the handler
+            self.code_manager
+                .run_message(&handler_id, message_packet, &frame, allocator)
+        };
+
+        // commit or rollback the transaction
+        if res.is_ok() {
+            self.state_handler
+                .commit_tx()
                 .map_err(|_| SystemCode(InvalidHandler))?;
-
-            // create a packet for calling on_create
-            let mut on_create_packet = MessagePacket::allocate(allocator, 0)
-                .map_err(|_| SystemCode(FatalExecutionError))?;
-            let on_create_header = on_create_packet.header_mut();
-            // TODO: how do we specify a selector that can only be called by the system?
-            on_create_header.account = id;
-            on_create_header.caller = create_header.caller;
-            on_create_header.message_selector = ON_CREATE_SELECTOR;
-            on_create_header.in_pointer1.set_slice(init_data);
-
-            let res = code_handler.run_handler(
-                &handler_id,
-                &mut on_create_packet,
-                &wrap_backend(code_handler, state_handler),
-                allocator,
-            );
-            let is_ok = match res {
-                Ok(_) => true,
-                Err(SystemCode(MessageNotHandled)) => true,
-                _ => false,
-            };
-            state_handler
-                .pop_frame(is_ok)
-                .map_err(|_| SystemCode(FatalExecutionError))?;
-
-            if is_ok {
-                let mut res = allocator
-                    .allocate(Layout::from_size_align_unchecked(16, 16))
-                    .map_err(|_| SystemCode(FatalExecutionError))?;
-                let id: u128 = id.into();
-                res.as_mut().copy_from_slice(&id.to_le_bytes());
-                create_header.in_pointer1.set_slice(res.as_ref());
-                Ok(())
-            } else {
-                res
-            }
-        },
-        SELF_DESTRUCT_SELECTOR => {
-            destroy_current_account_data(state_handler).map_err(|_| SystemCode(FatalExecutionError))
+        } else {
+            self.state_handler
+                .rollback_tx()
+                .map_err(|_| SystemCode(InvalidHandler))?;
         }
-        _ => Err(SystemCode(MessageNotHandled)),
-    }
-}
 
-fn wrap_backend<'a, C: CodeManager, ST: StateHandler>(
-    code_handler: &'a C,
-    state_handler: &'a mut ST,
-) -> ExecContext<'a, C, ST> {
-    ExecContext {
-        code_handler,
-        state_handler: RefCell::new(state_handler),
+        res
+    }
+
+    fn invoke_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        // we never pass the caller to query handlers and any value set in the caller field is ignored
+        message_packet.header_mut().caller = AccountID::EMPTY;
+
+        let target_account = message_packet.header().account;
+        if target_account == STATE_ACCOUNT {
+            return self.state_handler.handle_query(message_packet, allocator);
+        }
+
+        // find the account's handler ID
+        let handler_id = get_account_handler_id(self.state_handler, target_account)
+            .ok_or(SystemCode(AccountNotFound))?;
+
+        // create a nested execution frame for the target account
+        let ctx = QueryContext {
+            code_manager: self.code_manager,
+            state_handler: self.state_handler,
+        };
+        let frame = QueryFrame {
+            active_account: target_account,
+            query_context: &ctx,
+        };
+
+        // run the handler
+        self.code_manager
+            .run_query(&handler_id, message_packet, &frame, allocator)
+    }
+
+    fn handle_system_message(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        unsafe {
+            match message_packet.header().message_selector {
+                CREATE_SELECTOR => self.handle_create(message_packet, allocator),
+                SELF_DESTRUCT_SELECTOR => self.handle_self_destruct(message_packet),
+                _ => Err(SystemCode(MessageNotHandled)),
+            }
+        }
+    }
+
+    unsafe fn handle_create(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        // get the input data
+        let create_header = message_packet.header_mut();
+        let handler_id = create_header.in_pointer1.get(message_packet);
+        let init_data = create_header.in_pointer2.get(message_packet);
+
+        // resolve the handler ID and retrieve the VM
+        let handler_id = self
+            .code_manager
+            .resolve_handler_id(handler_id)
+            .ok_or(SystemCode(HandlerNotFound))?;
+
+        // get the next account ID and initialize the account storage
+        let id = init_next_account(self.id_generator, self.state_handler, &handler_id)
+            .map_err(|_| SystemCode(InvalidHandler))?;
+
+        // create a packet for calling on_create
+        let mut on_create_packet =
+            MessagePacket::allocate(allocator, 0).map_err(|_| SystemCode(FatalExecutionError))?;
+        let on_create_header = on_create_packet.header_mut();
+        on_create_header.account = id;
+        on_create_header.caller = create_header.caller;
+        on_create_header.message_selector = ON_CREATE_SELECTOR;
+        on_create_header.in_pointer1.set_slice(init_data);
+
+        // run the on_create handler
+        let mut frame = ExecFrame::new(id, self);
+        let res = self.code_manager.run_system_message(
+            &handler_id,
+            &mut on_create_packet,
+            &mut frame,
+            allocator,
+        );
+
+        let is_ok = match res {
+            Ok(_) => true,
+            // we accept the case where the handler doesn't have an on_create method
+            Err(SystemCode(MessageNotHandled)) => true,
+            _ => false,
+        };
+
+        if is_ok {
+            // the result is ID of the newly created account
+            let mut res = allocator
+                .allocate(Layout::from_size_align_unchecked(16, 16))
+                .map_err(|_| SystemCode(FatalExecutionError))?;
+            let id: u128 = id.into();
+            res.as_mut().copy_from_slice(&id.to_le_bytes());
+            create_header.in_pointer1.set_slice(res.as_ref());
+            Ok(())
+        } else {
+            res
+        }
+    }
+
+    unsafe fn handle_self_destruct(
+        &mut self,
+        message_packet: &mut MessagePacket,
+    ) -> Result<(), ErrorCode> {
+        destroy_account_data(self.state_handler, message_packet.header().caller)
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 }
 

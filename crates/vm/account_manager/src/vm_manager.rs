@@ -43,7 +43,7 @@ impl CodeManager for VMManager {
             .map(|handler_id| format_handler_id(&handler_id).into_bytes())
     }
 
-    fn run_handler(
+    fn run_message(
         &self,
         handler_id: &[u8],
         message_packet: &mut MessagePacket,
