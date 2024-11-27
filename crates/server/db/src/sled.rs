@@ -1,5 +1,8 @@
 use crate::State;
 use std::path::Path;
+use jmt::storage::{LeafNode, Node, NodeBatch, NodeKey, TreeReader, TreeWriter};
+use jmt::{KeyHash, OwnedValue, Version};
+use borsh::{to_vec, BorshDeserialize, BorshSerialize};
 
 pub struct Sled {
     db: sled::Db,
@@ -176,13 +179,46 @@ impl State for ViewableState {
     }
 }
 
+impl TreeReader for ViewableState {
+    fn get_node_option(&self, node_key: &NodeKey) -> anyhow::Result<Option<Node>> {
+        let key = to_vec(node_key)?;
+        let value = self.get(&key)?;
+        Ok(value
+            .map(|v| Node::deserialize_reader(&mut &v[..]))
+            .transpose()?)
+    }
+
+    fn get_value_option(&self, max_version: Version, key_hash: KeyHash) -> anyhow::Result<Option<OwnedValue>> {
+        todo!()
+    }
+
+    fn get_rightmost_leaf(&self) -> anyhow::Result<Option<(NodeKey, LeafNode)>> {
+        todo!()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct DeleteAtEnd<T: AsRef<Path>>(T);
+    impl<T: AsRef<Path>> Drop for DeleteAtEnd<T> {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(self.0.as_ref()).unwrap()
+        }
+    }
+
+    impl<T: AsRef<Path>> AsRef<Path> for DeleteAtEnd<T> {
+        fn as_ref(&self) -> &Path {
+            return self.0.as_ref();
+        }
+    }
+
+
     #[test]
     fn test_all() {
-        let _ = std::fs::remove_dir_all("./cookies"); // Clean up previous test data
-        let mut sled = Sled::new("./cookies").unwrap();
+        let path = DeleteAtEnd("./cookies");
+        let mut sled = Sled::new(&path).unwrap();
         sled.commit_changes(
             0,
             vec![

@@ -7,6 +7,6 @@ pub struct Jmt<R: TreeReader> {
 
 impl<R: TreeReader> Jmt<R> {
     pub fn new() -> Self {
-        panic!("")
+        panic!("impl")
     }
 }
