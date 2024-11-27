@@ -1,12 +1,12 @@
 //! The codec trait.
 
-use crate::value::ValueCodec;
 use crate::buffer::WriterFactory;
 use crate::decoder::DecodeError;
 use crate::decoder::Decoder;
 use crate::encoder::{EncodeError, Encoder};
 use crate::mem::MemoryManager;
-use crate::value::{SchemaValue};
+use crate::value::SchemaValue;
+use crate::value::ValueCodec;
 
 /// Trait implemented by encoding protocols.
 pub trait Codec {
@@ -35,5 +35,4 @@ pub fn decode_value<'a, V: SchemaValue<'a>>(
     let mut visitor = V::default();
     codec.decode_value(input, mem, &mut visitor)?;
     Ok(visitor)
-
 }

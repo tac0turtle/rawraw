@@ -158,7 +158,11 @@ impl<A: ObjectFieldValue, B: ObjectFieldValue, C: ObjectFieldValue> ObjectValue 
         decoder: &mut dyn Decoder<'a>,
         mem: &'a MemoryManager,
     ) -> Result<Self::Out<'a>, DecodeError> {
-        Ok((decode_one(decoder)?, decode_one(decoder)?, decode_one(decoder)?))
+        Ok((
+            decode_one(decoder)?,
+            decode_one(decoder)?,
+            decode_one(decoder)?,
+        ))
     }
 }
 
@@ -187,6 +191,11 @@ impl<A: ObjectFieldValue, B: ObjectFieldValue, C: ObjectFieldValue, D: ObjectFie
         decoder: &mut dyn Decoder<'a>,
         mem: &'a MemoryManager,
     ) -> Result<Self::Out<'a>, DecodeError> {
-        Ok((decode_one(decoder)?, decode_one(decoder)?, decode_one(decoder)?, decode_one(decoder)?))
+        Ok((
+            decode_one(decoder)?,
+            decode_one(decoder)?,
+            decode_one(decoder)?,
+            decode_one(decoder)?,
+        ))
     }
 }
