@@ -1,7 +1,6 @@
 use crate::decoder::DecodeError;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
-use crate::state_object::ObjectValue;
 use crate::structs::{StructDecodeVisitor, StructType};
 use crate::value::ValueCodec;
 use alloc::string::String;
