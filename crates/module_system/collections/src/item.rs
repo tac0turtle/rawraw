@@ -14,9 +14,9 @@ pub struct Item<V> {
 
 impl<K> Item<K> {
     /// Creates a new item with the given prefix.
-    pub fn new(scope: &[u8], prefix: u8) -> Self {
+    pub const fn new(prefix: &'static [u8]) -> Self {
         Self {
-            map: Map::new(scope, prefix),
+            map: Map::new(prefix),
         }
     }
 }
@@ -42,8 +42,11 @@ where
 
 unsafe impl<T> StateObjectResource for Item<T> {
     unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
+        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
+        prefix_vec.push(prefix); // Add the prefix
+        prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Ok(Self {
-            map: Map::new(scope, prefix),
+            map: Map::new(prefix_vec.leak()),
         })
     }
 }

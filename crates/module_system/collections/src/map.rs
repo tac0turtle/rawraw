@@ -12,18 +12,15 @@ use ixc_schema::state_object::{
 /// A key-value map.
 pub struct Map<K, V> {
     _phantom: (PhantomData<K>, PhantomData<V>),
-    prefix: Vec<u8>,
+    prefix: &'static [u8],
 }
 
 impl<K, V> Map<K, V> {
     /// Creates a new map with the given prefix.
-    pub fn new(scope: &[u8], prefix: u8) -> Self {
-        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
-        prefix_vec.push(prefix); // Add the prefix
-        prefix_vec.extend_from_slice(scope); // Add the scope if needed
+    pub const fn new(prefix: &'static [u8]) -> Self {
         Self {
             _phantom: (PhantomData, PhantomData),
-            prefix: prefix_vec,
+            prefix: prefix,
         }
     }
 }
@@ -74,7 +71,7 @@ unsafe impl<K, V> StateObjectResource for Map<K, V> {
         prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Ok(Self {
             _phantom: (PhantomData, PhantomData),
-            prefix: prefix_vec,
+            prefix: prefix_vec.leak(),
         })
     }
 }

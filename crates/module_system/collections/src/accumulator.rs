@@ -106,16 +106,22 @@ impl<K: ObjectKey> AccumulatorMap<K> {
 
 unsafe impl StateObjectResource for Accumulator {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
+        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
+        prefix_vec.push(prefix); // Add the prefix
+        prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Ok(Accumulator {
-            item: Item::new(scope, prefix),
+            item: Item::new(prefix_vec.leak()),
         })
     }
 }
 
 unsafe impl<K> StateObjectResource for AccumulatorMap<K> {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
+        let mut prefix_vec = Vec::with_capacity(scope.len() + 1);
+        prefix_vec.push(prefix); // Add the prefix
+        prefix_vec.extend_from_slice(scope); // Add the scope if needed
         Ok(AccumulatorMap {
-            map: Map::new(scope, prefix),
+            map: Map::new(prefix_vec.leak()),
         })
     }
 }
