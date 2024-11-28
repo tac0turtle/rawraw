@@ -10,10 +10,7 @@ mod map;
 mod store_client;
 // mod uint_map;
 pub mod accumulator;
-mod ordered_map;
 
 pub use accumulator::{Accumulator, AccumulatorMap};
 pub use item::Item;
 pub use map::Map;
-
-use constcat::concat;

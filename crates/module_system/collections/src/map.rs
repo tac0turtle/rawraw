@@ -18,7 +18,7 @@ pub struct Map<K, V> {
 }
 
 /// The prefix of the map.
-pub(crate) struct Prefix {
+pub struct Prefix {
     pub length: u8,
     pub data: [u8; 7],
 }
