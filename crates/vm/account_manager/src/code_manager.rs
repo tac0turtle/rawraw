@@ -3,6 +3,7 @@ use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::packet::MessagePacket;
 use ixc_vm_api::HandlerDescriptor;
+use crate::state_handler::Store;
 
 /// A code manager is responsible for resolving handler IDs to code.
 pub trait CodeManager {
@@ -10,26 +11,29 @@ pub trait CodeManager {
     /// or return None if the handler ID is not valid.
     /// This allows for multiple ways of addressing a single handler in code and for ensuring that
     /// the handler actually exists.
-    fn resolve_handler_id(&self, handler_id: &[u8]) -> Option<Vec<u8>>;
+    fn resolve_handler_id<S: Store>(&self, store: &S, handler_id: &[u8]) -> Option<Vec<u8>>;
     /// Runs a handler with the provided message packet and host backend.
-    fn run_message(
+    fn run_message<S: Store>(
         &self,
+        store: &S,
         handler_id: &[u8],
         message_packet: &mut MessagePacket,
         backend: &mut dyn HostBackend,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
 
-    fn run_query(
+    fn run_query<S: Store>(
         &self,
+        store: &S,
         handler_id: &[u8],
         message_packet: &mut MessagePacket,
         backend: &dyn HostBackend,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
 
-    fn run_system_message(
+    fn run_system_message<S: Store>(
         &self,
+        store: &S,
         handler_id: &[u8],
         message_packet: &mut MessagePacket,
         backend: &mut dyn HostBackend,

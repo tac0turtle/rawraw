@@ -239,7 +239,7 @@ impl<'a, CM: CodeManager, ST: StateHandler>
 
         // run the handler
         self.query_context.code_manager
-            .run_query(&handler_id, message_packet, &frame, allocator)
+            .run_query(self.query_context.state_handler, &handler_id, message_packet, &frame, allocator)
     }
 }
 
@@ -274,7 +274,7 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
 
             // run the handler
             self.code_manager
-                .run_message(&handler_id, message_packet, &frame, allocator)
+                .run_message(self.state_handler, &handler_id, message_packet, &frame, allocator)
         };
 
         // commit or rollback the transaction
@@ -296,6 +296,17 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
+        let target_account = message_packet.header().account;
+        // create a nested execution frame for the target account
+        let ctx = QueryContext {
+            code_manager: self.code_manager,
+            state_handler: self.state_handler,
+        };
+        let frame = QueryFrame {
+            active_account: target_account,
+            query_context: &ctx,
+        };
+
         // we never pass the caller to query handlers and any value set in the caller field is ignored
         message_packet.header_mut().caller = AccountID::EMPTY;
 
@@ -308,19 +319,9 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
         let handler_id = get_account_handler_id(self.state_handler, target_account)
             .ok_or(SystemCode(AccountNotFound))?;
 
-        // create a nested execution frame for the target account
-        let ctx = QueryContext {
-            code_manager: self.code_manager,
-            state_handler: self.state_handler,
-        };
-        let frame = QueryFrame {
-            active_account: target_account,
-            query_context: &ctx,
-        };
-
         // run the handler
         self.code_manager
-            .run_query(&handler_id, message_packet, &frame, allocator)
+            .run_query(self.state_handler, &handler_id, message_packet, &frame, allocator)
     }
 
     fn handle_system_message(
@@ -404,6 +405,23 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
             .map_err(|_| SystemCode(FatalExecutionError))
     }
 }
+
+// fn invoke_query<
+//     'a,
+//     CM: CodeManager,
+//     ST: StateHandler>
+// (
+//     code_handler: &'a CM,
+//     state_handler: &'a ST,
+//     message_packet: &mut MessagePacket,
+//     allocator: &dyn Allocator,
+// ) -> Result<(), ErrorCode> {
+//     let mut exec_context = ExecContext::new(code_handler, state_handler);
+//     let mut exec_frame = ExecFrame::new(message_packet.header().account, &mut exec_context);
+//     todo!()
+// }
+
+
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
 const ON_CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_create");

@@ -5,8 +5,15 @@ use ixc_message_api::packet::MessagePacket;
 use crate::{ROOT_ACCOUNT};
 use crate::id_generator::IDGenerator;
 
+pub trait Store {
+    fn kv_get(&self, account_id: AccountID, key: &[u8]) -> Option<Vec<u8>>;
+    fn kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8]);
+    fn kv_delete(&mut self, account_id: AccountID, key: &[u8]);
+
+}
+
 /// A transaction.
-pub trait StateHandler {
+pub trait StateHandler: Store {
     fn begin_tx(&mut self) -> Result<(), ()>;
     fn commit_tx(&mut self) -> Result<(), ()>;
     fn rollback_tx(&mut self) -> Result<(), ()>;
@@ -22,10 +29,6 @@ pub trait StateHandler {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
-
-    fn raw_kv_get(&self, account_id: AccountID, key: &[u8]) -> Option<Vec<u8>>;
-    fn raw_kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8]);
-    fn raw_kv_delete(&mut self, account_id: AccountID, key: &[u8]);
 
     fn create_account_storage(&mut self, account: AccountID) -> Result<(), ()>;
     fn delete_account_storage(&mut self, account: AccountID) -> Result<(), ()>;
