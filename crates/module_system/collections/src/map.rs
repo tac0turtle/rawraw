@@ -1,40 +1,53 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
-
-use alloc::vec::Vec;
+use crate::store_client::KVStoreClient;
 use core::borrow::Borrow;
-use ixc_core::low_level::create_packet;
+use core::marker::PhantomData;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
-use ixc_core_macros::message_selector;
-use ixc_message_api::code::ErrorCode;
-use ixc_message_api::header::MessageSelector;
-use ixc_message_api::AccountID;
 use ixc_schema::state_object::{
     decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
 };
 
+pub(crate) const MAX_SIZE: usize = 7;
+
 /// A key-value map.
 pub struct Map<K, V> {
-    _k: core::marker::PhantomData<K>,
-    _v: core::marker::PhantomData<V>,
-    #[cfg(feature = "std")]
-    prefix: Vec<u8>,
-    // TODO no_std prefix
+    _phantom: (PhantomData<K>, PhantomData<V>),
+    prefix: Prefix,
+}
+
+/// The prefix of the map.
+pub struct Prefix {
+    pub length: u8,
+    pub data: [u8; 7],
+}
+
+impl Prefix {
+    /// as_slice returns the underlying slice of the prefix.
+    pub fn as_slice(&self) -> &[u8] {
+        &self.data[..self.length as usize]
+    }
+}
+
+impl<K, V> Map<K, V> {
+    /// Creates a new map with the given prefix.
+    pub const fn new(prefix: Prefix) -> Self {
+        Self {
+            _phantom: (PhantomData, PhantomData),
+            prefix: prefix,
+        }
+    }
 }
 
 impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
-    // /// Checks if the map contains the given key.
-    // pub fn has<'key>(&self, ctx: &Context<'key>, key: K::Value<'key>) -> Result<bool> {
-    //     todo!()
-    // }
-
     /// Gets the value of the map at the given key.
     pub fn get<'a, 'b, L>(&self, ctx: &'a Context, key: L) -> ClientResult<Option<V::Out<'a>>>
     where
         L: Borrow<K::In<'b>>,
     {
-        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz =
+            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
 
         let value_bz = KVStoreClient.get(ctx, key_bz)?;
         let value_bz = match value_bz {
@@ -52,7 +65,8 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         L: Borrow<K::In<'a>>,
         U: Borrow<V::In<'a>>,
     {
-        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz =
+            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
         let value_bz = encode_object_value::<V>(value.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.set(ctx, key_bz, value_bz) }
     }
@@ -62,69 +76,29 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
     where
         L: Borrow<K::In<'a>>,
     {
-        let key_bz = encode_object_key::<K>(&self.prefix, key.borrow(), ctx.memory_manager())?;
+        let key_bz =
+            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.delete(ctx, key_bz) }
     }
 }
 
-const STATE_ACCOUNT: AccountID = AccountID::new(2);
-
-const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
-const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
-const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
-
-struct KVStoreClient;
-
-impl KVStoreClient {
-    pub fn get<'a>(&self, ctx: &'a Context, key: &[u8]) -> ClientResult<Option<&'a [u8]>> {
-        let mut packet = create_packet(ctx, STATE_ACCOUNT, GET_SELECTOR)?;
-        let header = packet.header_mut();
-        unsafe {
-            header.in_pointer1.set_slice(key);
-            if let Err(ErrorCode::HandlerCode(0)) = ctx
-                .host_backend()
-                .invoke(&mut packet, &ctx.memory_manager())
-            {
-                return Ok(None);
-            }
-        }
-        let res_bz = unsafe { packet.header().out_pointer1.get(&packet) };
-        Ok(Some(res_bz))
-    }
-
-    pub unsafe fn set(&self, ctx: &Context, key: &[u8], value: &[u8]) -> ClientResult<()> {
-        let mut packet = create_packet(ctx, STATE_ACCOUNT, SET_SELECTOR)?;
-        let header = packet.header_mut();
-        unsafe {
-            header.in_pointer1.set_slice(key);
-            header.in_pointer2.set_slice(value);
-            ctx.host_backend()
-                .invoke(&mut packet, &ctx.memory_manager())?;
-        }
-        Ok(())
-    }
-
-    pub unsafe fn delete(&self, ctx: &Context, key: &[u8]) -> ClientResult<()> {
-        let mut packet = create_packet(ctx, STATE_ACCOUNT, DELETE_SELECTOR)?;
-        let header = packet.header_mut();
-        unsafe {
-            header.in_pointer1.set_slice(key);
-            ctx.host_backend()
-                .invoke(&mut packet, &ctx.memory_manager())?;
-        }
-        Ok(())
-    }
-}
-
 unsafe impl<K, V> StateObjectResource for Map<K, V> {
-    unsafe fn new(scope: &[u8], p: u8) -> core::result::Result<Self, InitializationError> {
-        let mut prefix = Vec::from(scope);
-        prefix.push(p);
+    unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
+        if scope.len() + 1 > MAX_SIZE {
+            return Err(InitializationError::ExceedsLength);
+        }
+        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
+        slice[0..scope.len()].copy_from_slice(scope);
+        slice[scope.len()] = prefix;
+
+        let bytes = Prefix {
+            length: scope.len() as u8,
+            data: slice,
+        };
+
         Ok(Self {
-            _k: core::marker::PhantomData,
-            _v: core::marker::PhantomData,
-            #[cfg(feature = "std")]
-            prefix,
+            _phantom: (PhantomData, PhantomData),
+            prefix: bytes,
         })
     }
 }
