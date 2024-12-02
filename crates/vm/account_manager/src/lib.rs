@@ -14,6 +14,11 @@ use crate::id_generator::IDGenerator;
 use crate::state_handler::{
     destroy_account_data, get_account_handler_id, init_next_account, StateHandler,
 };
+use allocator_api2::alloc::Global;
+use allocator_api2::vec::Vec;
+use core::alloc::Layout;
+use core::borrow::BorrowMut;
+use std::cell::RefCell;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
@@ -24,28 +29,41 @@ use ixc_message_api::code::SystemCode::{
 use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
-use std::alloc::Layout;
-use std::borrow::BorrowMut;
-use std::cell::RefCell;
-use crate::PushFrameError::VolatileAccessError;
 
-pub fn invoke<
-    'a,
-    CM: CodeManager,
-    ST: StateHandler,
-    IDG: IDGenerator,
-    AUTHZ: AuthorizationMiddleware,
->(
-    id_generator: &'a mut IDG,
-    code_handler: &'a CM,
-    state_handler: &'a mut ST,
-    authz: &'a AUTHZ,
-    message_packet: &mut MessagePacket,
-    allocator: &dyn Allocator,
-) -> Result<(), ErrorCode> {
-    let mut exec_context = ExecContext::new(id_generator, code_handler, state_handler, authz);
-    let mut exec_frame = ExecFrame::new(message_packet.header().account, &mut exec_context);
-    todo!()
+pub struct AccountManager<'a, CM: CodeManager> {
+    code_manager: &'a CM,
+    call_stack_limit: usize,
+}
+
+impl<'a, CM: CodeManager> AccountManager<'a, CM> {
+    pub fn new(code_manager: &'a CM) -> Self {
+        Self {
+            code_manager,
+            call_stack_limit: 128,
+        }
+    }
+}
+
+impl<'a, CM: CodeManager>
+    AccountManager<'a, CM>
+{
+    pub fn invoke<'a, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
+        &self,
+        id_generator: &'a mut IDG,
+        state_handler: &'a mut ST,
+        message_packet: &mut MessagePacket,
+        authz: &'a AUTHZ,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let mut exec_context = ExecContext{
+            account_manager: self,
+            state_handler,
+            id_generator,
+            authz,
+            call_stack: Vec::new_in(allocator),
+        };
+        exec_context.invoke(message_packet, allocator)
+    }
 }
 
 struct ExecContext<
@@ -55,58 +73,21 @@ struct ExecContext<
     IDG: IDGenerator,
     AUTHZ: AuthorizationMiddleware,
 > {
-    id_generator: &'a mut IDG,
-    code_manager: &'a CM,
+    account_manager: &'a AccountManager<'a, CM>,
     state_handler: &'a mut ST,
+    id_generator: &'a mut IDG,
     authz: &'a AUTHZ,
+    call_stack: Vec<Frame, &'a dyn Allocator>,
 }
 
-impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
-    ExecContext<'a, CM, ST, IDG, AUTHZ>
-{
-    fn new(
-        id_generator: &'a mut IDG,
-        code_handler: &'a CM,
-        state_handler: &'a mut ST,
-        authz: &'a AUTHZ,
-    ) -> Self {
-        Self {
-            id_generator,
-            code_manager: code_handler,
-            state_handler,
-            authz,
-        }
-    }
-}
-
-struct ExecFrame<
-    'a,
-    CM: CodeManager,
-    ST: StateHandler,
-    IDG: IDGenerator,
-    AUTHZ: AuthorizationMiddleware,
-> {
+struct Frame {
     active_account: AccountID,
-    exec_context: &'a mut ExecContext<'a, CM, ST, IDG, AUTHZ>,
-}
-
-impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
-    ExecFrame<'a, CM, ST, IDG, AUTHZ>
-{
-    fn new(
-        active_account: AccountID,
-        exec_context: &'a mut ExecContext<'a, CM, ST, IDG, AUTHZ>,
-    ) -> Self {
-        Self {
-            active_account,
-            exec_context,
-        }
-    }
 }
 
 struct QueryContext<'a, CM: CodeManager, ST: StateHandler> {
-    code_manager: &'a CM,
+    account_manager: &'a AccountManager<'a, CM>,
     state_handler: &'a ST,
+    call_stack: RefCell<Vec<Frame, &'a dyn Allocator>>,
 }
 
 struct QueryFrame<'a, CM: CodeManager, ST: StateHandler> {
@@ -114,50 +95,18 @@ struct QueryFrame<'a, CM: CodeManager, ST: StateHandler> {
     query_context: &'a QueryContext<'a, CM, ST>,
 }
 
-/// An error when committing a transaction.
-pub enum CommitError {
-    /// Attempted to commit when the call stack was not empty.
-    UnfinishedCallStack,
-}
-
-/// A push frame error.
-#[non_exhaustive]
-pub enum PushFrameError {
-    /// Tried to push a volatile frame on top of a non-volatile frame.
-    VolatileAccessError,
-}
-
-/// A pop frame error.
-#[non_exhaustive]
-pub enum PopFrameError {
-    /// No frames to pop.
-    NoFrames,
-}
-
 const ROOT_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
-// impl<'a, C: CodeManager, ST: StateHandler> HostBackend for ExecContext<'a, C, ST> {
-//     fn invoke(
-//         &self,
-//         message_packet: &mut MessagePacket,
-//         allocator: &dyn Allocator,
-//     ) -> Result<(), ErrorCode> {
-//         let mut state_handler = self.state_handler.borrow_mut();
-//         self.invoke::<C, ST>(message_packet, allocator)
-//         invoke::<C, ST>(
-//             self.active_account,
-//             self.code_handler,
-//             state_handler.borrow_mut(),
-//             message_packet,
-//             allocator,
-//         )
-//     }
-// }
-
 /// Invoke a message packet in the context of the provided state handler.
-impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
-    ExecFrame<'a, CM, ST, IDG, AUTHZ>
+impl<
+        'a,
+        CM: CodeManager,
+        ST: StateHandler,
+        IDG: IDGenerator,
+        AUTHZ: AuthorizationMiddleware,
+        A: Allocator,
+    > HostBackend for ExecContext<'a, CM, ST, IDG, AUTHZ, A>
 {
     fn invoke(
         &mut self,
@@ -166,92 +115,24 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
     ) -> Result<(), ErrorCode> {
         let caller = message_packet.header().caller;
         let target_account = message_packet.header().account;
+        let active_account = self
+            .call_stack
+            .last()
+            .map(|f| f.active_account)
+            .ok_or(SystemCode(FatalExecutionError))?;
 
         // check if the caller matches the active account
-        if caller != self.active_account {
+        if caller != active_account {
             if target_account == STATE_ACCOUNT {
                 // when calling the state handler, we NEVER allow impersonation
                 return Err(SystemCode(UnauthorizedCallerAccess));
             }
             // otherwise we check the authorization middleware to see if impersonation is allowed
-            self.exec_context
-                .authz
+            self.authz
                 .authorize(message_packet.header().caller, message_packet)?;
         }
 
-        self.exec_context.invoke(message_packet, allocator)
-    }
-}
-
-impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
-    HostBackend for ExecFrame<'a, CM, ST, IDG, AUTHZ>
-{
-    fn invoke(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        self.invoke(message_packet, allocator)
-    }
-
-    fn invoke_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        self.exec_context.invoke_query(message_packet, allocator)
-    }
-}
-
-impl<'a, CM: CodeManager, ST: StateHandler>
-    HostBackend for QueryFrame<'a, CM, ST>
-{
-    fn invoke(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        Err(SystemCode(SystemCode::VolatileAccessError))
-    }
-
-    fn invoke_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let target_account = message_packet.header().account;
-        message_packet.header_mut().caller = self.active_account;
-        if target_account == STATE_ACCOUNT {
-            return self.query_context.state_handler.handler_query(message_packet, allocator);
-        }
-
-        message_packet.header_mut().caller = AccountID::EMPTY;
-
-        // find the account's handler ID
-        let handler_id = get_account_handler_id(self.query_context.state_handler, target_account)
-            .ok_or(SystemCode(AccountNotFound))?;
-
-        // create a nested execution frame for the target account
-        let frame = QueryFrame {
-            active_account: target_account,
-            query_context: self,
-        };
-
-        // run the handler
-        self.query_context.code_manager
-            .run_query(self.query_context.state_handler, &handler_id, message_packet, &frame, allocator)
-    }
-}
-
-impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
-    ExecContext<'a, CM, ST, IDG, AUTHZ>
-{
-    fn invoke(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let target_account = message_packet.header().account;
+        // if the target account is the state account, we can just run the state handler
         if target_account == STATE_ACCOUNT {
             return self.state_handler.handle(message_packet, allocator);
         }
@@ -260,6 +141,8 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
         self.state_handler
             .begin_tx()
             .map_err(|_| SystemCode(InvalidHandler))?;
+        // push the current caller onto the call stack
+        self.call_stack.push(Frame { active_account });
 
         let res = if target_account == ROOT_ACCOUNT {
             // if the target account is the root account, we can just run the system message
@@ -269,12 +152,14 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
             let handler_id = get_account_handler_id(self.state_handler, target_account)
                 .ok_or(SystemCode(AccountNotFound))?;
 
-            // create a nested execution frame for the target account
-            let mut frame = ExecFrame::new(target_account, self);
-
             // run the handler
-            self.code_manager
-                .run_message(self.state_handler, &handler_id, message_packet, &frame, allocator)
+            self.account_manager.code_manager.run_message(
+                self.state_handler,
+                &handler_id,
+                message_packet,
+                &self,
+                allocator,
+            )
         };
 
         // commit or rollback the transaction
@@ -288,23 +173,19 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
                 .map_err(|_| SystemCode(InvalidHandler))?;
         }
 
+        // pop the call stack
+        self.call_stack.pop();
+
         res
     }
 
-    fn invoke_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+    fn invoke_query(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
         let target_account = message_packet.header().account;
         // create a nested execution frame for the target account
-        let ctx = QueryContext {
-            code_manager: self.code_manager,
+        let query_ctx = QueryContext {
+            account_manager: self.account_manager,
             state_handler: self.state_handler,
-        };
-        let frame = QueryFrame {
-            active_account: target_account,
-            query_context: &ctx,
+            call_stack: todo!(),
         };
 
         // we never pass the caller to query handlers and any value set in the caller field is ignored
@@ -320,8 +201,79 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
             .ok_or(SystemCode(AccountNotFound))?;
 
         // run the handler
-        self.code_manager
-            .run_query(self.state_handler, &handler_id, message_packet, &frame, allocator)
+        self.account_manager.code_manager.run_query(
+            self.state_handler,
+            &handler_id,
+            message_packet,
+            &query_ctx,
+            allocator,
+        )
+    }
+}
+
+impl<'a, CM: CodeManager, ST: StateHandler> HostBackend for QueryFrame<'a, CM, ST> {
+    fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        Err(SystemCode(
+            ixc_message_api::code::SystemCode::VolatileAccessError,
+        ))
+    }
+
+    fn invoke_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let target_account = message_packet.header().account;
+        message_packet.header_mut().caller = self.active_account;
+        if target_account == STATE_ACCOUNT {
+            return self
+                .query_context
+                .state_handler
+                .handler_query(message_packet, allocator);
+        }
+
+        message_packet.header_mut().caller = AccountID::EMPTY;
+
+        // find the account's handler ID
+        let handler_id = get_account_handler_id(self.query_context.state_handler, target_account)
+            .ok_or(SystemCode(AccountNotFound))?;
+
+        // create a nested execution frame for the target account
+        let frame = QueryFrame {
+            active_account: target_account,
+            query_context: self,
+        };
+
+        // run the handler
+        self.query_context.code_manager.run_query(
+            self.query_context.state_handler,
+            &handler_id,
+            message_packet,
+            &frame,
+            allocator,
+        )
+    }
+}
+
+impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
+    ExecContext<'a, CM, ST, IDG, AUTHZ>
+{
+    fn invoke(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+    }
+
+    fn invoke_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
     }
 
     fn handle_system_message(
@@ -368,8 +320,9 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
         on_create_header.in_pointer1.set_slice(init_data);
 
         // run the on_create handler
-        let mut frame = ExecFrame::new(id, self);
+        let mut frame = Frame::new(id, self);
         let res = self.code_manager.run_system_message(
+            self.state_handler,
             &handler_id,
             &mut on_create_packet,
             &mut frame,
@@ -420,8 +373,6 @@ impl<'a, CM: CodeManager, ST: StateHandler, IDG: IDGenerator, AUTHZ: Authorizati
 //     let mut exec_frame = ExecFrame::new(message_packet.header().account, &mut exec_context);
 //     todo!()
 // }
-
-
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
 const ON_CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_create");
