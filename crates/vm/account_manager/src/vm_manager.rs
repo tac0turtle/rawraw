@@ -4,10 +4,20 @@ use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::packet::MessagePacket;
-use ixc_vm_api::{HandlerID, VM};
+use ixc_vm_api::{VM};
 use std::collections::HashMap;
 use crate::state_handler::Store;
 
+
+/// A unique identifier for a handler implementation.
+#[derive(Debug, Clone)]
+pub struct HandlerID {
+    // NOTE: encoding these as strings should be considered a temporary
+    /// The unique identifier for the virtual machine that the handler is implemented in.
+    pub vm: String,
+    /// The unique identifier for the handler within the virtual machine.
+    pub vm_handler_id: String,
+}
 /// Rust Cosmos SDK RFC 003 VM manager.
 #[derive(Default)]
 pub struct VMManager {
@@ -38,7 +48,7 @@ impl VMManager {
     }
 }
 
-impl CodeManager for VMManager {
+impl VM for VMManager {
     fn resolve_handler_id<S: Store>(&self, store: &S, handler_id: &[u8]) -> Option<Vec<u8>> {
         todo!()
     }

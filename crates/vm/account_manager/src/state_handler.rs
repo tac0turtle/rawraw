@@ -6,9 +6,9 @@ use crate::{ROOT_ACCOUNT};
 use crate::id_generator::IDGenerator;
 
 pub trait Store {
-    fn kv_get(&self, account_id: AccountID, key: &[u8]) -> Option<Vec<u8>>;
-    fn kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8]);
-    fn kv_delete(&mut self, account_id: AccountID, key: &[u8]);
+    fn kv_get(&self, account_id: AccountID, key: &[u8], value: &mut [u8], gas: &mut u64) -> Result<usize, ErrorCode>;
+    fn kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8], gas: &mut u64) -> Result<(), ErrorCode>;
+    fn kv_delete(&mut self, account_id: AccountID, key: &[u8], gas: &mut u64) -> Result<(), ErrorCode>;
 
 }
 
