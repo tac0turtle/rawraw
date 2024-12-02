@@ -105,8 +105,7 @@ impl<
         ST: StateHandler,
         IDG: IDGenerator,
         AUTHZ: AuthorizationMiddleware,
-        A: Allocator,
-    > HostBackend for ExecContext<'a, CM, ST, IDG, AUTHZ, A>
+    > HostBackend for ExecContext<'a, CM, ST, IDG, AUTHZ>
 {
     fn invoke(
         &mut self,
