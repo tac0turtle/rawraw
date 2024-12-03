@@ -17,7 +17,7 @@ use ixc_schema::value::OptionalValue;
 /// Dynamically invokes an account message.
 /// Static account client instances should be preferred wherever possible,
 /// so that static dependency analysis can be performed.
-pub fn dynamic_invoke<'a, 'b, M: Message<'b>>(
+pub fn dynamic_invoke_query<'a, 'b, M: Message<'b>>(
     context: &'a Context,
     account: AccountID,
     message: M,
@@ -34,7 +34,10 @@ pub fn dynamic_invoke<'a, 'b, M: Message<'b>>(
         header.in_pointer1.set_slice(msg_body);
 
         // invoke the message
-        let res = context.host_backend().invoke(&mut packet, mem);
+        let res = context
+            .host_backend()
+            .unwrap()
+            .invoke_query(&mut packet, mem);
 
         let out1 = header.out_pointer1.get(&packet);
 

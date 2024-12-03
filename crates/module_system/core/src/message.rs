@@ -10,6 +10,8 @@ use ixc_schema::value::{OptionalValue, SchemaValue};
 pub trait Message<'a>: SchemaValue<'a> + StructSchema {
     /// The message selector.
     const SELECTOR: MessageSelector;
+    /// The volatility of the message.
+    const VOLATILITY: Volatility;
     /// The optional response type.
     type Response<'b>: OptionalValue<'b>;
     /// The optional error type.
@@ -18,6 +20,11 @@ pub trait Message<'a>: SchemaValue<'a> + StructSchema {
     type Codec: Codec + Default;
 }
 
+pub enum Volatility {
+    Pure,
+    Volatile,
+    NonVolatile,
+}
 /// Extract the response and error types from a Result.
 /// Used internally in macros for building the Message implementation and ClientResult type.
 pub trait ExtractResponseTypes {

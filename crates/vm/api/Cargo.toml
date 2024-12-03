@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 ixc_message_api = { path = "../../module_system/message_api", version = "0.0.4" }
+allocator-api2 = "0.2.21"
 
 [lints]
 workspace = true
