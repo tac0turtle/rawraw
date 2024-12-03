@@ -2,9 +2,9 @@
 mod snapshot_state;
 
 use crate::snapshot_state::{Snapshot, SnapshotState};
-
 use allocator_api2::alloc::Global;
 use allocator_api2::vec::Vec;
+use ixc_message_api::AccountID;
 
 /// A store that can be used to store and retrieve state.
 pub trait Store {
@@ -15,10 +15,7 @@ pub trait Store {
 }
 
 /// StateHandler is a cache-based state handler that can be used to store and retrieve state.
-pub struct StateHandler<'a, S: Store> {
-    /// The underlying store which we read from.
-    store: &'a S,
-
+pub struct StateHandler<S: Store> {
     snapshot_state: SnapshotState<S>,
     /// Checkpoints are used to revert state changes.
     /// checkpoints are used to follow the call stack of a transaction
@@ -26,12 +23,11 @@ pub struct StateHandler<'a, S: Store> {
     checkpoints: Vec<Snapshot>,
 }
 
-impl<'a, S: Store> StateHandler<'a, S> {
+impl<S: Store> StateHandler<S> {
     /// Create a new state handler with the given store.
     pub fn new(store: S) -> Self {
         Self {
-            store: &store,
-            snapshot_state: SnapshotState::new(store.clone()),
+            snapshot_state: SnapshotState::new(store),
             checkpoints: Vec::with_capacity_in(200, Global),
         }
     }
@@ -74,10 +70,13 @@ impl<'a, S: Store> StateHandler<'a, S> {
     //     panic!("not implemented");
     // }
 
-    //     fn create_account_storage(&mut self, account: AccountID) -> Result<(), ()>{
-    //         panic!("not implemented");
-    // };
-    //     fn delete_account_storage(&mut self, account: AccountID) -> Result<(), ()>{
-    //         panic!("not implemented");
-    // };
+    /// Creates a new account storage for the given account.
+    pub fn create_account_storage(&mut self, _account: AccountID) -> Result<(), ()> {
+        Ok(())
+    }
+
+    /// Deletes the account storage for the given account.
+    pub fn delete_account_storage(&mut self, _account: AccountID) -> Result<(), ()> {
+        panic!("not implemented");
+    }
 }

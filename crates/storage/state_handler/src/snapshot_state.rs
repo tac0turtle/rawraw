@@ -6,6 +6,7 @@ use allocator_api2::{
 use quick_cache::unsync::Cache;
 use std::{
     borrow::{Borrow, BorrowMut},
+    cell::RefCell,
     collections::HashMap,
 };
 
@@ -21,7 +22,7 @@ pub struct SnapshotState<S> {
     changelog: Vec<StateChange>,
     /// The cache for items gotten from state
     /// This is used to cache reads
-    cache: Cache<Vec<u8>, Vec<u8>>,
+    cache: RefCell<Cache<Vec<u8>, Vec<u8>>>,
 }
 
 impl<S> SnapshotState<S> {
@@ -30,19 +31,20 @@ impl<S> SnapshotState<S> {
             state,
             changes: Default::default(),
             changelog: Vec::new(),
-            cache: Cache::new(10_000), // TODO Decide on values
+            cache: RefCell::new(Cache::new(10_000)), // TODO Decide on values
         }
     }
 }
 
 impl<S: Store> SnapshotState<S> {
-    pub fn get<A: Allocator>(&mut self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
+    pub fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
         // try to get from values
         match self.changes.get(key) {
             // get from disk db
             None => {
                 // check the cache first for the key, we may have already read it
-                let value = self.cache.get(key);
+                let cache = self.cache.borrow();
+                let value = cache.get(key);
                 match value {
                     Some(value) => {
                         let mut v = Vec::new_in(allocator);
@@ -53,7 +55,7 @@ impl<S: Store> SnapshotState<S> {
                         // if not in cache, read from state
                         let v = self.state.get(key).unwrap();
                         // insert into cache
-                        self.cache.insert(key.clone(), v.clone());
+                        self.cache.borrow_mut().insert(key.clone(), v.clone());
                         let mut vec = Vec::new_in(allocator);
                         vec.extend_from_slice(v.borrow());
                         Some(vec)
@@ -85,7 +87,7 @@ impl<S: Store> SnapshotState<S> {
     }
 
     pub fn delete(&mut self, key: &Vec<u8>) {
-        let value = self.get(key.borrow(), Global); //TODO: change from global allocator
+        let value = self.get(key, Global); //TODO: change from global allocator
         self.changes.insert(key.clone(), Value::Deleted);
         self.changelog.push(StateChange::Delete {
             key: key.clone(),
@@ -93,6 +95,7 @@ impl<S: Store> SnapshotState<S> {
         });
     }
 
+    /// Returns the state changes.
     pub fn state_changes(self) -> Vec<StateChange> {
         self.changelog
     }
@@ -115,15 +118,15 @@ impl<S: Store> SnapshotState<S> {
 }
 
 /// Value is a enum that represents the if a value is deleted or updated.
-#[derive(Debug, PartialEq)]
-enum Value {
+#[derive(Debug, PartialEq, Clone)]
+pub enum Value {
     Deleted,
     Updated(Vec<u8>),
 }
 
 /// StateChange is a struct that represents a change in state.
-#[derive(PartialEq, Debug)]
-enum StateChange {
+#[derive(PartialEq, Debug, Clone)]
+pub enum StateChange {
     Delete {
         key: Vec<u8>,
         old_value: Option<Vec<u8>>,
@@ -137,7 +140,7 @@ enum StateChange {
 
 /// Revert a state change.
 impl StateChange {
-    pub(crate) fn revert(self, changes: &mut HashMap<Vec<u8>, Value>) {
+    pub fn revert(self, changes: &mut HashMap<Vec<u8>, Value>) {
         match self {
             StateChange::Update {
                 key,
@@ -189,16 +192,33 @@ mod tests {
         let mut snapshot_state = SnapshotState::new(HashMap::new());
 
         // set some values
-        snapshot_state.set(b"begin_block".to_vec(), b"begin_block".to_vec());
+        let mut v1 = Vec::new();
+        v1.extend_from_slice(b"begin_block");
+        snapshot_state.set(v1.clone(), v1.clone());
 
         let before_ante_handler_snapshot = snapshot_state.snapshot();
 
-        snapshot_state.set(b"ante_handler".to_vec(), b"ante".to_vec());
-        snapshot_state.set(b"bob".to_vec(), b"0ixc".to_vec());
-        snapshot_state.delete(b"charlie_grant");
+        let mut v2 = Vec::new();
+        v2.extend_from_slice(b"ante_handler");
+        let mut v3 = Vec::new();
+        v3.extend_from_slice(b"ante");
+        snapshot_state.set(v2.clone(), v3.clone());
+        let mut v4 = Vec::new();
+        v4.extend_from_slice(b"bob");
+
+        let mut v5 = Vec::new();
+        v5.extend_from_slice(b"0ixc");
+        snapshot_state.set(v4.clone(), v5.clone());
+        let mut v6 = Vec::new();
+        v6.extend_from_slice(b"charlie_grant");
+        snapshot_state.delete(&v6);
 
         let before_tx_exec_snapshot = snapshot_state.snapshot();
-        snapshot_state.set(b"alice".to_vec(), b"3ixc".to_vec());
+        let mut v7 = Vec::new();
+        v7.extend_from_slice(b"alice");
+        let mut v8 = Vec::new();
+        v8.extend_from_slice(b"3ixc");
+        snapshot_state.set(v7, v8);
 
         // test revert
         snapshot_state
@@ -206,23 +226,27 @@ mod tests {
             .unwrap();
 
         // test changes
-        let expected_changes = vec![
+        let mut expected_changes = Vec::<StateChange>::new();
+        let changes = [
             StateChange::Update {
-                key: b"begin_block".to_vec(),
-                value: b"begin_block".to_vec(),
+                key: v1.clone(),
+                value: v1,
                 previous_value: None,
             },
             StateChange::Update {
-                key: b"ante_handler".to_vec(),
-                value: b"ante".to_vec(),
+                key: v2,
+                value: v3,
                 previous_value: None,
             },
             StateChange::Update {
-                key: b"bob".to_vec(),
-                value: b"0ixc".to_vec(),
+                key: v4,
+                value: v5,
                 previous_value: None,
             },
         ];
+        expected_changes.push(changes[0].clone());
+        expected_changes.push(changes[1].clone());
+        expected_changes.push(changes[2].clone());
 
         assert_eq!(snapshot_state.state_changes(), expected_changes);
     }
