@@ -1,5 +1,8 @@
 #![allow(unused)]
-use allocator_api2::vec::Vec;
+use allocator_api2::{
+    alloc::{Allocator, Global},
+    vec::Vec,
+};
 use quick_cache::unsync::Cache;
 use std::{
     borrow::{Borrow, BorrowMut},
@@ -33,7 +36,7 @@ impl<S> SnapshotState<S> {
 }
 
 impl<S: Store> SnapshotState<S> {
-    pub fn get(&mut self, key: &Vec<u8>) -> Option<Vec<u8>> {
+    pub fn get<A: Allocator>(&mut self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
         // try to get from values
         match self.changes.get(key) {
             // get from disk db
@@ -41,20 +44,30 @@ impl<S: Store> SnapshotState<S> {
                 // check the cache first for the key, we may have already read it
                 let value = self.cache.get(key);
                 match value {
-                    Some(value) => Some(value.clone()),
+                    Some(value) => {
+                        let mut v = Vec::new_in(allocator);
+                        v.extend_from_slice(value);
+                        Some(v)
+                    }
                     None => {
                         // if not in cache, read from state
                         let v = self.state.get(key).unwrap();
                         // insert into cache
                         self.cache.insert(key.clone(), v.clone());
-                        Some(v)
+                        let mut vec = Vec::new_in(allocator);
+                        vec.extend_from_slice(v.borrow());
+                        Some(vec)
                     }
                 }
             }
 
             // found in change list
             Some(value) => match value {
-                Value::Updated(data) => Some(data.clone()),
+                Value::Updated(data) => {
+                    let mut vec = Vec::new_in(allocator);
+                    vec.extend_from_slice(data.borrow());
+                    Some(vec)
+                }
                 Value::Deleted => None,
             },
         }
@@ -72,7 +85,7 @@ impl<S: Store> SnapshotState<S> {
     }
 
     pub fn delete(&mut self, key: &Vec<u8>) {
-        let value = self.get(key.borrow());
+        let value = self.get(key.borrow(), Global); //TODO: change from global allocator
         self.changes.insert(key.clone(), Value::Deleted);
         self.changelog.push(StateChange::Delete {
             key: key.clone(),
