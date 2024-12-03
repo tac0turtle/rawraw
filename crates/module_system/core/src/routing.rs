@@ -13,6 +13,9 @@ where
 {
     /// The routes sorted by message selector.
     const SORTED_ROUTES: &'static [Route<Self>];
+
+    /// The query routes sorted by message selector.
+    const SORTED_QUERY_ROUTES: &'static [Route<Self>];
 }
 
 /// A router for dynamic trait objects.

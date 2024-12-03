@@ -300,6 +300,7 @@ pub fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Resul
 struct APIBuilder {
     items: Vec<Item>,
     routes: Vec<TokenStream2>,
+    query_routes: Vec<TokenStream2>,
     client_signatures: Vec<Signature>,
     client_methods: Vec<TokenStream2>,
     create_msg_name: Option<Ident>,
@@ -380,6 +381,7 @@ fn derive_api_method(
     let mut msg_fields_init = vec![];
     let mut have_lifetimes = false;
     let mut context_name: Option<Ident> = None;
+    let mut is_query = false;
     for field in &signature.inputs {
         match field {
             syn::FnArg::Receiver(r) => {
@@ -400,6 +402,9 @@ fn derive_api_method(
                                     if path.path.segments.first().unwrap().ident == "Context" {
                                         context_name = Some(ident.ident.clone());
                                         new_inputs.push(field.clone());
+                                        if tyref.mutability.is_none() {
+                                            is_query = true;
+                                        }
                                         continue;
                                     }
 
@@ -492,7 +497,12 @@ fn derive_api_method(
         )?;
         ensure!(context_name.is_some(), "no context parameter found");
         let context_name = context_name.unwrap();
-        builder.routes.push(quote! {
+        let maybe_mut = if is_query {
+            quote! { mut }
+        } else {
+            quote! {}
+        };
+        let route = quote! {
                     (< #msg_struct_name #opt_underscore_lifetime as ::ixc::core::message::Message >::SELECTOR, |h: &Self, packet, cb, a| {
                         unsafe {
                             let cdc = < #msg_struct_name as ::ixc::core::message::Message<'_> >::Codec::default();
@@ -500,22 +510,31 @@ fn derive_api_method(
                             let in1 = header.in_pointer1.get(packet);
                             let mem = ::ixc::schema::mem::MemoryManager::new();
                             let #msg_struct_name { #(#msg_deconstruct)* } = ::ixc::schema::codec::decode_value::< #msg_struct_name >(&cdc, in1, &mem)?;
-                            let mut ctx = ::ixc::core::Context::new_with_mem(header.account, header.caller, header.gas_left, cb, &mem);
-                            let res = h.#fn_name(&mut ctx, #(#fn_ctr_args)*);
+                            let #maybe_mut ctx = ::ixc::core::Context::new_with_mem(header.account, header.caller, header.gas_left, cb, &mem);
+                            let res = h.#fn_name(& #maybe_mut ctx, #(#fn_ctr_args)*);
                             ::ixc::core::low_level::encode_response::< #msg_struct_name >(&cdc, res, a, packet)
                         }
                     }),
-        });
+        };
+        builder.routes.push(route);
         signature.output = parse_quote! {
             -> <#return_type as ::ixc::core::message::ExtractResponseTypes>::ClientResult
         };
         builder.client_signatures.push(signature.clone());
+        let dynamic_invoke = if is_query {
+            quote! { #context_name.dynamic_invoke_query(_acct_id, _msg) }
+       } else {
+            quote! { #context_name.dynamic_invoke_msg(_acct_id, _msg) }
+        };
         builder.client_methods.push(quote! {
                 #signature {
-                    let msg = #msg_struct_name {
+                    let _msg = #msg_struct_name {
                         #(#msg_fields_init)*
                     };
-                    unsafe { ::ixc::core::low_level::dynamic_invoke(#context_name, ::ixc::core::handler::Client::account_id(self), msg) }
+                    let _acct_id = ::ixc::core::handler::Client::account_id(self);
+                    unsafe {
+                        #dynamic_invoke
+                    }
                 }
         });
     } else {

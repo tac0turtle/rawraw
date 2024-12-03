@@ -44,15 +44,14 @@ impl<'a, CM: CodeManager> AccountManager<'a, CM> {
     }
 }
 
-impl<'a, CM: CodeManager>
-    AccountManager<'a, CM>
+impl<'a, CM: CodeManager> AccountManager<'a, CM>
 {
-    pub fn invoke<'a, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
+    pub fn invoke<'b, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
         &self,
-        id_generator: &'a mut IDG,
-        state_handler: &'a mut ST,
+        id_generator: &'b mut IDG,
+        state_handler: &'b mut ST,
         message_packet: &mut MessagePacket,
-        authz: &'a AUTHZ,
+        authz: &'b AUTHZ,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         let mut exec_context = ExecContext{
@@ -107,7 +106,7 @@ impl<
         AUTHZ: AuthorizationMiddleware,
     > HostBackend for ExecContext<'a, CM, ST, IDG, AUTHZ>
 {
-    fn invoke(
+    fn invoke_msg(
         &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
@@ -211,7 +210,7 @@ impl<
 }
 
 impl<'a, CM: CodeManager, ST: StateHandler> HostBackend for QueryFrame<'a, CM, ST> {
-    fn invoke(
+    fn invoke_msg(
         &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,

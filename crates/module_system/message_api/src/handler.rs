@@ -32,20 +32,15 @@ pub use allocator_api2::alloc::Allocator;
 /// A host backend for the handler.
 pub trait HostBackend {
     /// Invoke a message packet.
-    fn invoke_query(
+    fn invoke_msg(
         &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
 
+    /// Invoke a query message packet.
     fn invoke_query(
         &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
-    /// Invoke a message packet.
-    fn invoke_msg(
-        &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode>;

@@ -15,11 +15,11 @@ pub trait VM {
     /// or return None if the handler ID is not valid.
     /// This allows for multiple ways of addressing a single handler in code and for ensuring that
     /// the handler actually exists.
-    fn resolve_handler_id<S: ReadonlyStore>(&self, store: &S, handler_id: &[u8]) -> Option<Vec<u8>>;
+    fn resolve_handler_id(&self, store: &dyn ReadonlyStore, handler_id: &[u8]) -> Option<Vec<u8>>;
     /// Runs a handler with the provided message packet and host backend.
-    fn run_message<S: ReadonlyStore>(
+    fn run_message(
         &self,
-        store: &S,
+        store: &dyn ReadonlyStore,
         handler_id: &[u8],
         message_packet: &mut MessagePacket,
         backend: &mut dyn HostBackend,
@@ -27,9 +27,9 @@ pub trait VM {
     ) -> Result<(), ErrorCode>;
 
     /// Runs a query handler with the provided message packet and host backend.
-    fn run_query<S: ReadonlyStore>(
+    fn run_query(
         &self,
-        store: &S,
+        store: &dyn ReadonlyStore,
         handler_id: &[u8],
         message_packet: &mut MessagePacket,
         backend: &dyn HostBackend,
@@ -37,9 +37,9 @@ pub trait VM {
     ) -> Result<(), ErrorCode>;
 
     /// Runs a system message handler with the provided message packet and host backend.
-    fn run_system_message<S: ReadonlyStore>(
+    fn run_system_message(
         &self,
-        store: &S,
+        store: &dyn ReadonlyStore,
         handler_id: &[u8],
         message_packet: &mut MessagePacket,
         backend: &mut dyn HostBackend,
@@ -52,7 +52,7 @@ pub trait VM {
 /// this state should only be used to retrieve the code for a handler from the store.
 pub trait ReadonlyStore {
     /// Gets the value for the given key for the given account.
-    fn get<A: Allocator>(&self, account_id: AccountID, key: &[u8], allocator: A) -> Result<Option<Vec<u8, A>>, ErrorCode>;
+    fn get<'a>(&self, account_id: AccountID, key: &[u8], allocator: &'a dyn Allocator) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
 }
 
 /// A descriptor for a handler.
