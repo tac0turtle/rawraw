@@ -130,23 +130,30 @@ impl TestApp {
 }
 
 impl HostBackend for TestApp {
-    fn invoke(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let mut state = self.state.borrow_mut();
-        let mut tx = state
-            .new_transaction(message_packet.header().caller, true)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
-
-        let vm_manager = self.vm_manager.borrow();
-        ixc_account_manager::invoke(&*vm_manager, &mut tx, message_packet, allocator)?;
-
-        state
-            .commit(tx)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+    fn invoke_msg(&mut self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+        todo!()
     }
+
+    fn invoke_query(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+        todo!()
+    }
+    // fn invoke(
+    //     &self,
+    //     message_packet: &mut MessagePacket,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode> {
+    //     let mut state = self.state.borrow_mut();
+    //     let mut tx = state
+    //         .new_transaction(message_packet.header().caller, true)
+    //         .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+    //
+    //     let vm_manager = self.vm_manager.borrow();
+    //     ixc_account_manager::invoke(&*vm_manager, &mut tx, message_packet, allocator)?;
+    //
+    //     state
+    //         .commit(tx)
+    //         .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+    // }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.
@@ -180,33 +187,47 @@ impl MockHandler {
 }
 
 impl RawHandler for MockHandler {
-    fn handle(
-        &self,
-        message_packet: &mut MessagePacket,
-        callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        for mock in &self.mocks {
-            let res = mock.handle(message_packet, callbacks, allocator);
-            match res {
-                Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
-                _ => return res,
-            }
-        }
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+    // fn handle(
+    //     &self,
+    //     message_packet: &mut MessagePacket,
+    //     callbacks: &dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode> {
+    //     for mock in &self.mocks {
+    //         let res = mock.handle(message_packet, callbacks, allocator);
+    //         match res {
+    //             Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
+    //             _ => return res,
+    //         }
+    //     }
+    //     Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+    // }
+    fn handle_msg(&self, message_packet: &mut MessagePacket, callbacks: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+        todo!()
     }
 }
 
 struct MockWrapper<T: RawHandler + ?Sized>(std::boxed::Box<T>);
 impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
-    fn handle(
-        &self,
-        message_packet: &mut MessagePacket,
-        callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        self.0.handle(message_packet, callbacks, allocator)
+    fn handle_query(&self, message_packet: &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+        todo!()
     }
+
+    fn handle_msg(&self, message_packet: &mut MessagePacket, callbacks: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+        todo!()
+    }
+
+    fn handle_system(&self, message_packet: &mut MessagePacket, callbacks: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+        todo!()
+    }
+    // fn handle(
+    //     &self,
+    //     message_packet: &mut MessagePacket,
+    //     callbacks: &dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode> {
+    //     self.0.handle(message_packet, callbacks, allocator)
+    // }
 }
 
 #[ixc::handler(DefaultAccount)]

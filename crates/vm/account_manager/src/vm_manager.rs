@@ -1,5 +1,4 @@
 //! Defines a VM manager that can be used to register VMs and resolve handler IDs.
-use crate::CodeManager;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::HostBackend;

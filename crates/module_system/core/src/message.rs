@@ -20,10 +20,14 @@ pub trait Message<'a>: SchemaValue<'a> + StructSchema {
     type Codec: Codec + Default;
 }
 
+/// The volatility of a message.
 pub enum Volatility {
+    /// The message is pure and doesn't depend on or modify state.
     Pure,
+    /// The message is volatile and can only be invoked in a transaction.
     Volatile,
-    NonVolatile,
+    /// The message is non-volatile and can be invoked in any context where state is available.
+    Query,
 }
 /// Extract the response and error types from a Result.
 /// Used internally in macros for building the Message implementation and ClientResult type.
