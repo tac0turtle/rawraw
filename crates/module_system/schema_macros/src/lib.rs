@@ -6,7 +6,7 @@ use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Attribute, Data, DataStruct, Lifetime};
 
-/// This derives a struct codec.
+/// This derives a struct codec. The struct must implement Default.
 #[manyhow]
 #[proc_macro_derive(SchemaValue, attributes(sealed, schema, proto))]
 pub fn derive_schema_value(input: syn::DeriveInput) -> manyhow::Result<TokenStream2> {
@@ -66,28 +66,14 @@ fn derive_struct_schema(
         let field_name = field.ident.as_ref().unwrap();
         let field_type = &field.ty;
         quote! {
-            #index => <#field_type as #ixc_schema_path::SchemaValue<'_>>::encode(&self.#field_name, encoder),
-        }
-    });
-    let decode_states = str.fields.iter().map(|field| {
-        let field_type = &field.ty;
-        quote! {
-            <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::DecodeState,
+            #index => <#field_type as #ixc_schema_path::value::ValueCodec<'_>>::encode(&self.#field_name, encoder),
         }
     });
     let decode_matchers = str.fields.iter().enumerate().map(|(index, field)| {
         let field_type = &field.ty;
-        let tuple_index = syn::Index::from(index);
-        quote! {
-            #index => <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::visit_decode_state(&mut self.state.#tuple_index, decoder),
-        }
-    });
-    let finishers = str.fields.iter().enumerate().map(|(index, field)| {
         let field_name = field.ident.as_ref().unwrap();
-        let field_type = &field.ty;
-        let tuple_index = syn::Index::from(index);
         quote! {
-            let #field_name = <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::finish_decode_state(state.#tuple_index, mem)?;
+            #index => <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::decode(&mut self.#field_name, decoder),
         }
     });
     let field_inits = str.fields.iter().map(|field| {
@@ -120,30 +106,21 @@ fn derive_struct_schema(
             }
         }
 
-        impl < #lifetime > #ixc_schema_path::SchemaValue < #lifetime > for #struct_name #ty_generics #where_clause {
-            type Type = #ixc_schema_path::types::StructT< #struct_name #ty_generics >;
-            type DecodeState = (#(#decode_states)*);
-
-            fn visit_decode_state(state: &mut Self::DecodeState, decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
-                struct Visitor< #lifetime2 , #lifetime : #lifetime2 > {
-                    state: &#lifetime2 mut < #struct_name #ty_generics as #ixc_schema_path::SchemaValue< #lifetime >>::DecodeState,
+        unsafe impl< #lifetime > #ixc_schema_path::structs::StructDecodeVisitor< #lifetime > for #struct_name #ty_generics #where_clause {
+            fn decode_field(&mut self, index: usize, decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
+                match index {
+                    #(#decode_matchers)*
+                    _ => Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
                 }
-                unsafe impl< #lifetime2, #lifetime : #lifetime2 > #ixc_schema_path::structs::StructDecodeVisitor< #lifetime > for Visitor< #lifetime2, #lifetime > {
-                    fn decode_field(&mut self, index: usize, decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
-                        match index {
-                            #(#decode_matchers)*
-                            _ => Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
-                        }
-                    }
-                }
-                decoder.decode_struct(&mut Visitor { state }, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
             }
+        }
 
-            fn finish_decode_state(state: Self::DecodeState, mem: &#lifetime #ixc_schema_path::mem::MemoryManager) -> ::core::result::Result<Self, #ixc_schema_path::decoder::DecodeError> {
-                #(#finishers)*
-                Ok( #struct_name {
-                    #(#field_inits)*
-                })
+        impl < #lifetime > #ixc_schema_path::value::ValueCodec < #lifetime > for #struct_name #ty_generics #where_clause {
+            fn decode(
+                &mut self,
+                decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >,
+            ) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
+                decoder.decode_struct(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
             }
 
             fn encode(&self, encoder: &mut dyn #ixc_schema_path::encoder::Encoder) -> ::core::result::Result<(), #ixc_schema_path::encoder::EncodeError> {
@@ -151,9 +128,10 @@ fn derive_struct_schema(
             }
         }
 
-        // impl < #lifetime > #ixc_schema_path::SchemaValue < #lifetime > for &#lifetime #struct_name #ty_generics #where_clause {
-        //     type Type = #ixc_schema_path::types::StructT< #struct_name #ty_generics >;
-        // }
+        impl < #lifetime > #ixc_schema_path::SchemaValue < #lifetime > for #struct_name #ty_generics #where_clause {
+            type Type = #ixc_schema_path::types::StructT< #struct_name #ty_generics >;
+        }
+
 
         impl < #lifetime > #ixc_schema_path::value::ListElementValue < #lifetime > for #struct_name #ty_generics #where_clause {}
         impl #impl_generics #ixc_schema_path::state_object::ObjectFieldValue for #struct_name #ty_generics #where_clause {

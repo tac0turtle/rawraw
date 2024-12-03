@@ -74,7 +74,7 @@ mod vesting {
         ) -> Result<(), UnlockError>;
     }
 
-    #[derive(SchemaValue, Clone, PartialEq, Debug)]
+    #[derive(SchemaValue, Clone, PartialEq, Debug, Default)]
     #[sealed]
     pub struct Coin {
         pub denom: String,
@@ -84,9 +84,9 @@ mod vesting {
     #[handler_api]
     #[automock]
     pub trait BankAPI {
-        fn send(
+        fn send<'a>(
             &self,
-            ctx: &mut Context<'_>,
+            ctx: &mut Context<'a>,
             to: AccountID,
             amount: &[Coin],
         ) -> Result<(), SendError>;
@@ -122,7 +122,7 @@ mod vesting {
         }
     }
 
-    #[derive(SchemaValue, Clone)]
+    #[derive(SchemaValue, Clone, Default)]
     #[non_exhaustive]
     pub struct UnlockEvent {
         pub to: AccountID,

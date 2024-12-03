@@ -24,7 +24,7 @@ pub mod bank {
         denom_burn_hooks: Map<Str, AccountID>,
     }
 
-    #[derive(SchemaValue, Clone)]
+    #[derive(SchemaValue, Clone, Default)]
     #[sealed]
     pub struct Coin<'a> {
         pub denom: &'a str,
@@ -96,7 +96,7 @@ pub mod bank {
         ) -> Result<()>;
     }
 
-    #[derive(SchemaValue, Clone)]
+    #[derive(SchemaValue, Clone, Default)]
     #[non_exhaustive]
     pub struct EventSend<'a> {
         pub from: AccountID,
@@ -104,14 +104,14 @@ pub mod bank {
         pub coin: Coin<'a>,
     }
 
-    #[derive(SchemaValue, Clone)]
+    #[derive(SchemaValue, Clone, Default)]
     #[non_exhaustive]
     pub struct EventMint<'a> {
         pub to: AccountID,
         pub coin: Coin<'a>,
     }
 
-    #[derive(SchemaValue, Clone)]
+    #[derive(SchemaValue, Default, Clone)]
     #[non_exhaustive]
     pub struct EventBurn<'a> {
         pub from: AccountID,

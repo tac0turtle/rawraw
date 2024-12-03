@@ -50,6 +50,8 @@ pub enum InitializationError {
     Other,
     /// The account with the specified name could not be resolved.
     AccountNotFound,
+    /// The length of the scope is too long.
+    ExceedsLength,
 }
 
 impl ResourceScope<'_> {
