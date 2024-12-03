@@ -65,6 +65,8 @@ pub fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<TokenSt
     )?;
 
     let routes = &builder.routes;
+    let query_routes = &builder.query_routes;
+    let system_routes = &builder.system_routes;
     push_item(
         items,
         quote! {
@@ -72,6 +74,16 @@ pub fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<TokenSt
                 const SORTED_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
                     &::ixc::core::routing::sort_routes([
                         #(#routes)*
+                    ]);
+
+                const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                    &::ixc::core::routing::sort_routes([
+                        #(#query_routes)*
+                    ]);
+
+                const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                    &::ixc::core::routing::sort_routes([
+                        #(#system_routes)*
                     ]);
             }
         },
@@ -271,6 +283,7 @@ pub fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Resul
     builder.define_client_factory(&client_impl_ident, &quote! { #client_impl_ident})?;
     let items = &mut builder.items;
     let routes = &builder.routes;
+    let query_routes = &builder.query_routes;
     let client_signatures = &builder.client_signatures;
     Ok(quote! {
         #item_trait
@@ -282,6 +295,13 @@ pub fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Resul
                 &::ixc::core::routing::sort_routes([
                     #(#routes)*
                 ]);
+
+            const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                &::ixc::core::routing::sort_routes([
+                    #(#query_routes)*
+                ]);
+
+            const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] = &[];
         }
 
         impl ::ixc::message_api::handler::RawHandler for dyn #trait_ident {
@@ -301,6 +321,7 @@ struct APIBuilder {
     items: Vec<Item>,
     routes: Vec<TokenStream2>,
     query_routes: Vec<TokenStream2>,
+    system_routes: Vec<TokenStream2>,
     client_signatures: Vec<Signature>,
     client_methods: Vec<TokenStream2>,
     create_msg_name: Option<Ident>,
@@ -523,7 +544,7 @@ fn derive_api_method(
         builder.client_signatures.push(signature.clone());
         let dynamic_invoke = if is_query {
             quote! { #context_name.dynamic_invoke_query(_acct_id, _msg) }
-       } else {
+        } else {
             quote! { #context_name.dynamic_invoke_msg(_acct_id, _msg) }
         };
         builder.client_methods.push(quote! {
@@ -538,7 +559,7 @@ fn derive_api_method(
                 }
         });
     } else {
-        builder.routes.push(quote! {
+        builder.system_routes.push(quote! {
             (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: &Self, packet, cb, a| {
                 unsafe {
                     let cdc = < #msg_struct_name #opt_underscore_lifetime as::ixc::core::handler::InitMessage<'_> >::Codec::default();

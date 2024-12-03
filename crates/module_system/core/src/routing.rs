@@ -16,6 +16,9 @@ where
 
     /// The query routes sorted by message selector.
     const SORTED_QUERY_ROUTES: &'static [Route<Self>];
+
+    /// The query routes sorted by message selector.
+    const SORTED_SYSTEM_ROUTES: &'static [Route<Self>];
 }
 
 /// A router for dynamic trait objects.
@@ -50,10 +53,10 @@ pub fn exec_route<R: Router + ?Sized>(
 }
 
 /// Find a route for a message selector.
-pub fn find_route<R: Router + ?Sized>(sel: MessageSelector) -> Option<&'static Route<R>> {
-    let res = R::SORTED_ROUTES.binary_search_by_key(&sel, |(selector, _)| *selector);
+pub fn find_route<R>(sorted_routes: &[Route<R>], sel: MessageSelector) -> Option<&Route<R>> {
+    let res = sorted_routes.binary_search_by_key(&sel, |(selector, _)| *selector);
     match res {
-        Ok(idx) => Some(&R::SORTED_ROUTES[idx]),
+        Ok(idx) => Some(&sorted_routes[idx]),
         Err(_) => None,
     }
 }
