@@ -33,3 +33,23 @@ pub trait VM {
 #[non_exhaustive]
 #[derive(Debug, Default, Clone)]
 pub struct HandlerDescriptor {}
+
+
+struct Map {
+    prefix: &'static [u8]
+}
+
+impl Map {
+    pub const fn new(xx: &'static [u8]) -> Self { Self { prefix: xx } }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const X: Map = Map::new(b"x");
+    #[test]
+    fn builds() {
+
+    }
+}

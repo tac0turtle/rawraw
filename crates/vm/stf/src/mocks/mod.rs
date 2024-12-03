@@ -1,20 +1,23 @@
 extern crate alloc;
 
+use crate::stf::{
+    Account, AccountCodes, Context, State, StoreGetRequest, StoreGetResponse, StoreSetRequest, Tx,
+    STORAGE_ACCOUNT_ID,
+};
 use alloc::collections::BTreeMap;
 use ixc_core_macros::message_selector;
-use ixc_message_api::AccountID;
 use ixc_message_api::header::MessageSelector;
+use ixc_message_api::AccountID;
 use serde::{Deserialize, Serialize};
-use crate::stf::{Account, AccountCodes, Context, State, StoreGetRequest, StoreGetResponse, StoreSetRequest, Tx, STORAGE_ACCOUNT_ID};
 
 pub struct MockState {
-    state: BTreeMap<Vec<u8>, Vec<u8>>
+    state: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 impl MockState {
     pub const fn new() -> Self {
-        Self{
-            state: BTreeMap::new()
+        Self {
+            state: BTreeMap::new(),
         }
     }
 
@@ -38,7 +41,12 @@ pub struct MockTx {
 }
 
 impl MockTx {
-    pub fn new(sender: AccountID, recipient: AccountID, msg: Vec<u8>, selector: MessageSelector) -> Self {
+    pub fn new(
+        sender: AccountID,
+        recipient: AccountID,
+        msg: Vec<u8>,
+        selector: MessageSelector,
+    ) -> Self {
         Self {
             sender,
             recipient,
@@ -54,11 +62,11 @@ impl Tx for MockTx {
     }
 
     fn recipient(&self) -> &AccountID {
-       &self.recipient
+        &self.recipient
     }
 
     fn msg(&self) -> &[u8] {
-       &self.msg
+        &self.msg
     }
 
     fn selector(&self) -> &MessageSelector {
@@ -110,11 +118,15 @@ impl Default for MockAccountCodesBuilder {
 }
 
 impl AccountCodes for MockAccountCodes {
-    fn get_code_for_account(&self, account: &AccountID, _state: &dyn State) -> Result<&dyn Account, String> {
+    fn get_code_for_account(
+        &self,
+        account: &AccountID,
+        _state: &dyn State,
+    ) -> Result<&dyn Account, String> {
         self.accounts
             .get(account)
             .ok_or_else(|| alloc::format!("No code found for account: {:?}", account))
-            .map(|ac|ac.as_ref())
+            .map(|ac| ac.as_ref())
     }
 }
 
@@ -128,7 +140,7 @@ impl MockTokenAccount {
 #[derive(Serialize, Deserialize)]
 pub struct MsgSend {
     pub to: AccountID,
-    pub amount: u128
+    pub amount: u128,
 }
 
 impl MsgSend {
@@ -138,8 +150,7 @@ impl MsgSend {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct MsgSendResponse {
-}
+pub struct MsgSendResponse {}
 
 #[derive(Serialize, Deserialize)]
 pub struct QueryBalance {
@@ -154,31 +165,32 @@ impl QueryBalance {
 
 #[derive(Serialize, Deserialize)]
 pub struct QueryBalanceResponse {
-    pub amount: u128
+    pub amount: u128,
 }
-
-
 
 impl Account for MockTokenAccount {
     fn execute(&self, ctx: &mut dyn Context) -> Result<Vec<u8>, String> {
         match ctx.selector() {
             &Self::SEND_SELECTOR => {
                 let send = serde_json::from_slice::<MsgSend>(ctx.msg()).unwrap();
-                Ok(serde_json::to_vec(&MsgSendResponse{
-                }).unwrap())
+                Ok(serde_json::to_vec(&MsgSendResponse {}).unwrap())
             }
-            _ => Err(format!("unknown selector {}, send is: {}", ctx.selector(), Self::SEND_SELECTOR)),
+            _ => Err(format!(
+                "unknown selector {}, send is: {}",
+                ctx.selector(),
+                Self::SEND_SELECTOR
+            )),
         }
     }
 
     fn query(&self, ctx: &dyn Context) -> Result<Vec<u8>, String> {
-       match ctx.selector() {
-           &Self::BALANCE_SELECTOR => {
-               let req  = serde_json::from_slice::<QueryBalance>(ctx.msg()).unwrap();
-               panic!("ok")
-           }
-           _ => Err("unknown query request".to_string()),
-       }
+        match ctx.selector() {
+            &Self::BALANCE_SELECTOR => {
+                let req = serde_json::from_slice::<QueryBalance>(ctx.msg()).unwrap();
+                panic!("ok")
+            }
+            _ => Err("unknown query request".to_string()),
+        }
     }
 }
 
@@ -195,4 +207,3 @@ impl KVStore {
 }
 
 struct MockEOAccount;
-

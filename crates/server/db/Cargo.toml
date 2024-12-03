@@ -1,0 +1,19 @@
+[package]
+name = "db"
+version = "0.1.0"
+edition = "2021"
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+async-trait = "0.1.83"
+sled = "1.0.0-alpha.124"
+thiserror = "2.0.3"
+jmt = "0.10.0"
+anyhow = "1.0.93"
+sov-db = "0.3.0"
+borsh = {version="1.5.3", features=["borsh-derive"]}
+
+[lints]
+workspace = true

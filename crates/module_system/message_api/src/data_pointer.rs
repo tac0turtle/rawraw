@@ -10,7 +10,7 @@ pub union DataPointer {
     pub native_pointer: NativePointer,
     /// A pointer to the data inside the message packet.
     pub local_pointer: LocalPointer,
-    /// A wrapper for a u64 value.
+    /// A wrapper for an u64 value.
     pub u64_wrapper: U64Wrapper,
 }
 

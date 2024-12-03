@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 /// an external user, but an account always has one unique account ID.
 /// The account ID zero is reserved for the "null account" meaning
 /// that the account is not valid or does not exist.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
 #[repr(transparent)]
 pub struct AccountID(u128);
 
