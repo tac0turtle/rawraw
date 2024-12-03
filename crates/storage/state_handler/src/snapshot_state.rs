@@ -1,6 +1,10 @@
 #![allow(unused)]
 use allocator_api2::vec::Vec;
-use std::collections::HashMap;
+use quick_cache::unsync::Cache;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    collections::HashMap,
+};
 
 use crate::Store;
 
@@ -12,6 +16,9 @@ pub struct SnapshotState<S> {
     state: S,
     changes: HashMap<Vec<u8>, Value>,
     changelog: Vec<StateChange>,
+    /// The cache for items gotten from state
+    /// This is used to cache reads
+    cache: Cache<Vec<u8>, Vec<u8>>,
 }
 
 impl<S> SnapshotState<S> {
@@ -20,16 +27,31 @@ impl<S> SnapshotState<S> {
             state,
             changes: Default::default(),
             changelog: Vec::new(),
+            cache: Cache::new(10_000), // TODO Decide on values
         }
     }
 }
 
 impl<S: Store> SnapshotState<S> {
-    pub fn get(&self, key: Vec<u8>) -> Option<Vec<u8>> {
+    pub fn get(&mut self, key: &Vec<u8>) -> Option<Vec<u8>> {
         // try to get from values
         match self.changes.get(key) {
             // get from disk db
-            None => self.state.get(key),
+            None => {
+                // check the cache first for the key, we may have already read it
+                let value = self.cache.get(key);
+                match value {
+                    Some(value) => Some(value.clone()),
+                    None => {
+                        // if not in cache, read from state
+                        let v = self.state.get(key).unwrap();
+                        // insert into cache
+                        self.cache.insert(key.clone(), v.clone());
+                        Some(v)
+                    }
+                }
+            }
+
             // found in change list
             Some(value) => match value {
                 Value::Updated(data) => Some(data.clone()),
@@ -50,10 +72,11 @@ impl<S: Store> SnapshotState<S> {
     }
 
     pub fn delete(&mut self, key: &Vec<u8>) {
+        let value = self.get(key.borrow());
         self.changes.insert(key.clone(), Value::Deleted);
         self.changelog.push(StateChange::Delete {
             key: key.clone(),
-            old_value: self.get(key.clone()),
+            old_value: value,
         });
     }
 
@@ -132,10 +155,11 @@ impl StateChange {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use allocator_api2::vec::Vec;
 
     // implement in memory disk db
     impl Store for HashMap<Vec<u8>, Vec<u8>> {
-        fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+        fn get(&self, key: &Vec<u8>) -> Option<Vec<u8>> {
             self.get(key).cloned()
         }
         fn commit(&mut self) -> Result<(), ()> {
