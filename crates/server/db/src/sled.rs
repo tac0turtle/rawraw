@@ -1,8 +1,8 @@
 use crate::State;
-use std::path::Path;
+use borsh::{to_vec, BorshDeserialize, BorshSerialize};
 use jmt::storage::{LeafNode, Node, NodeBatch, NodeKey, TreeReader, TreeWriter};
 use jmt::{KeyHash, OwnedValue, Version};
-use borsh::{to_vec, BorshDeserialize, BorshSerialize};
+use std::path::Path;
 
 pub struct Sled {
     db: sled::Db,
@@ -179,6 +179,8 @@ impl State for ViewableState {
     }
 }
 
+const NODE_KEY_PREFIX: u8 = 0x00;
+const KEY_HASH_PREFIX: u8 = 0x01;
 impl TreeReader for ViewableState {
     fn get_node_option(&self, node_key: &NodeKey) -> anyhow::Result<Option<Node>> {
         let key = to_vec(node_key)?;
@@ -188,8 +190,12 @@ impl TreeReader for ViewableState {
             .transpose()?)
     }
 
-    fn get_value_option(&self, max_version: Version, key_hash: KeyHash) -> anyhow::Result<Option<OwnedValue>> {
-        todo!()
+    fn get_value_option(
+        &self,
+        max_version: Version,
+        key_hash: KeyHash,
+    ) -> anyhow::Result<Option<OwnedValue>> {
+
     }
 
     fn get_rightmost_leaf(&self) -> anyhow::Result<Option<(NodeKey, LeafNode)>> {
@@ -197,6 +203,18 @@ impl TreeReader for ViewableState {
     }
 }
 
+impl TreeWriter for Sled {
+    fn write_node_batch(&self, node_batch: &NodeBatch) -> anyhow::Result<()> {
+        let v = node_batch.values();
+        for (key, value) in v {
+
+        }
+        for (key, value) in node_batch.nodes() {
+        }
+
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -213,7 +231,6 @@ mod tests {
             return self.0.as_ref();
         }
     }
-
 
     #[test]
     fn test_all() {

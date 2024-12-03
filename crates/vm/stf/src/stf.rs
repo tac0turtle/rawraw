@@ -159,11 +159,12 @@ impl<'a> Context for ExecutionContext<'a> {
         // Execute with new context
         let res = code.execute(&mut new_context);
         match res {
-            Ok(res) => {
-                Ok(res)
-            }
+            Ok(res) => Ok(res),
             Err(e) => {
-                self.state.borrow_mut().restore_checkpoint(checkpoint).unwrap();
+                self.state
+                    .borrow_mut()
+                    .restore_checkpoint(checkpoint)
+                    .unwrap();
                 Err(e)
             }
         }
@@ -305,10 +306,11 @@ mod tests {
             .with_account(token, MockTokenAccount)
             .build();
 
-        let msg = serde_json::to_vec(&MsgSend{
+        let msg = serde_json::to_vec(&MsgSend {
             to: bob,
             amount: 100,
-        }).unwrap();
+        })
+        .unwrap();
 
         let tx = MockTx::new(alice, token, msg, MsgSend::selector());
 

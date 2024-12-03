@@ -1,5 +1,5 @@
-use std::cell::RefCell;
 use crate::State;
+use std::cell::RefCell;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum KeyTrace {
@@ -61,7 +61,7 @@ mod tests {
                 value: vec![],
             }],
         )
-            .unwrap();
+        .unwrap();
 
         let state = db.load_latest_state().unwrap();
 
