@@ -5,6 +5,7 @@ pub trait ReaderKv {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
 }
 
+#[derive(Debug, PartialEq)]
 enum Value {
     Deleted,
     Updated(Vec<u8>),
@@ -19,15 +20,25 @@ pub enum StateChange {
     Update {
         key: Vec<u8>,
         value: Vec<u8>,
+        previous_value: Option<Value>,
     },
 }
 
 impl StateChange {
     fn revert(self, changes: &mut HashMap<Vec<u8>, Value>) {
         match self {
-            StateChange::Update { key, value } => {
-                changes.remove(&key);
-            }
+            StateChange::Update {
+                key,
+                value,
+                previous_value,
+            } => match previous_value {
+                Some(previous_value) => {
+                    changes.insert(key, previous_value);
+                }
+                None => {
+                    changes.remove(&key);
+                }
+            },
 
             StateChange::Delete { key, old_value } => {
                 changes.insert(
@@ -77,9 +88,14 @@ impl<S: ReaderKv> SnapshotState<S> {
     }
 
     pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
-        self.changes
+        let previous_value = self
+            .changes
             .insert(key.clone(), Value::Updated(value.clone()));
-        self.changelog.push(StateChange::Update { key, value });
+        self.changelog.push(StateChange::Update {
+            key,
+            value,
+            previous_value,
+        });
     }
 
     pub fn delete(&mut self, key: &[u8]) {
@@ -152,14 +168,17 @@ mod tests {
             StateChange::Update {
                 key: b"begin_block".to_vec(),
                 value: b"begin_block".to_vec(),
+                previous_value: None,
             },
             StateChange::Update {
                 key: b"ante_handler".to_vec(),
                 value: b"ante".to_vec(),
+                previous_value: None,
             },
             StateChange::Update {
                 key: b"bob".to_vec(),
                 value: b"0ixc".to_vec(),
+                previous_value: None,
             },
         ];
 
