@@ -22,3 +22,8 @@ workspace = true
 [features]
 default = ["std"]
 std = []
+
+
+# TODO remove
+[package.metadata.clippy]
+unused_variables = "allow"

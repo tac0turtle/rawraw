@@ -5,7 +5,6 @@ use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
 use ixc_schema::structs::StructSchema;
-use ixc_schema::value::OptionalValue;
 use ixc_schema::SchemaValue;
 
 /// Handler trait for account and module handlers.

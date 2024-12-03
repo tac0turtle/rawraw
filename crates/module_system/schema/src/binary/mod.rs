@@ -7,8 +7,6 @@ use crate::codec::{Codec, ValueDecodeVisitor, ValueEncodeVisitor};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
-use crate::state_object::{ObjectKey, ObjectValue};
-use crate::value::SchemaValue;
 
 pub(crate) mod decoder;
 pub(crate) mod encoder;
@@ -45,7 +43,6 @@ mod tests {
     use ixc_schema_macros::SchemaValue;
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
-    use simple_time::{Duration, Time};
 
     #[derive(SchemaValue, Debug, Eq, PartialEq, Arbitrary)]
     #[non_exhaustive]
@@ -81,7 +78,7 @@ mod tests {
     proptest! {
         #[test]
         fn test_roundtrip(value: ABitOfEverything) {
-            let cdc = super::NativeBinaryCodec::default();
+            let cdc = super::NativeBinaryCodec;
             let mem = MemoryManager::new();
             let bz = cdc.encode_value(&value, &mem).unwrap();
             let value2 = decode_value(&cdc, bz, &mem).unwrap();

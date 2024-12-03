@@ -4,7 +4,7 @@
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{parse_quote, Attribute, Data, DataStruct, Lifetime, Path};
+use syn::{Attribute, Data, DataStruct, Lifetime};
 
 /// This derives a struct codec.
 #[manyhow]
@@ -40,7 +40,7 @@ fn derive_struct_schema(
     } else {
         Lifetime::new("'b", Span::call_site())
     };
-    let ty_generics2 = if let Some(lifetime) = generics.lifetimes().next() {
+    let ty_generics2 = if let Some(_lifetime) = generics.lifetimes().next() {
         quote! { < #lifetime2 > }
     } else {
         quote! {}
@@ -90,7 +90,7 @@ fn derive_struct_schema(
             let #field_name = <#field_type as #ixc_schema_path::SchemaValue< #lifetime >>::finish_decode_state(state.#tuple_index, mem)?;
         }
     });
-    let field_inits = str.fields.iter().enumerate().map(|(index, field)| {
+    let field_inits = str.fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         quote! {
             #field_name,
@@ -160,7 +160,7 @@ fn derive_struct_schema(
             type In< #lifetime2 > = #struct_name #ty_generics2;
             type Out< #lifetime2 > = #struct_name #ty_generics2;
         }
-    }.into())
+    })
 }
 
 fn has_attribute<I>(attrs: &Vec<Attribute>, ident: &I) -> bool

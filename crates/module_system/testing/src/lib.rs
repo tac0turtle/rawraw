@@ -22,30 +22,35 @@ use std::collections::BTreeMap;
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
-use ixc_stf::Hypervisor;
+use ixc_message_api::code::SystemCode::FatalExecutionError;
+use ixc_stf::STF;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
-    hypervisor: RefCell<Hypervisor<VersionedMultiStore>>,
+    hypervisor: RefCell<STF>,
+    state: RefCell<VersionedMultiStore>,
     native_vm: NativeVM,
+    #[allow(unused)]
     mem: MemoryManager,
     mock_id: Cell<u64>,
 }
 
 impl Default for TestApp {
     fn default() -> Self {
-        let mut hypervisor: Hypervisor<VersionedMultiStore> = Default::default();
+        let mut hypervisor: STF = Default::default();
         let native_vm = NativeVM::new();
         hypervisor
             .register_vm("native", std::boxed::Box::new(native_vm.clone()))
             .unwrap();
         hypervisor.set_default_vm("native").unwrap();
         let mem = MemoryManager::new();
-        let mut test_app = Self {
+        let state = VersionedMultiStore::default();
+        let test_app = Self {
             hypervisor: RefCell::new(hypervisor),
             native_vm,
             mem,
             mock_id: Cell::new(0),
+            state: RefCell::new(state),
         };
         test_app.register_handler::<DefaultAccount>().unwrap();
         test_app
@@ -94,10 +99,8 @@ impl TestApp {
 
     /// Creates a new client for the given account.
     pub fn client_context_for(&self, account_id: AccountID) -> Context {
-        unsafe {
-            let ctx = Context::new(account_id, account_id, 0, self);
-            ctx
-        }
+        let ctx = Context::new(account_id, account_id, 0, self);
+        ctx
     }
 
     /// Adds a mock account handler to the test harness, instantiates it as an account and returns the account ID.
@@ -132,15 +135,30 @@ impl HostBackend for TestApp {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
+        let mut state = self.state.borrow_mut();
+        let mut tx = state
+            .new_transaction(message_packet.header().caller, true)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+
         self.hypervisor
             .borrow_mut()
-            .invoke(message_packet, allocator)
+            .invoke(&mut tx, message_packet, allocator)?;
+
+        state
+            .commit(tx)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.
 pub struct MockHandler {
     mocks: Vec<std::boxed::Box<dyn RawHandler>>,
+}
+
+impl Default for MockHandler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MockHandler {
@@ -201,7 +219,7 @@ mod default_account {
 
     impl DefaultAccount {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+        pub fn create(&self, _ctx: &mut Context) -> Result<()> {
             Ok(())
         }
     }

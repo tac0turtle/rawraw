@@ -4,7 +4,6 @@ use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::state_object::ObjectValue;
 use crate::structs::{StructDecodeVisitor, StructType};
-use crate::value::SchemaValue;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
@@ -61,13 +60,13 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     fn decode_borrowed_str(&mut self) -> Result<&'a str, DecodeError> {
         let bz = self.buf;
         self.buf = &[];
-        Ok(core::str::from_utf8(bz).map_err(|_| DecodeError::InvalidData)?)
+        core::str::from_utf8(bz).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_owned_str(&mut self) -> Result<String, DecodeError> {
         let bz = self.buf;
         self.buf = &[];
-        Ok(String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)?)
+        String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_struct(
@@ -90,7 +89,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
-        visitor.init(size, &self.scope)?;
+        visitor.init(size, self.scope)?;
         let mut sub = Decoder {
             buf: self.buf,
             scope: self.scope,
@@ -108,7 +107,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     }
 
     fn mem_manager(&self) -> &'a MemoryManager {
-        &self.scope
+        self.scope
     }
 
     fn decode_bool(&mut self) -> Result<bool, DecodeError> {
@@ -205,13 +204,13 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
     fn decode_borrowed_str(&mut self) -> Result<&'a str, DecodeError> {
         let size = self.decode_u32()? as usize;
         let bz = self.outer.read_bytes(size)?;
-        Ok(core::str::from_utf8(bz).map_err(|_| DecodeError::InvalidData)?)
+        core::str::from_utf8(bz).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_owned_str(&mut self) -> Result<String, DecodeError> {
         let size = self.decode_u32()? as usize;
         let bz = self.outer.read_bytes(size)?;
-        Ok(String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)?)
+        String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_struct(
@@ -243,7 +242,7 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
     }
 
     fn mem_manager(&self) -> &'a MemoryManager {
-        &self.outer.scope
+        self.outer.scope
     }
 
     fn decode_bool(&mut self) -> Result<bool, DecodeError> {
@@ -323,7 +322,7 @@ mod tests {
     #[test]
     fn test_u32_decode() {
         let buf: [u8; 4] = [10, 0, 0, 0];
-        let mut mem = MemoryManager::new();
+        let mem = MemoryManager::new();
         let x = crate::codec::decode_value::<u32>(&NativeBinaryCodec, &buf, &mem).unwrap();
         assert_eq!(x, 10);
     }
@@ -331,7 +330,7 @@ mod tests {
     #[test]
     fn test_decode_borrowed_string() {
         let str = "hello";
-        let mut mem = MemoryManager::new();
+        let mem = MemoryManager::new();
         let x =
             crate::codec::decode_value::<&str>(&NativeBinaryCodec, str.as_bytes(), &mem).unwrap();
         assert_eq!(x, "hello");
@@ -340,7 +339,7 @@ mod tests {
     #[test]
     fn test_decode_owned_string() {
         let str = "hello";
-        let mut mem = MemoryManager::new();
+        let mem = MemoryManager::new();
         let x = crate::codec::decode_value::<alloc::string::String>(
             &NativeBinaryCodec,
             str.as_bytes(),
@@ -357,7 +356,7 @@ mod tests {
         amount: u128,
     }
 
-    impl<'a> Drop for Coin<'a> {
+    impl Drop for Coin<'_> {
         fn drop(&mut self) {
             std::println!("drop Coin");
         }
@@ -389,8 +388,7 @@ mod tests {
         ];
         let mem = MemoryManager::new();
         let res = encode_value(&coins, &mem).unwrap();
-        let decoded =
-            crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, &res, &mem).unwrap();
+        let decoded = crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, res, &mem).unwrap();
         assert_eq!(decoded, coins);
     }
 }

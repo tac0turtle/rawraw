@@ -1,6 +1,5 @@
 //! The Message trait for invoking messages dynamically.
 
-use core::fmt::Debug;
 use ixc_message_api::code::HandlerCode;
 use ixc_message_api::header::MessageSelector;
 use ixc_schema::codec::Codec;

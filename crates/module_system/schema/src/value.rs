@@ -7,8 +7,6 @@ use crate::encoder::{EncodeError, Encoder};
 use crate::list::AllocatorVecBuilder;
 use crate::mem::MemoryManager;
 use crate::types::*;
-use ixc_message_api::handler::Allocator;
-use ixc_message_api::packet::MessagePacket;
 
 /// Any type used directly as a message function argument or struct field must implement this trait.
 /// Unlike [`ObjectFieldValue`](crate::state_object::ObjectFieldValue) it takes a lifetime parameter so value may already be borrowed where it is
@@ -55,7 +53,7 @@ impl<'a> SchemaValue<'a> for u8 {
 
     fn finish_decode_state(
         state: Self::DecodeState,
-        mem: &'a MemoryManager,
+        _mem: &'a MemoryManager,
     ) -> Result<Self, DecodeError>
     where
         Self: Sized,
@@ -685,21 +683,21 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
     }
 }
 
-impl<'a> ListElementValue<'a> for u16 {}
-impl<'a> ListElementValue<'a> for u32 {}
-impl<'a> ListElementValue<'a> for u64 {}
-impl<'a> ListElementValue<'a> for u128 {}
-impl<'a> ListElementValue<'a> for i8 {}
-impl<'a> ListElementValue<'a> for i16 {}
-impl<'a> ListElementValue<'a> for i32 {}
-impl<'a> ListElementValue<'a> for i64 {}
-impl<'a> ListElementValue<'a> for i128 {}
-impl<'a> ListElementValue<'a> for bool {}
+impl ListElementValue<'_> for u16 {}
+impl ListElementValue<'_> for u32 {}
+impl ListElementValue<'_> for u64 {}
+impl ListElementValue<'_> for u128 {}
+impl ListElementValue<'_> for i8 {}
+impl ListElementValue<'_> for i16 {}
+impl ListElementValue<'_> for i32 {}
+impl ListElementValue<'_> for i64 {}
+impl ListElementValue<'_> for i128 {}
+impl ListElementValue<'_> for bool {}
 impl<'a> ListElementValue<'a> for &'a str {}
 #[cfg(feature = "std")]
-impl<'a> ListElementValue<'a> for alloc::string::String {}
+impl ListElementValue<'_> for alloc::string::String {}
 impl<'a> ListElementValue<'a> for &'a [u8] {}
 #[cfg(feature = "std")]
-impl<'a> ListElementValue<'a> for alloc::vec::Vec<u8> {}
-impl<'a> ListElementValue<'a> for simple_time::Time {}
-impl<'a> ListElementValue<'a> for simple_time::Duration {}
+impl ListElementValue<'_> for alloc::vec::Vec<u8> {}
+impl ListElementValue<'_> for simple_time::Time {}
+impl ListElementValue<'_> for simple_time::Duration {}
