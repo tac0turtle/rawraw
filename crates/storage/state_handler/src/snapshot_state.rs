@@ -1,18 +1,93 @@
 #![allow(unused)]
+use allocator_api2::vec::Vec;
 use std::collections::HashMap;
 
-pub trait ReaderKv {
-    fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
+use crate::Store;
+
+pub struct Snapshot {
+    index: usize,
 }
 
+pub struct SnapshotState<S> {
+    state: S,
+    changes: HashMap<Vec<u8>, Value>,
+    changelog: Vec<StateChange>,
+}
+
+impl<S> SnapshotState<S> {
+    pub fn new(state: S) -> Self {
+        Self {
+            state,
+            changes: Default::default(),
+            changelog: Vec::new(),
+        }
+    }
+}
+
+impl<S: Store> SnapshotState<S> {
+    pub fn get(&self, key: Vec<u8>) -> Option<Vec<u8>> {
+        // try to get from values
+        match self.changes.get(key) {
+            // get from disk db
+            None => self.state.get(key),
+            // found in change list
+            Some(value) => match value {
+                Value::Updated(data) => Some(data.clone()),
+                Value::Deleted => None,
+            },
+        }
+    }
+
+    pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
+        let previous_value = self
+            .changes
+            .insert(key.clone(), Value::Updated(value.clone()));
+        self.changelog.push(StateChange::Update {
+            key,
+            value,
+            previous_value,
+        });
+    }
+
+    pub fn delete(&mut self, key: &Vec<u8>) {
+        self.changes.insert(key.clone(), Value::Deleted);
+        self.changelog.push(StateChange::Delete {
+            key: key.clone(),
+            old_value: self.get(key.clone()),
+        });
+    }
+
+    pub fn state_changes(self) -> Vec<StateChange> {
+        self.changelog
+    }
+
+    pub fn snapshot(&mut self) -> Snapshot {
+        Snapshot {
+            index: self.changelog.len() - 1,
+        }
+    }
+
+    pub fn revert_to_snapshot(&mut self, snapshot: Snapshot) -> Result<(), ()> {
+        for i in snapshot.index..self.changelog.len() {
+            // pop in reverse
+            let change = self.changelog.pop().unwrap();
+            change.revert(&mut self.changes)
+        }
+
+        Ok(())
+    }
+}
+
+/// Value is a enum that represents the if a value is deleted or updated.
 #[derive(Debug, PartialEq)]
 enum Value {
     Deleted,
     Updated(Vec<u8>),
 }
 
+/// StateChange is a struct that represents a change in state.
 #[derive(PartialEq, Debug)]
-pub enum StateChange {
+enum StateChange {
     Delete {
         key: Vec<u8>,
         old_value: Option<Vec<u8>>,
@@ -24,8 +99,9 @@ pub enum StateChange {
     },
 }
 
+/// Revert a state change.
 impl StateChange {
-    fn revert(self, changes: &mut HashMap<Vec<u8>, Value>) {
+    pub(crate) fn revert(self, changes: &mut HashMap<Vec<u8>, Value>) {
         match self {
             StateChange::Update {
                 key,
@@ -53,88 +129,17 @@ impl StateChange {
     }
 }
 
-pub struct Snapshot {
-    index: usize,
-}
-
-pub struct SnapshotState<S> {
-    state: S,
-    changes: HashMap<Vec<u8>, Value>,
-    changelog: Vec<StateChange>,
-}
-
-impl<S> SnapshotState<S> {
-    pub fn new(state: S) -> Self {
-        Self {
-            state,
-            changes: Default::default(),
-            changelog: vec![],
-        }
-    }
-}
-
-impl<S: ReaderKv> SnapshotState<S> {
-    pub fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        // try to get from values
-        match self.changes.get(key) {
-            // get from disk db
-            None => self.state.get(key),
-            // found in change list
-            Some(value) => match value {
-                Value::Updated(data) => Some(data.clone()),
-                Value::Deleted => None,
-            },
-        }
-    }
-
-    pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
-        let previous_value = self
-            .changes
-            .insert(key.clone(), Value::Updated(value.clone()));
-        self.changelog.push(StateChange::Update {
-            key,
-            value,
-            previous_value,
-        });
-    }
-
-    pub fn delete(&mut self, key: &[u8]) {
-        self.changes.insert(key.to_vec(), Value::Deleted);
-        self.changelog.push(StateChange::Delete {
-            key: key.to_vec(),
-            old_value: self.get(key),
-        });
-    }
-
-    pub fn state_changes(self) -> Vec<StateChange> {
-        self.changelog
-    }
-
-    pub fn snapshot(&mut self) -> Snapshot {
-        Snapshot {
-            index: self.changelog.len() - 1,
-        }
-    }
-
-    pub fn revert_to_snapshot(&mut self, snapshot: Snapshot) -> Result<(), ()> {
-        for i in snapshot.index..self.changelog.len() {
-            // pop in reverse
-            let change = self.changelog.pop().unwrap();
-            change.revert(&mut self.changes)
-        }
-
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     // implement in memory disk db
-    impl ReaderKv for HashMap<Vec<u8>, Vec<u8>> {
+    impl Store for HashMap<Vec<u8>, Vec<u8>> {
         fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
             self.get(key).cloned()
+        }
+        fn commit(&mut self) -> Result<(), ()> {
+            Ok(())
         }
     }
     #[test]
