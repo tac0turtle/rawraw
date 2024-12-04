@@ -9,6 +9,7 @@ use core::borrow::Borrow;
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
 
+/// Handles the #[handler] attribute.
 pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<TokenStream2> {
     // first we parse the #[handler] attribute itself which must be attached to a mod block
     let HandlerArgs(handler) = deluxe::parse2(attr)?;

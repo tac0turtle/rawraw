@@ -5,10 +5,12 @@ use proc_macro2::{Ident, TokenStream as TokenStream2};
 use crate::api_builder::{extract_method_data, APIBuilder};
 use crate::handler::PublishedFnInfo;
 
+/// Handles the #[handler_api] attribute.
 pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Result<TokenStream2> {
     let mut builder = APIBuilder::default();
     let trait_ident = &item_trait.ident;
     let dyn_trait = quote!(dyn #trait_ident);
+    // we extract method data for each function in the trait using the APIBuilder
     for item in &item_trait.items {
         if let TraitItem::Fn(f) = item {
             let publish_target = PublishedFnInfo {
@@ -17,10 +19,11 @@ pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow
                 publish: None,
                 attrs: f.attrs.clone(),
             };
-            extract_method_data(trait_ident, &dyn_trait, &publish_target, &mut builder)?;
+            builder.extract_method_data(trait_ident, &dyn_trait, &publish_target)?;
         }
     }
 
+    // the client struct and its trait implementation are generated here
     let client_trait_ident = format_ident!("{}Client", trait_ident);
     let client_impl_ident = format_ident!("{}Impl", client_trait_ident);
     builder.define_client(&client_impl_ident)?;

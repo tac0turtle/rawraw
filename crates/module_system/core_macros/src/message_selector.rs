@@ -4,7 +4,8 @@ use quote::quote;
 use syn::{parse_macro_input, LitStr};
 use syn::__private::TokenStream2;
 
-pub fn message_selector(item: TokenStream) -> TokenStream {
+/// Handles the message_selector! macro.
+pub(crate) fn message_selector(item: TokenStream) -> TokenStream {
     let input_str = parse_macro_input!(item as LitStr);
     message_selector_from_str(&input_str.value()).into()
 }
