@@ -1,14 +1,8 @@
-#![allow(unused)]
 use allocator_api2::{
     alloc::{Allocator, Global},
     vec::Vec,
 };
-use quick_cache::unsync::Cache;
-use std::{
-    borrow::{Borrow, BorrowMut},
-    cell::RefCell,
-    collections::HashMap,
-};
+use std::{borrow::Borrow, collections::HashMap};
 
 use crate::Store;
 
@@ -77,6 +71,7 @@ impl<S: Store> SnapshotState<S> {
     }
 
     /// Returns the state changes.
+    #[allow(unused)] //TODO: will be used when committing state changes
     pub fn state_changes(self) -> Vec<StateChange> {
         self.changelog
     }
@@ -177,7 +172,7 @@ mod tests {
         v1.extend_from_slice(b"begin_block");
         snapshot_state.set(v1.clone(), v1.clone());
 
-        let before_ante_handler_snapshot = snapshot_state.snapshot();
+        snapshot_state.snapshot();
 
         let mut v2 = Vec::new();
         v2.extend_from_slice(b"ante_handler");
