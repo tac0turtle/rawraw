@@ -10,14 +10,14 @@ pub struct Snapshot {
     index: usize,
 }
 
-pub struct SnapshotState<S> {
-    state: S,
+pub struct SnapshotState<'a, S> {
+    state: &'a S,
     changes: HashMap<Vec<u8>, Value>,
     changelog: Vec<StateChange>,
 }
 
-impl<S> SnapshotState<S> {
-    pub fn new(state: S) -> Self {
+impl<'a, S> SnapshotState<'a, S> {
+    pub fn new(state: &'a S) -> Self {
         Self {
             state,
             changes: Default::default(),
@@ -26,7 +26,7 @@ impl<S> SnapshotState<S> {
     }
 }
 
-impl<S: Store> SnapshotState<S> {
+impl<'a, S: Store> SnapshotState<'a, S> {
     pub fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
         // try to get from values
         match self.changes.get(key) {
@@ -154,18 +154,28 @@ mod tests {
         fn get(&self, key: &Vec<u8>) -> Option<Vec<u8>> {
             self.get(key).cloned()
         }
-        fn commit(&mut self) -> Result<(), ()> {
-            Ok(())
-        }
     }
     #[test]
     fn test_flow() {
-        let mut state = HashMap::new();
-        state.insert(b"alice".to_vec(), b"1ixc".to_vec());
-        state.insert(b"bob".to_vec(), b"2ixc".to_vec());
-        state.insert(b"charlie_grant".to_vec(), b"10ixc".to_vec());
+        let mut state = HashMap::<Vec<u8>, Vec<u8>>::new();
+        let mut alice = Vec::new();
+        alice.extend_from_slice(b"alice");
+        let mut bob = Vec::new();
+        bob.extend_from_slice(b"bob");
+        let mut charlie_grant = Vec::new();
+        charlie_grant.extend_from_slice(b"charlie_grant");
+        let mut ixc = Vec::new();
+        ixc.extend_from_slice(b"1ixc");
+        let mut ixc2 = Vec::new();
+        ixc2.extend_from_slice(b"2ixc");
+        let mut ixc10 = Vec::new();
+        ixc10.extend_from_slice(b"10ixc");
+        state.insert(alice, ixc);
+        state.insert(bob, ixc2);
+        state.insert(charlie_grant, ixc10);
 
-        let mut snapshot_state = SnapshotState::new(HashMap::new());
+        let state: &dyn Store = &state;
+        let mut snapshot_state = SnapshotState::new(&state);
 
         // set some values
         let mut v1 = Vec::new();

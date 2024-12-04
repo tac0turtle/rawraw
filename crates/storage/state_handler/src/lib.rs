@@ -9,22 +9,20 @@ use allocator_api2::vec::Vec;
 pub trait Store {
     /// Get the value for the given key.
     fn get(&self, key: &Vec<u8>) -> Option<Vec<u8>>;
-    /// Commit the state changes.
-    fn commit(&mut self) -> Result<(), ()>;
 }
 
 /// StateHandler is a cache-based state handler that can be used to store and retrieve state.
-pub struct StateHandler<S: Store> {
-    snapshot_state: SnapshotState<S>,
+pub struct StateHandler<'a, S: Store> {
+    snapshot_state: SnapshotState<'a, S>,
     /// Checkpoints are used to revert state changes.
     /// checkpoints are used to follow the call stack of a transaction
     /// and revert the state changes when the transaction is rolled back.
     checkpoints: Vec<Snapshot>,
 }
 
-impl<S: Store> StateHandler<S> {
+impl<'a, S: Store> StateHandler<'a, S> {
     /// Create a new state handler with the given store.
-    pub fn new(store: S) -> Self {
+    pub fn new(store: &'a S) -> Self {
         Self {
             snapshot_state: SnapshotState::new(store),
             checkpoints: Vec::with_capacity_in(200, Global),
