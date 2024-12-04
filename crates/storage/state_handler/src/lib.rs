@@ -2,9 +2,8 @@
 mod snapshot_state;
 
 use crate::snapshot_state::{Snapshot, SnapshotState};
-use allocator_api2::alloc::Global;
+use allocator_api2::alloc::{Allocator, Global};
 use allocator_api2::vec::Vec;
-use ixc_message_api::AccountID;
 
 /// A store that can be used to store and retrieve state.
 pub trait Store {
@@ -52,31 +51,18 @@ impl<S: Store> StateHandler<S> {
         Ok(())
     }
 
-    // /// handles a message packet
-    // pub fn handle_exec(
-    //     &mut self,
-    //     message_packet: &mut MessagePacket,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     panic!("not implemented");
-    // }
-
-    // /// handles a query packet
-    // pub fn handle_query(
-    //     &self,
-    //     message_packet: &mut MessagePacket,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     panic!("not implemented");
-    // }
-
-    /// Creates a new account storage for the given account.
-    pub fn create_account_storage(&mut self, _account: AccountID) -> Result<(), ()> {
-        Ok(())
+    /// Gets the value for the given key.
+    pub fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
+        self.snapshot_state.get(key, allocator)
     }
 
-    /// Deletes the account storage for the given account.
-    pub fn delete_account_storage(&mut self, _account: AccountID) -> Result<(), ()> {
-        panic!("not implemented");
+    /// Sets the value for the given key.
+    pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
+        self.snapshot_state.set(key, value);
+    }
+
+    /// Deletes the value for the given key.
+    pub fn delete(&mut self, key: &Vec<u8>) {
+        self.snapshot_state.delete(key);
     }
 }

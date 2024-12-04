@@ -20,9 +20,6 @@ pub struct SnapshotState<S> {
     state: S,
     changes: HashMap<Vec<u8>, Value>,
     changelog: Vec<StateChange>,
-    /// The cache for items gotten from state
-    /// This is used to cache reads
-    cache: RefCell<Cache<Vec<u8>, Vec<u8>>>,
 }
 
 impl<S> SnapshotState<S> {
@@ -31,7 +28,6 @@ impl<S> SnapshotState<S> {
             state,
             changes: Default::default(),
             changelog: Vec::new(),
-            cache: RefCell::new(Cache::new(10_000)), // TODO Decide on values
         }
     }
 }
@@ -42,25 +38,10 @@ impl<S: Store> SnapshotState<S> {
         match self.changes.get(key) {
             // get from disk db
             None => {
-                // check the cache first for the key, we may have already read it
-                let cache = self.cache.borrow();
-                let value = cache.get(key);
-                match value {
-                    Some(value) => {
-                        let mut v = Vec::new_in(allocator);
-                        v.extend_from_slice(value);
-                        Some(v)
-                    }
-                    None => {
-                        // if not in cache, read from state
-                        let v = self.state.get(key).unwrap();
-                        // insert into cache
-                        self.cache.borrow_mut().insert(key.clone(), v.clone());
-                        let mut vec = Vec::new_in(allocator);
-                        vec.extend_from_slice(v.borrow());
-                        Some(vec)
-                    }
-                }
+                let v = self.state.get(key).unwrap();
+                let mut vec = Vec::new_in(allocator);
+                vec.extend_from_slice(&v);
+                Some(vec)
             }
 
             // found in change list
