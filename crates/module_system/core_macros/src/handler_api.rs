@@ -2,8 +2,8 @@ use manyhow::manyhow;
 use quote::{format_ident, quote};
 use syn::{ItemTrait, TraitItem};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
-use crate::api_builder::{derive_api_method, APIBuilder};
-use crate::handler::PublishFn;
+use crate::api_builder::{extract_method_data, APIBuilder};
+use crate::handler::PublishedFnInfo;
 
 pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Result<TokenStream2> {
     let mut builder = APIBuilder::default();
@@ -11,13 +11,13 @@ pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow
     let dyn_trait = quote!(dyn #trait_ident);
     for item in &item_trait.items {
         if let TraitItem::Fn(f) = item {
-            let publish_target = PublishFn {
+            let publish_target = PublishedFnInfo {
                 signature: f.sig.clone(),
                 on_create: None,
                 publish: None,
                 attrs: f.attrs.clone(),
             };
-            derive_api_method(trait_ident, &dyn_trait, &publish_target, &mut builder)?;
+            extract_method_data(trait_ident, &dyn_trait, &publish_target, &mut builder)?;
         }
     }
 
@@ -33,8 +33,8 @@ pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow
         where T::Handler: #trait_ident},
         &quote! {},
     )?;
-    builder.define_client_factory(&client_impl_ident, &dyn_trait)?;
-    builder.define_client_factory(&client_impl_ident, &quote! { #client_impl_ident})?;
+    builder.define_client_service(&client_impl_ident, &dyn_trait)?;
+    builder.define_client_service(&client_impl_ident, &quote! { #client_impl_ident})?;
     let items = &mut builder.items;
     let routes = &builder.routes;
     let query_routes = &builder.query_routes;

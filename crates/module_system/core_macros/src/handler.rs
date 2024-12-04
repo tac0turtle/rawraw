@@ -2,33 +2,43 @@ use manyhow::{bail, manyhow};
 use quote::{format_ident, quote};
 use syn::{Attribute, Item, ItemMod, Signature, Type};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
-use crate::api_builder::{derive_api_method, APIBuilder};
+use crate::api_builder::{extract_method_data, APIBuilder};
 use crate::util::{maybe_extract_attribute, push_item};
 use core::borrow::Borrow;
 
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
 
-/// This derives an account handler.
 pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<TokenStream2> {
+    // first we parse the #[handler] attribute itself which must be attached to a mod block
     let HandlerArgs(handler) = deluxe::parse2(attr)?;
+    // then we get a mutable reference to the items in the module
     let items = &mut item.content.as_mut().unwrap().1;
 
+    // any functions annotated directly with #[publish], #[on_create] or in bare impl blocks will be collected here
     let mut publish_fns = vec![];
+    // any traits implementations annotated with #[publish] will be collected here
     let mut publish_traits = vec![];
+    // now we iterate over all of the items in the module
+    // to collect the functions or impl blocks that are annotated with #[publish]
     for item in items.iter_mut() {
         collect_publish_targets(&handler, item, &mut publish_fns, &mut publish_traits)?;
     }
+
+    // the APIBuilder is used to turn the collection functions and traits
+    // into the actual code that will be generated
     let mut builder = APIBuilder::default();
     for publish_target in publish_fns.iter() {
-        derive_api_method(&handler, &quote! {#handler}, publish_target, &mut builder)?;
+        extract_method_data(&handler, &quote! {#handler}, publish_target, &mut builder)?;
     }
 
+    // the client struct and its trait implementation are generated here
     let client_ident = format_ident!("{}Client", handler);
     builder.define_client(&client_ident)?;
     builder.define_client_impl(&quote! {#client_ident}, &quote! {pub})?;
-    builder.define_client_factory(&client_ident, &quote! {#handler})?;
+    builder.define_client_service(&client_ident, &quote! {#handler})?;
 
+    // if there is a function annotated with #[on_create] then we generate a message type for it
     let on_create_msg = match builder.create_msg_name {
         Some(msg) => quote! {#msg},
         None => quote! {()},
@@ -124,13 +134,21 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     Ok(expanded)
 }
 
+// this function is called on every Item in the mod
+// to collect the functions and traits that are annotated with #[publish] or #[on_create]
 fn collect_publish_targets(
-    self_name: &syn::Ident,
+    // the name of the handler struct
+    self_name: &Ident,
+    // the item we're examining
     item: &mut Item,
-    targets: &mut Vec<PublishFn>,
-    traits: &mut Vec<PublishTrait>,
+    // the collected functions are added to this vector
+    collected_fns: &mut Vec<PublishedFnInfo>,
+    // the collected traits are added to this vector
+    collected_traits: &mut Vec<PublishedTraitInfo>,
 ) -> manyhow::Result<()> {
+    // if the item is an impl block
     if let Item::Impl(imp) = item {
+        // first we check if the impl block is for the handler struct
         if let Type::Path(self_path) = imp.self_ty.borrow() {
             let ident = match self_path.path.get_ident() {
                 None => return Ok(()),
@@ -140,9 +158,11 @@ fn collect_publish_targets(
                 return Ok(());
             }
 
+            // if the impl block itself has #[publish] attribute
+            // we set publish_all to Some(publish_attr)
             let publish_all = maybe_extract_attribute(imp)?;
 
-            // TODO check for trait implementation
+            // if the impl block is a trait implementation
             if imp.trait_.is_some() && publish_all.is_some() {
                 let trait_ident = imp
                     .trait_
@@ -154,21 +174,29 @@ fn collect_publish_targets(
                     .unwrap()
                     .ident
                     .clone();
-                traits.push(PublishTrait { ident: trait_ident });
+                collected_traits.push(PublishedTraitInfo { ident: trait_ident });
                 return Ok(());
             }
 
+            // if we're here then this is a bare impl block (rather than a trait impl)
+            // so we iterate over all of the items in the impl block
             for item in &mut imp.items {
+                // if the item is a function
                 if let syn::ImplItem::Fn(impl_fn) = item {
+                    // check if the function has the #[on_create] attribute
                     let on_create = maybe_extract_attribute(impl_fn)?;
+                    // check if the function has the #[publish] attribute
                     let publish = maybe_extract_attribute(impl_fn)?;
                     if publish.is_some() && on_create.is_some() {
                         bail!("on_create and publish attributes must not be attached to the same function");
                     }
+                    // we define a publish attribute for the fn if it is annotated directly with #[publish] or if the impl block has #[publish]
                     let publish = publish_all.clone().or(publish);
+                    // if it's either a publish fn or an on_create fn
                     if publish.is_some() || on_create.is_some() {
-                        // TODO check visibility
-                        targets.push(PublishFn {
+                        // TODO check visibility - we should probably only allow pub fns
+                        // collect the signature and attributes of the fn and add it to the collected_fns vector
+                        collected_fns.push(PublishedFnInfo {
                             signature: impl_fn.sig.clone(),
                             on_create,
                             publish,
@@ -182,29 +210,35 @@ fn collect_publish_targets(
     Ok(())
 }
 
+/// Represents the data in a #[publish] attribute.
 #[derive(deluxe::ExtractAttributes, Clone, Debug)]
 #[deluxe(attributes(publish))]
-pub(crate) struct Publish {
+pub(crate) struct PublishAttr {
     package: Option<String>,
     name: Option<String>,
 }
 
+/// Represents the data in an #[on_create] attribute.
 #[derive(deluxe::ExtractAttributes, Debug)]
 #[deluxe(attributes(on_create))]
-pub(crate) struct OnCreate {
+pub(crate) struct OnCreateAttr {
     message_name: Option<String>,
 }
 
+/// Describes a function that is published as a message handler.
+/// Contains the raw signature, the #[on_create] attribute, the #[publish] attribute,
+/// and any other attributes on the function.
 #[derive(Debug)]
-pub(crate) struct PublishFn {
+pub(crate) struct PublishedFnInfo {
     pub(crate) signature: Signature,
-    pub(crate) on_create: Option<OnCreate>,
-    pub(crate) publish: Option<Publish>,
+    pub(crate) on_create: Option<OnCreateAttr>,
+    pub(crate) publish: Option<PublishAttr>,
     pub(crate) attrs: Vec<Attribute>,
 }
 
+/// Describes a trait that is implemented by a handler.
 #[derive(Debug)]
-struct PublishTrait {
+struct PublishedTraitInfo {
     ident: Ident,
 }
 

@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use syn::{parse_quote, Item, ReturnType, Signature, Type};
 use syn::punctuated::Punctuated;
 use core::borrow::Borrow;
-use crate::handler::PublishFn;
+use crate::handler::PublishedFnInfo;
 use crate::message_selector::message_selector_from_str;
 use crate::util::push_item;
 
@@ -22,6 +22,7 @@ pub(crate) struct APIBuilder {
 }
 
 impl APIBuilder {
+    /// Defines the client struct and makes it implement the Client trait.
     pub(crate) fn define_client(&mut self, client_ident: &Ident) -> manyhow::Result<()> {
         push_item(
             &mut self.items,
@@ -45,6 +46,7 @@ impl APIBuilder {
         )
     }
 
+    /// Defines the client struct's implementation.
     pub(crate) fn define_client_impl(
         &mut self,
         impl_target: &TokenStream2,
@@ -61,7 +63,8 @@ impl APIBuilder {
         )
     }
 
-    pub(crate) fn define_client_factory(
+    /// Implement the service trait for the client struct.
+    pub(crate) fn define_client_service(
         &mut self,
         client_ident: &Ident,
         factory_target: &TokenStream2,
@@ -77,10 +80,10 @@ impl APIBuilder {
     }
 }
 
-pub(crate) fn derive_api_method(
+pub(crate) fn extract_method_data(
     handler_ident: &Ident,
     _handler_ty: &TokenStream2,
-    publish_target: &PublishFn,
+    publish_target: &PublishedFnInfo,
     builder: &mut APIBuilder,
 ) -> manyhow::Result<()> {
     let signature = &publish_target.signature;
