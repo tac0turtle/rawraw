@@ -11,14 +11,14 @@ pub unsafe trait Router
 where
     Self: 'static,
 {
-    /// The routes sorted by message selector.
-    const SORTED_ROUTES: &'static [Route<Self>];
+    /// The message routes sorted by message selector.
+    const MSG_ROUTES: &'static [Route<Self>];
 
     /// The query routes sorted by message selector.
-    const SORTED_QUERY_ROUTES: &'static [Route<Self>];
+    const QUERY_ROUTES: &'static [Route<Self>];
 
-    /// The query routes sorted by message selector.
-    const SORTED_SYSTEM_ROUTES: &'static [Route<Self>];
+    /// The system routes sorted by message selector.
+    const SYSTEM_ROUTES: &'static [Route<Self>];
 }
 
 /// A router for dynamic trait objects.
@@ -39,18 +39,18 @@ pub type Route<T> = (
     ) -> Result<(), ErrorCode>,
 );
 
-/// Execute a message packet on a router.
-pub fn exec_route<R: Router + ?Sized>(
-    rtr: &R,
-    packet: &mut MessagePacket,
-    callbacks: &dyn HostBackend,
-    allocator: &dyn Allocator,
-) -> Result<(), ErrorCode> {
-    match find_route(packet.header().message_selector) {
-        Some(rt) => rt.1(rtr, packet, callbacks, allocator),
-        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
-    }
-}
+// Execute a message packet on a router.
+// pub fn exec_route<R: Router + ?Sized>(
+//     rtr: &R,
+//     packet: &mut MessagePacket,
+//     callbacks: &dyn HostBackend,
+//     allocator: &dyn Allocator,
+// ) -> Result<(), ErrorCode> {
+//     match find_route(packet.header().message_selector) {
+//         Some(rt) => rt.1(rtr, packet, callbacks, allocator),
+//         None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+//     }
+// }
 
 /// Find a route for a message selector.
 pub fn find_route<R>(sorted_routes: &[Route<R>], sel: MessageSelector) -> Option<&Route<R>> {

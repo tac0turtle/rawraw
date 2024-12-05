@@ -2,7 +2,7 @@ use manyhow::manyhow;
 use quote::{format_ident, quote};
 use syn::{ItemTrait, TraitItem};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
-use crate::api_builder::{extract_method_data, APIBuilder};
+use crate::api_builder::{APIBuilder};
 use crate::handler::PublishedFnInfo;
 
 /// Handles the #[handler_api] attribute.
@@ -38,28 +38,16 @@ pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow
     )?;
     builder.define_client_service(&client_impl_ident, &dyn_trait)?;
     builder.define_client_service(&client_impl_ident, &quote! { #client_impl_ident})?;
+    let dyn_trait = quote!(dyn #trait_ident);
+    builder.impl_router(dyn_trait)?;
+
     let items = &mut builder.items;
-    let routes = &builder.routes;
-    let query_routes = &builder.query_routes;
+
     let client_signatures = &builder.client_signatures;
     Ok(quote! {
         #item_trait
 
         #(#items)*
-
-        unsafe impl ::ixc::core::routing::Router for dyn #trait_ident {
-            const SORTED_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                &::ixc::core::routing::sort_routes([
-                    #(#routes)*
-                ]);
-
-            const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                &::ixc::core::routing::sort_routes([
-                    #(#query_routes)*
-                ]);
-
-            const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] = &[];
-        }
 
         impl ::ixc::message_api::handler::RawHandler for dyn #trait_ident {
             fn handle(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {

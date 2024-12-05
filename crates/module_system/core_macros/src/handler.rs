@@ -2,7 +2,7 @@ use manyhow::{bail, manyhow};
 use quote::{format_ident, quote};
 use syn::{Attribute, Item, ItemMod, Signature, Type};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
-use crate::api_builder::{extract_method_data, APIBuilder};
+use crate::api_builder::{APIBuilder};
 use crate::util::{maybe_extract_attribute, push_item};
 use core::borrow::Borrow;
 
@@ -30,7 +30,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     // into the actual code that will be generated
     let mut builder = APIBuilder::default();
     for publish_target in publish_fns.iter() {
-        extract_method_data(&handler, &quote! {#handler}, publish_target, &mut builder)?;
+        builder.extract_method_data(&handler, &quote! {#handler}, publish_target)?;
     }
 
     // the client struct and its trait implementation are generated here
@@ -38,6 +38,8 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     builder.define_client(&client_ident)?;
     builder.define_client_impl(&quote! {#client_ident}, &quote! {pub})?;
     builder.define_client_service(&client_ident, &quote! {#handler})?;
+    builder.impl_router(quote! {#handler})?;
+
 
     // if there is a function annotated with #[on_create] then we generate a message type for it
     let on_create_msg = match builder.create_msg_name {
@@ -60,31 +62,6 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
         quote! {
             impl <'a> ::ixc::core::handler::InitMessage<'a> for #on_create_msg #create_msg_lifetime {
                 type Codec = ::ixc::schema::binary::NativeBinaryCodec;
-            }
-        },
-    )?;
-
-    let routes = &builder.routes;
-    let query_routes = &builder.query_routes;
-    let system_routes = &builder.system_routes;
-    push_item(
-        items,
-        quote! {
-            unsafe impl ::ixc::core::routing::Router for #handler {
-                const SORTED_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                    &::ixc::core::routing::sort_routes([
-                        #(#routes)*
-                    ]);
-
-                const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                    &::ixc::core::routing::sort_routes([
-                        #(#query_routes)*
-                    ]);
-
-                const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                    &::ixc::core::routing::sort_routes([
-                        #(#system_routes)*
-                    ]);
             }
         },
     )?;

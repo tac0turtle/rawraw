@@ -30,7 +30,7 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             field_inits.push(quote! {
                 #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #prefix)?
             });
-            // increment the automaticp refix
+            // increment the automatic prefix
             prefix += 1;
             // TODO use the key and value attributes to populate the schema of the state object
         } else if let Some(client) = maybe_extract_attribute::<_, ClientAttr>(field)? {

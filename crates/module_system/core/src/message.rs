@@ -29,6 +29,7 @@ pub enum Volatility {
     /// The message is non-volatile and can be invoked in any context where state is available.
     Query,
 }
+
 /// Extract the response and error types from a Result.
 /// Used internally in macros for building the Message implementation and ClientResult type.
 pub trait ExtractResponseTypes {

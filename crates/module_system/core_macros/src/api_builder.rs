@@ -1,13 +1,13 @@
+use crate::handler::PublishedFnInfo;
+use crate::message_selector::message_selector_from_str;
+use crate::util::push_item;
+use core::borrow::Borrow;
 use heck::ToUpperCamelCase;
 use manyhow::{bail, ensure};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{parse_quote, Item, ReturnType, Signature, Type};
 use syn::punctuated::Punctuated;
-use core::borrow::Borrow;
-use crate::handler::PublishedFnInfo;
-use crate::message_selector::message_selector_from_str;
-use crate::util::push_item;
+use syn::{parse_quote, Item, ReturnType, Signature, Type};
 
 #[derive(Default)]
 pub(crate) struct APIBuilder {
@@ -145,7 +145,8 @@ impl APIBuilder {
 
                                         if let Some(s) = path.path.segments.first() {
                                             if s.ident == "EventBus" {
-                                                fn_call_args.push(quote! { &mut Default::default(), });
+                                                fn_call_args
+                                                    .push(quote! { &mut Default::default(), });
                                                 // we continue because we don't want to add the EventBus to the message struct or the client function
                                                 continue;
                                             }
@@ -310,5 +311,31 @@ impl APIBuilder {
             self.create_msg_lifetime = opt_lifetime;
         }
         Ok(())
+    }
+
+    pub(crate) fn impl_router(&mut self, target: TokenStream2) -> manyhow::Result<()> {
+        let routes = &self.routes;
+        let query_routes = &self.query_routes;
+        let system_routes = &self.system_routes;
+        push_item(
+            &mut self.items,
+        quote! {
+            unsafe impl ::ixc::core::routing::Router for #target {
+                const SORTED_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                    &::ixc::core::routing::sort_routes([
+                        #(#routes)*
+                    ]);
+
+                const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                    &::ixc::core::routing::sort_routes([
+                        #(#query_routes)*
+                    ]);
+
+                const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                    &::ixc::core::routing::sort_routes([
+                        #(#system_routes)*
+                    ]);
+            }
+        })
     }
 }
