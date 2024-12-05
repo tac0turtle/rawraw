@@ -321,7 +321,7 @@ impl APIBuilder {
             &mut self.items,
         quote! {
             unsafe impl ::ixc::core::routing::Router for #target {
-                const SORTED_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                const SORTED_MSG_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
                     &::ixc::core::routing::sort_routes([
                         #(#routes)*
                     ]);

@@ -67,27 +67,53 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     )?;
 
     // TODO it would nice to be able to combine the routes rather than needing to check one by one
-    let mut trait_routers = vec![];
+    let mut trait_msg_routers = vec![];
+    let mut trait_query_routers = vec![];
     for publish_trait in publish_traits.iter() {
         let trait_ident = &publish_trait.ident;
-        trait_routers.push(quote! {
+        trait_msg_routers.push(quote! {
             if let Some(rt) = ::ixc::core::routing::find_route::<dyn #trait_ident>(sel) {
                 return rt.1(self, message_packet, callbacks, allocator)
             }
-        })
+        });
+        trait_query_routers.push(quote! {
+            if let Some(rt) = ::ixc::core::routing::find_route::<dyn #trait_ident>(sel) {
+                return rt.1(self, message_packet, callbacks, allocator)
+            }
+        });
     }
 
     push_item(
         items,
         quote! {
             impl ::ixc::message_api::handler::RawHandler for #handler {
-                fn handle(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
+                fn handle_msg(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
                     let sel = message_packet.header().message_selector;
-                    if let Some(rt) = ::ixc::core::routing::find_route(sel) {
+                    if let Some(rt) = ::ixc::core::routing::find_route(sel, <#handler as ::ixc::core::routing::Router>::SORTED_MSG_ROUTES) {
                         return rt.1(self, message_packet, callbacks, allocator)
                     }
 
-                    #(#trait_routers)*
+                    #(#trait_msg_routers)*
+
+                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                }
+
+                fn handle_query(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
+                    let sel = message_packet.header().message_selector;
+                    if let Some(rt) = ::ixc::core::routing::find_route(sel, <#handler as ::ixc::core::routing::Router>::SORTED_QUERY_ROUTES) {
+                        return rt.1(self, message_packet, callbacks, allocator)
+                    }
+
+                    #(#trait_query_routers)*
+
+                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                }
+
+                fn handle_system(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
+                    let sel = message_packet.header().message_selector;
+                    if let Some(rt) = ::ixc::core::routing::find_route(sel, <#handler as ::ixc::core::routing::Router>::SORTED_SYSTEM_ROUTES) {
+                        return rt.1(self, message_packet, callbacks, allocator)
+                    }
 
                     Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
                 }

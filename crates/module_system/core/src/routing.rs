@@ -12,13 +12,13 @@ where
     Self: 'static,
 {
     /// The message routes sorted by message selector.
-    const MSG_ROUTES: &'static [Route<Self>];
+    const SORTED_MSG_ROUTES: &'static [Route<Self>];
 
     /// The query routes sorted by message selector.
-    const QUERY_ROUTES: &'static [Route<Self>];
+    const SORTED_QUERY_ROUTES: &'static [Route<Self>];
 
     /// The system routes sorted by message selector.
-    const SYSTEM_ROUTES: &'static [Route<Self>];
+    const SORTED_SYSTEM_ROUTES: &'static [Route<Self>];
 }
 
 /// A router for dynamic trait objects.

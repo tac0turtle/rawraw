@@ -4,14 +4,15 @@ use crate::packet::MessagePacket;
 
 /// A handler for an account.
 pub trait RawHandler {
-
     /// Handle a message.
     fn handle_msg(
         &self,
         message_packet: &mut MessagePacket,
         callbacks: &mut dyn HostBackend,
         allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+    ) -> Result<(), ErrorCode> {
+        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+    }
 
     /// Handle a query message.
     fn handle_query(
