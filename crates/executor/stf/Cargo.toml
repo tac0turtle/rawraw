@@ -1,5 +1,5 @@
 [package]
-name = "ixc_state_handler"
+name = "stf"
 version = "0.1.0"
 edition = "2021"
 repository.workspace = true
@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 allocator-api2 = "0.2.18"
+ixc_message_api = { path = "../../module_system/message_api" }
 
 [lints]
 workspace = true
