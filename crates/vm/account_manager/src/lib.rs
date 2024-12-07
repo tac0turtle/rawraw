@@ -1,6 +1,5 @@
 //! Rust Cosmos SDK RFC 003 hypervisor/state-handler function implementation.
 
-mod state;
 pub mod vm_manager;
 
 use ixc_core_macros::message_selector;
