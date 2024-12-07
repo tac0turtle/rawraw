@@ -7,7 +7,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-quick_cache = "0.6.9"
 ixc_message_api = { path = "../../module_system/message_api" }
 allocator-api2 = "0.2.18"
 

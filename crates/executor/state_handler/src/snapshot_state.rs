@@ -83,7 +83,7 @@ impl<'a, S: Store> SnapshotState<'a, S> {
     }
 
     pub fn revert_to_snapshot(&mut self, snapshot: Snapshot) -> Result<(), ()> {
-        for i in snapshot.index..self.changelog.len() {
+        for _ in snapshot.index..self.changelog.len() {
             // pop in reverse
             let change = self.changelog.pop().unwrap();
             change.revert(&mut self.changes)
@@ -174,7 +174,7 @@ mod tests {
         state.insert(bob, ixc2);
         state.insert(charlie_grant, ixc10);
 
-        let state: &dyn Store = &state;
+        let state = state;
         let mut snapshot_state = SnapshotState::new(&state);
 
         // set some values
