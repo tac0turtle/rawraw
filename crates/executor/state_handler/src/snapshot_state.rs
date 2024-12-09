@@ -120,7 +120,7 @@ impl StateChange {
         match self {
             StateChange::Update {
                 key,
-                value,
+                value: _,
                 previous_value,
             } => match previous_value {
                 Some(previous_value) => {

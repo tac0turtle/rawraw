@@ -1,4 +1,5 @@
 //! A state handler that can be used to store and retrieve state.
+mod event;
 mod snapshot_state;
 
 use crate::snapshot_state::{Snapshot, SnapshotState};
