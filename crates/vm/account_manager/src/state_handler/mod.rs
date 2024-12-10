@@ -42,10 +42,10 @@ pub trait StateHandler<A: Allocator> {
     ) -> Result<(), ErrorCode>;
 
     /// Create storage for a new account.
-    fn create_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode>;
+    fn create_account_storage(&mut self, account: AccountID, gas: &mut Gas) -> Result<(), ErrorCode>;
 
     /// Delete all of an account's storage.
-    fn delete_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode>;
+    fn delete_account_storage(&mut self, account: AccountID, gas: &mut Gas) -> Result<(), ErrorCode>;
 }
 
 pub(crate) fn get_account_handler_id<A: Allocator, ST: StateHandler<A>>(

@@ -58,11 +58,11 @@ impl<A: Allocator, S: StdStateManager<A>> StateHandler<A> for StdStateHandler<A,
         todo!()
     }
 
-    fn create_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode> {
+    fn create_account_storage(&mut self, account: AccountID, gas: &mut Gas) -> Result<(), ErrorCode> {
         todo!()
     }
 
-    fn delete_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode> {
+    fn delete_account_storage(&mut self, account: AccountID, gas: &mut Gas) -> Result<(), ErrorCode> {
         todo!()
     }
 }
