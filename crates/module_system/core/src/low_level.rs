@@ -12,6 +12,7 @@ use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_schema::buffer::WriterFactory;
 use ixc_schema::codec::Codec;
+use ixc_schema::mem::MemoryManager;
 use ixc_schema::value::OptionalValue;
 
 /// Dynamically invokes an account message.
@@ -21,34 +22,11 @@ pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(context: &'a mut Context, acco
                                               -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error>
 {
     unsafe {
-        // encode the message body
-        let mem = context.mem;
-        let cdc = M::Codec::default();
-        let msg_body = cdc.encode_value(&message, mem)?;
+        let mut packet = encode_message_packet(context.caller, context.memory_manager(), account, message)?;
 
-        // create the message packet and fill in call details
-        let mut packet = create_packet(context.caller, mem, account, M::SELECTOR)?;
-        let header = packet.header_mut();
-        header.in_pointer1.set_slice(msg_body);
-
-        // invoke the message
         let res = context.dynamic_invoke_msg(&mut packet);
 
-        let out1 = header.out_pointer1.get(&packet);
-
-        match res {
-            Ok(_) => {
-                let res = M::Response::<'a>::decode_value(&cdc, out1, mem)?;
-                Ok(res)
-            }
-            Err(e) => {
-                let c: u16 = e.into();
-                let code = ErrorCode::<M::Error>::from(c);
-                let msg = String::from_utf8(out1.to_vec())
-                    .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
-                Err(ClientError { message: msg, code })
-            }
-        }
+        decode_message_response::<M>(context, &packet, res)
     }
 }
 
@@ -60,40 +38,53 @@ pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    // unsafe {
-    //     // encode the message body
-    //     let mem = context.memory_manager();
-    //     let cdc = M::Codec::default();
-    //     let msg_body = cdc.encode_value(&message, mem)?;
-    //
-    //     // create the message packet and fill in call details
-    //     let mut packet = create_packet(context, account, M::SELECTOR)?;
-    //     let header = packet.header_mut();
-    //     header.in_pointer1.set_slice(msg_body);
-    //
-    //     // invoke the message
-    //     let res = context
-    //         .host_backend()
-    //         .unwrap()
-    //         .invoke_query(&mut packet, mem);
-    //
-    //     let out1 = header.out_pointer1.get(&packet);
-    //
-    //     match res {
-    //         Ok(_) => {
-    //             let res = M::Response::<'a>::decode_value(&cdc, out1, mem)?;
-    //             Ok(res)
-    //         }
-    //         Err(e) => {
-    //             let c: u16 = e.into();
-    //             let code = ErrorCode::<M::Error>::from(c);
-    //             let msg = String::from_utf8(out1.to_vec())
-    //                 .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
-    //             Err(ClientError { message: msg, code })
-    //         }
-    //     }
-    // }
-    todo!()
+    unsafe {
+        let mut packet = encode_message_packet(context.caller, context.memory_manager(), account, message)?;
+
+        let res = context.dynamic_invoke_query(&mut packet);
+
+        decode_message_response::<M>(context, &packet, res)
+    }
+}
+
+unsafe fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
+    caller: AccountID,
+    mem: &'a MemoryManager,
+    account: AccountID,
+    message: M,
+) -> ClientResult<MessagePacket<'a>, M::Error> {
+    // encode the message body
+    let cdc = M::Codec::default();
+    let msg_body = cdc.encode_value(&message, mem)?;
+
+    // create the message packet and fill in call details
+    let mut packet = create_packet(caller, mem, account, M::SELECTOR)?;
+    let header = packet.header_mut();
+    header.in_pointer1.set_slice(msg_body);
+    Ok(packet)
+}
+
+unsafe fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
+    context: &'a Context,
+    packet: &MessagePacket<'a>,
+    res: Result<(), ErrorCode>,
+) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
+    let out1 = packet.header().out_pointer1.get(&packet);
+
+    match res {
+        Ok(_) => {
+            let cdc = M::Codec::default();
+            let res = M::Response::<'a>::decode_value(&cdc, out1, context.memory_manager())?;
+            Ok(res)
+        }
+        Err(e) => {
+            let c: u16 = e.into();
+            let code = ErrorCode::<M::Error>::from(c);
+            let msg = String::from_utf8(out1.to_vec())
+                .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
+            Err(ClientError { message: msg, code })
+        }
+    }
 }
 
 /// Create a new message packet with the given account and message selector.

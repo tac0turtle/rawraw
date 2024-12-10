@@ -279,7 +279,11 @@ impl APIBuilder {
                             }
                         }),
             };
-            self.routes.push(route);
+            if is_query {
+                self.query_routes.push(route);
+            } else {
+                self.routes.push(route);
+            }
             signature.output = parse_quote! {
                 -> <#return_type as ::ixc::core::message::ExtractResponseTypes>::ClientResult
             };

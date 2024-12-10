@@ -35,7 +35,7 @@ impl<K, V> Map<K, V> {
     pub const fn new(prefix: Prefix) -> Self {
         Self {
             _phantom: (PhantomData, PhantomData),
-            prefix: prefix,
+            prefix,
         }
     }
 }

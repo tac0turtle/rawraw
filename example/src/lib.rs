@@ -56,5 +56,7 @@ mod tests {
         // Alice increments the counter again
         let value = counter_client.inc(&mut alice_ctx).unwrap();
         assert_eq!(value, 2);
+        let value = counter_client.get(&alice_ctx).unwrap();
+        assert_eq!(value, 2);
     }
 }

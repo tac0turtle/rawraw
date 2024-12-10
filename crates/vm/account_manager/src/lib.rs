@@ -76,16 +76,16 @@ impl<'a, CM: VM> AccountManager<'a, CM> {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        // let mut query_context = QueryContext{
-        // let mut exec_context = ExecContext{
-        //     account_manager: self,
-        //     state_handler,
-        //     id_generator,
-        //     authz,
-        //     call_stack: Vec::new_in(allocator),
-        // };
-        // exec_context.invoke(message_packet, allocator)
-        todo!()
+        let mut call_stack = Vec::new_in(allocator);
+        call_stack.push(Frame {
+            active_account: message_packet.header().caller,
+        });
+        let query_ctx = QueryContext {
+            account_manager: self,
+            state_handler,
+            call_stack: RefCell::new(call_stack),
+        };
+        query_ctx.invoke_query(message_packet, allocator)
     }
 }
 
@@ -234,8 +234,8 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
 impl<'a, CM: VM, ST: StateHandler> HostBackend for QueryContext<'a, CM, ST> {
     fn invoke_msg(
         &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
+        _message_packet: &mut MessagePacket,
+        _allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
