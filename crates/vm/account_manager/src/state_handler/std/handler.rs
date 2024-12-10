@@ -7,7 +7,7 @@ use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
-use std::alloc::Layout;
+use core::alloc::Layout;
 use ixc_message_api::code::ErrorCode::SystemCode;
 
 /// The standard state handler.

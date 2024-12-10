@@ -1,9 +1,11 @@
 //! Rust Cosmos SDK RFC 003 hypervisor/state-handler function implementation.
+#![no_std]
+extern crate alloc;
 
 mod authz;
 pub mod id_generator;
 pub mod state_handler;
-pub mod vm_manager;
+pub mod native_vm;
 
 use crate::authz::AuthorizationMiddleware;
 use crate::id_generator::IDGenerator;
@@ -13,7 +15,7 @@ use crate::state_handler::{
 };
 use allocator_api2::vec::Vec;
 use core::borrow::BorrowMut;
-use std::alloc::Layout;
+use core::alloc::Layout;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
@@ -25,7 +27,7 @@ use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{ReadonlyStore, VM};
-use std::cell::RefCell;
+use core::cell::RefCell;
 
 /// The account manager manages the execution, creation, and destruction of accounts.
 pub struct AccountManager<'a, CM: VM> {
@@ -55,7 +57,7 @@ impl<'a, CM: VM> AccountManager<'a, CM> {
     ) -> Result<(), ErrorCode> {
         let mut call_stack = Vec::new_in(allocator);
         call_stack.push(Frame {
-            active_account: message_packet.header().account,
+            active_account: message_packet.header().caller,
         });
         let mut exec_context = ExecContext {
             account_manager: self,

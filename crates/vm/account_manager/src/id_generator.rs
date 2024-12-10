@@ -38,7 +38,7 @@ impl IDGenerator for IncrementingIDGenerator {
             let id = u128::from_le_bytes(id.try_into().unwrap());
             let new_id = id + 1;
             store.set(b"I", &new_id.to_le_bytes())?;
-            Ok(id)
+            Ok(new_id)
 
         } else {
             let id:u128 = 65536;

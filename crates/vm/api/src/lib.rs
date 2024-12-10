@@ -18,7 +18,7 @@ pub trait VM {
     fn resolve_handler_id<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
 
     /// Resolves a handler ID to an executable handler or returns an error if the handler is not found.
-    fn resolve_handler<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<&'a dyn RawHandler, ErrorCode>;
+    fn resolve_handler<'b, 'a:'b>(&'a self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'b dyn Allocator) -> Result<&'b dyn RawHandler, ErrorCode>;
 
     // /// Runs a handler with the provided message packet and host backend.
     // fn run_message(

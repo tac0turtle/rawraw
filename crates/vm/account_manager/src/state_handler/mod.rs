@@ -2,7 +2,8 @@
 pub mod std;
 pub mod gas;
 
-use ::std::cell::RefCell;
+use alloc::format;
+use core::cell::RefCell;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
 use ixc_message_api::AccountID;

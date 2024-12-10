@@ -20,12 +20,16 @@ impl VersionedMultiStore {
     pub fn new_transaction(&self) -> Tx {
         let latest = self.versions.last().cloned().unwrap_or_default();
         Tx {
-            call_stack: vec![],
+            call_stack: vec![
+                Frame {
+                    store: latest,
+                },
+            ],
         }
     }
 
     pub fn commit(&mut self, tx: Tx) -> Result<(), ()> {
-        if !tx.call_stack.is_empty() {
+        if tx.call_stack.len() != 1 {
             return Err(());
         }
         let current_frame = tx.current_frame()

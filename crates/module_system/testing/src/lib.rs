@@ -1,15 +1,13 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-mod stf;
 mod store;
 
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
-use crate::stf::NativeVM;
 use crate::store::VersionedMultiStore;
 use allocator_api2::alloc::Allocator;
 use ixc_account_manager::id_generator::IncrementingIDGenerator;
+use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
 use ixc_account_manager::state_handler::std::StdStateHandler;
-use ixc_account_manager::vm_manager::VMManager;
 use ixc_account_manager::AccountManager;
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
@@ -18,8 +16,8 @@ use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
-use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
@@ -28,27 +26,17 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 /// Defines a test harness for running tests against account and module implementations.
-pub struct TestApp {
-    native_vm: NativeVM,
+pub struct TestApp<V = NativeVMImpl> {
     mem: MemoryManager,
     mock_id: Cell<u64>,
-    backend: RefCell<Backend>,
+    backend: RefCell<Backend<V>>,
 }
 
-impl Default for TestApp {
+impl Default for TestApp<NativeVMImpl> {
     fn default() -> Self {
-        let mut vm_manager: VMManager = Default::default();
-        let native_vm = NativeVM::new();
-        vm_manager
-            .register_vm("native", std::boxed::Box::new(native_vm.clone()))
-            .unwrap();
-        vm_manager.set_default_vm("native").unwrap();
-        let mem = MemoryManager::new();
-        let state = VersionedMultiStore::default();
         let mut test_app = Self {
-            backend: RefCell::new(Backend { vm_manager, state, id_gen: Default::default() }),
-            native_vm,
-            mem,
+            backend: RefCell::new(Default::default()),
+            mem: Default::default(),
             mock_id: Cell::new(0),
         };
         test_app.register_handler::<DefaultAccount>().unwrap();
@@ -56,12 +44,14 @@ impl Default for TestApp {
     }
 }
 
-impl TestApp {
+impl<V: NativeVM + 'static> TestApp<V> {
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
     pub fn register_handler<H: Handler>(&self) -> core::result::Result<(), InitializationError> {
         let scope = ResourceScope::default();
+        let mut backend = self.backend.borrow_mut();
         unsafe {
-            self.native_vm
+            backend
+                .vm
                 .register_handler(H::NAME, Box::new(H::new(&scope)?));
         }
         Ok(())
@@ -74,10 +64,12 @@ impl TestApp {
         client_bindings: &[(&'static str, AccountID)],
     ) -> core::result::Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
+        let mut backend = self.backend.borrow_mut();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
         scope.account_resolver = Some(&binding_map);
         unsafe {
-            self.native_vm
+            backend
+                .vm
                 .register_handler(H::NAME, Box::new(H::new(&scope)?));
         }
         Ok(())
@@ -108,7 +100,9 @@ impl TestApp {
         let mock_id = self.mock_id.get();
         self.mock_id.set(mock_id + 1);
         let handler_id = format!("mock{}", mock_id);
-        self.native_vm
+        let mut backend = self.backend.borrow_mut();
+        backend
+            .vm
             .register_handler(&handler_id, std::boxed::Box::new(mock));
         create_account_raw(&mut root, &handler_id, &[])
     }
@@ -128,26 +122,35 @@ impl TestApp {
     }
 }
 
-struct Backend {
-    vm_manager: VMManager,
+#[derive(Default)]
+struct Backend<V> {
+    vm: V,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
 }
 
-impl HostBackend for Backend {
+impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
     fn invoke_msg(
         &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let account_manager = AccountManager::new(&self.vm_manager);
-        let mut tx = self.state .new_transaction();
+        let account_manager = AccountManager::new(&self.vm);
+        let mut tx = self.state.new_transaction();
 
         let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
 
-        account_manager.invoke_msg(&mut state_handler, &mut self.id_gen, &(), message_packet, allocator)?;
+        account_manager.invoke_msg(
+            &mut state_handler,
+            &mut self.id_gen,
+            &(),
+            message_packet,
+            allocator,
+        )?;
 
-        self.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+        self.state
+            .commit(tx)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
     fn invoke_query(
@@ -155,8 +158,8 @@ impl HostBackend for Backend {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let account_manager = AccountManager::new(&self.vm_manager);
-        let mut tx = self.state .new_transaction();
+        let account_manager = AccountManager::new(&self.vm);
+        let mut tx = self.state.new_transaction();
 
         let state_handler = StdStateHandler::new(&mut tx, Default::default());
 
