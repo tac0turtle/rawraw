@@ -66,7 +66,7 @@ pub(crate) fn init_next_account<A: Allocator, ST: StateHandler<A>, IDG: IDGenera
     gas: &mut Gas,
 ) -> Result<AccountID, ErrorCode> {
     let id: u128 = id_generator.new_account_id()?.into();
-    state_handler.create_account_storage(AccountID::new(id))?;
+    state_handler.create_account_storage(AccountID::new(id), gas)?;
     state_handler.kv_set(
         ROOT_ACCOUNT,
         // TODO choose a different layout for the key
@@ -81,6 +81,6 @@ pub(crate) fn destroy_account_data<A: Allocator, ST: StateHandler<A>>(state_hand
     let id: u128 = account.into();
     let key = format!("h:{}", id);
     state_handler.kv_delete(ROOT_ACCOUNT, key.as_bytes(), gas)?;
-    state_handler.delete_account_storage(account)
+    state_handler.delete_account_storage(account, gas)
 }
 

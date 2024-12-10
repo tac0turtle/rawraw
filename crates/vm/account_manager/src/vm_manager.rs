@@ -5,8 +5,6 @@ use ixc_message_api::handler::HostBackend;
 use ixc_message_api::packet::MessagePacket;
 use ixc_vm_api::{ReadonlyStore, VM};
 use std::collections::HashMap;
-use crate::state_handler::Store;
-
 
 /// A unique identifier for a handler implementation.
 #[derive(Debug, Clone)]

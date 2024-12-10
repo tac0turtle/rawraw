@@ -1,3 +1,4 @@
+//! The standard state handler.
 mod handler;
 mod manager;
 pub use handler::*;

@@ -5,23 +5,31 @@ use ixc_message_api::packet::MessagePacket;
 use crate::state_handler::{Gas, StateHandler};
 use crate::state_handler::std::manager::StdStateManager;
 
+/// The standard state handler.
 pub struct StdStateHandler<A: Allocator, S: StdStateManager<A>> {
     state: S,
     gas_config: GasConfig,
+    _phantom: core::marker::PhantomData<A>,
 }
 
+/// Gas configuration for the standard state handler.
 pub struct GasConfig {
-    pub has_cost: u64,
+    /// The cost of deleting a value from storage.
     pub delete_cost: u64,
+    /// The flat cost of reading a value from storage.
     pub read_cost_flat: u64,
+    /// The cost per byte of reading a value from storage.
     pub read_cost_per_byte: u64,
+    /// The flat cost of writing a value to storage.
     pub write_cost_flat: u64,
+    /// The cost per byte of writing a value to storage.
     pub write_cost_per_byte: u64,
 }
 
 impl<A: Allocator, S: StdStateManager<A>> StdStateHandler<A, S> {
+    /// Create a new standard state handler.
     pub fn new(state: S, gas_config: GasConfig) -> Self {
-        Self { state, gas_config }
+        Self { state, gas_config, _phantom: Default::default() }
     }
 }
 
