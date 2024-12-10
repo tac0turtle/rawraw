@@ -242,7 +242,7 @@ impl APIBuilder {
             push_item(
                 &mut self.items,
                 quote! {
-                    impl <'a> ::ixc::core::message::Message<'a> for #msg_struct_name #opt_lifetime {
+                    impl <'a> ::ixc::core::message::MessageBase<'a> for #msg_struct_name #opt_lifetime {
                         const SELECTOR: ::ixc::message_api::header::MessageSelector = #selector;
                         type Response<'b> = <#return_type as ::ixc::core::message::ExtractResponseTypes>::Response;
                         type Error = <#return_type as ::ixc::core::message::ExtractResponseTypes>::Error;
@@ -250,17 +250,25 @@ impl APIBuilder {
                     }
                 },
             )?;
+            push_item(
+                &mut self.items,
+                if is_query {
+                    quote! { impl <'a> ::ixc::core::message::QueryMessage<'a> for #msg_struct_name #opt_lifetime {} }
+                } else {
+                    quote! { impl <'a> ::ixc::core::message::Message<'a> for #msg_struct_name #opt_lifetime {} }
+                },
+            )?;
             ensure!(context_name.is_some(), "no context parameter found");
             let context_name = context_name.unwrap();
             let maybe_mut = if is_query {
-                quote! { mut }
-            } else {
                 quote! {}
+            } else {
+                quote! { mut }
             };
             let route = quote! {
-                        (< #msg_struct_name #opt_underscore_lifetime as ::ixc::core::message::Message >::SELECTOR, |h: &Self, packet, cb, a| {
+                        (< #msg_struct_name #opt_underscore_lifetime as ::ixc::core::message::MessageBase >::SELECTOR, |h: &Self, packet, cb, a| {
                             unsafe {
-                                let cdc = < #msg_struct_name as ::ixc::core::message::Message<'_> >::Codec::default();
+                                let cdc = < #msg_struct_name as ::ixc::core::message::MessageBase<'_> >::Codec::default();
                                 let header = packet.header();
                                 let in1 = header.in_pointer1.get(packet);
                                 let mem = ::ixc::schema::mem::MemoryManager::new();
@@ -277,9 +285,9 @@ impl APIBuilder {
             };
             self.client_signatures.push(signature.clone());
             let dynamic_invoke = if is_query {
-                quote! { #context_name.dynamic_invoke_query(_acct_id, _msg) }
+                quote! { ::ixc::core::low_level::dynamic_invoke_query(ctx, _acct_id, _msg) }
             } else {
-                quote! { #context_name.dynamic_invoke_msg(_acct_id, _msg) }
+                quote! { ::ixc::core::low_level::dynamic_invoke_msg(ctx, _acct_id, _msg) }
             };
             self.client_methods.push(quote! {
                     #signature {
@@ -319,23 +327,24 @@ impl APIBuilder {
         let system_routes = &self.system_routes;
         push_item(
             &mut self.items,
-        quote! {
-            unsafe impl ::ixc::core::routing::Router for #target {
-                const SORTED_MSG_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                    &::ixc::core::routing::sort_routes([
-                        #(#routes)*
-                    ]);
+            quote! {
+                unsafe impl ::ixc::core::routing::Router for #target {
+                    const SORTED_MSG_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                        &::ixc::core::routing::sort_routes([
+                            #(#routes)*
+                        ]);
 
-                const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                    &::ixc::core::routing::sort_routes([
-                        #(#query_routes)*
-                    ]);
+                    const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                        &::ixc::core::routing::sort_routes([
+                            #(#query_routes)*
+                        ]);
 
-                const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                    &::ixc::core::routing::sort_routes([
-                        #(#system_routes)*
-                    ]);
-            }
-        })
+                    const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
+                        &::ixc::core::routing::sort_routes([
+                            #(#system_routes)*
+                        ]);
+                }
+            },
+        )
     }
 }

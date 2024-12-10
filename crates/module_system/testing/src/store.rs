@@ -1,8 +1,6 @@
 #![allow(unused)]
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
-use ixc_account_manager::state_handler::Gas;
-use ixc_account_manager::state_handler::StateHandler;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
@@ -13,6 +11,7 @@ use ixc_message_api::AccountID;
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
+use ixc_account_manager::state_handler::{Gas, StateHandler};
 
 #[derive(Default, Clone)]
 pub struct VersionedMultiStore {
@@ -81,7 +80,7 @@ const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
 
-impl<A: Allocator> ixc_account_manager::state_handler::Store<A> for Tx {
+impl<A: Allocator> StateHandler<A> for Tx {
     fn kv_get(
         &self,
         account_id: AccountID,
@@ -116,19 +115,17 @@ impl<A: Allocator> ixc_account_manager::state_handler::Store<A> for Tx {
     ) -> Result<(), ErrorCode> {
         todo!()
     }
-}
-
-impl<A: Allocator> StateHandler<A> for Tx {
     fn begin_tx(&mut self) -> Result<(), ErrorCode> {
-        let next_frame = Frame {
-            store: self.current_frame.borrow().store.clone(),
-            changes: vec![],
-            volatile,
-            user_tx: false,
-        };
-        self.call_stack.push(self.current_frame.borrow().clone());
-        self.current_frame = RefCell::new(next_frame);
-        Ok(())
+        // let next_frame = Frame {
+        //     store: self.current_frame.borrow().store.clone(),
+        //     changes: vec![],
+        //     volatile,
+        //     user_tx: false,
+        // };
+        // self.call_stack.push(self.current_frame.borrow().clone());
+        // self.current_frame = RefCell::new(next_frame);
+        // Ok(())
+        todo!()
     }
 
     fn commit_tx(&mut self) -> Result<(), ErrorCode> {

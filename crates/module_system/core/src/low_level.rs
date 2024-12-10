@@ -1,7 +1,7 @@
 //! Low-level utilities for working with message structs and message packets directly.
 
 use crate::error::{ClientError, HandlerError};
-use crate::message::Message;
+use crate::message::{Message, MessageBase, QueryMessage};
 use crate::result::ClientResult;
 use crate::Context;
 use alloc::string::String;
@@ -17,44 +17,54 @@ use ixc_schema::value::OptionalValue;
 /// Dynamically invokes an account message.
 /// Static account client instances should be preferred wherever possible,
 /// so that static dependency analysis can be performed.
-pub fn dynamic_invoke_query<'a, 'b, M: Message<'b>>(
+pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(context: &'a mut Context, account: AccountID, message: M)
+                                              -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error>
+{
+    todo!()
+}
+
+/// Dynamically invokes an account query message.
+/// Static account client instances should be preferred wherever possible,
+/// so that static dependency analysis can be performed.
+pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
     context: &'a Context,
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    unsafe {
-        // encode the message body
-        let mem = context.memory_manager();
-        let cdc = M::Codec::default();
-        let msg_body = cdc.encode_value(&message, mem)?;
-
-        // create the message packet and fill in call details
-        let mut packet = create_packet(context, account, M::SELECTOR)?;
-        let header = packet.header_mut();
-        header.in_pointer1.set_slice(msg_body);
-
-        // invoke the message
-        let res = context
-            .host_backend()
-            .unwrap()
-            .invoke_query(&mut packet, mem);
-
-        let out1 = header.out_pointer1.get(&packet);
-
-        match res {
-            Ok(_) => {
-                let res = M::Response::<'a>::decode_value(&cdc, out1, mem)?;
-                Ok(res)
-            }
-            Err(e) => {
-                let c: u16 = e.into();
-                let code = ErrorCode::<M::Error>::from(c);
-                let msg = String::from_utf8(out1.to_vec())
-                    .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
-                Err(ClientError { message: msg, code })
-            }
-        }
-    }
+    // unsafe {
+    //     // encode the message body
+    //     let mem = context.memory_manager();
+    //     let cdc = M::Codec::default();
+    //     let msg_body = cdc.encode_value(&message, mem)?;
+    //
+    //     // create the message packet and fill in call details
+    //     let mut packet = create_packet(context, account, M::SELECTOR)?;
+    //     let header = packet.header_mut();
+    //     header.in_pointer1.set_slice(msg_body);
+    //
+    //     // invoke the message
+    //     let res = context
+    //         .host_backend()
+    //         .unwrap()
+    //         .invoke_query(&mut packet, mem);
+    //
+    //     let out1 = header.out_pointer1.get(&packet);
+    //
+    //     match res {
+    //         Ok(_) => {
+    //             let res = M::Response::<'a>::decode_value(&cdc, out1, mem)?;
+    //             Ok(res)
+    //         }
+    //         Err(e) => {
+    //             let c: u16 = e.into();
+    //             let code = ErrorCode::<M::Error>::from(c);
+    //             let msg = String::from_utf8(out1.to_vec())
+    //                 .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
+    //             Err(ClientError { message: msg, code })
+    //         }
+    //     }
+    // }
+    todo!()
 }
 
 /// Create a new message packet with the given account and message selector.
@@ -74,16 +84,16 @@ pub fn create_packet<'a, E: HandlerCode>(
 }
 
 /// Encodes the response to the out1 pointer of the message packet. Used for encoding the response of a message in macros.
-pub fn encode_response<'a, 'b, M: Message<'a>>(
+pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
     cdc: &dyn Codec,
-    res: crate::Result<<<M as Message<'a>>::Response<'a> as OptionalValue<'a>>::Value, M::Error>,
+    res: crate::Result<<<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::Value, M::Error>,
     allocator: &'b dyn Allocator,
     message_packet: &'b mut MessagePacket,
 ) -> core::result::Result<(), ErrorCode> {
     match res {
         Ok(value) => {
             if let Some(out1) =
-                <<M as Message<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
+                <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
                     cdc,
                     &value,
                     &allocator as &dyn WriterFactory,

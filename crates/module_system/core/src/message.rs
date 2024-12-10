@@ -6,12 +6,10 @@ use ixc_schema::codec::Codec;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::value::{OptionalValue, SchemaValue};
 
-/// The Message trait for invoking messages dynamically.
-pub trait Message<'a>: SchemaValue<'a> + StructSchema {
+/// The MessageBase trait for invoking messages dynamically.
+pub trait MessageBase<'a>: SchemaValue<'a> + StructSchema {
     /// The message selector.
     const SELECTOR: MessageSelector;
-    /// The volatility of the message.
-    const VOLATILITY: Volatility;
     /// The optional response type.
     type Response<'b>: OptionalValue<'b>;
     /// The optional error type.
@@ -20,15 +18,11 @@ pub trait Message<'a>: SchemaValue<'a> + StructSchema {
     type Codec: Codec + Default;
 }
 
-/// The volatility of a message.
-pub enum Volatility {
-    /// The message is pure and doesn't depend on or modify state.
-    Pure,
-    /// The message is volatile and can only be invoked in a transaction.
-    Volatile,
-    /// The message is non-volatile and can be invoked in any context where state is available.
-    Query,
-}
+/// The Message trait for invoking messages dynamically.
+pub trait Message<'a>: MessageBase<'a> {}
+
+/// The QueryMessage trait for invoking query messages dynamically.
+pub trait QueryMessage<'a>: MessageBase<'a> {}
 
 /// Extract the response and error types from a Result.
 /// Used internally in macros for building the Message implementation and ClientResult type.

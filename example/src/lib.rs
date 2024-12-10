@@ -19,6 +19,11 @@ pub mod counter {
             Ok(())
         }
 
+        pub fn get(&self, ctx: &Context) -> Result<u64> {
+            let res = self.value.get(ctx)?;
+            Ok(res)
+        }
+
         pub fn inc(&self, ctx: &mut Context) -> Result<u64> {
             let value = self.value.get(ctx)?;
             let new_value = value
