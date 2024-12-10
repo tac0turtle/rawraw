@@ -3,14 +3,20 @@
 mod stf;
 mod store;
 
+use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 use crate::stf::NativeVM;
 use crate::store::VersionedMultiStore;
 use allocator_api2::alloc::Allocator;
+use ixc_account_manager::vm_manager::VMManager;
+use ixc_account_manager::AccountManager;
+#[doc(hidden)]
+pub use ixc_core::account_api::create_account;
 use ixc_core::account_api::{create_account_raw, ROOT_ACCOUNT};
 use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
+use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
@@ -18,39 +24,33 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-
-use crate::default_account::{DefaultAccount, DefaultAccountCreate};
-use ixc_account_manager::vm_manager::VMManager;
-#[doc(hidden)]
-pub use ixc_core::account_api::create_account;
-use ixc_message_api::code::SystemCode::FatalExecutionError;
+use std::os::macos::raw::stat;
+use ixc_account_manager::id_generator::IncrementingIDGenerator;
+use ixc_account_manager::state_handler::std::StdStateHandler;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
-    vm_manager: RefCell<VMManager>,
-    state: RefCell<VersionedMultiStore>,
     native_vm: NativeVM,
-    #[allow(unused)]
     mem: MemoryManager,
     mock_id: Cell<u64>,
+    backend: RefCell<Backend>,
 }
 
 impl Default for TestApp {
     fn default() -> Self {
-        let mut hypervisor: VMManager = Default::default();
+        let mut vm_manager: VMManager = Default::default();
         let native_vm = NativeVM::new();
-        hypervisor
+        vm_manager
             .register_vm("native", std::boxed::Box::new(native_vm.clone()))
             .unwrap();
-        hypervisor.set_default_vm("native").unwrap();
+        vm_manager.set_default_vm("native").unwrap();
         let mem = MemoryManager::new();
         let state = VersionedMultiStore::default();
-        let test_app = Self {
-            vm_manager: RefCell::new(hypervisor),
+        let mut test_app = Self {
+            backend: RefCell::new(Backend { vm_manager, state, id_gen: Default::default() }),
             native_vm,
             mem,
             mock_id: Cell::new(0),
-            state: RefCell::new(state),
         };
         test_app.register_handler::<DefaultAccount>().unwrap();
         test_app
@@ -99,7 +99,7 @@ impl TestApp {
 
     /// Creates a new client for the given account.
     pub fn client_context_for(&self, account_id: AccountID) -> Context {
-        let ctx = Context::new(account_id, account_id, 0, self, &self.mem);
+        let ctx = Context::new_ref_cell(account_id, account_id, 0, &self.backend, &self.mem);
         ctx
     }
 
@@ -129,31 +129,44 @@ impl TestApp {
     }
 }
 
-impl HostBackend for TestApp {
-    fn invoke_msg(&mut self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
+struct Backend {
+    vm_manager: VMManager,
+    state: VersionedMultiStore,
+    id_gen: IncrementingIDGenerator,
+}
+
+impl HostBackend for Backend {
+    fn invoke_msg(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let account_manager = AccountManager::new(&self.vm_manager);
+        let mut tx = self.state
+            .new_transaction(true)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+
+        let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
+
+        account_manager.invoke_msg(&mut state_handler, &mut self.id_gen, &(), message_packet, allocator)?;
+
+        self.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn invoke_query(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
+    fn invoke_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        let account_manager = AccountManager::new(&self.vm_manager);
+        let mut tx = self.state
+            .new_transaction(false)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+
+        let state_handler = StdStateHandler::new(&mut tx, Default::default());
+
+        account_manager.invoke_query(&state_handler, message_packet, allocator)
     }
-    // fn invoke(
-    //     &self,
-    //     message_packet: &mut MessagePacket,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     let mut state = self.state.borrow_mut();
-    //     let mut tx = state
-    //         .new_transaction(message_packet.header().caller, true)
-    //         .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
-    //
-    //     let vm_manager = self.vm_manager.borrow();
-    //     ixc_account_manager::invoke(&*vm_manager, &mut tx, message_packet, allocator)?;
-    //
-    //     state
-    //         .commit(tx)
-    //         .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
-    // }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.
@@ -202,32 +215,44 @@ impl RawHandler for MockHandler {
     //     }
     //     Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     // }
-    fn handle_msg(&self, message_packet: &mut MessagePacket, callbacks: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn handle_msg(
+        &self,
+        message_packet: &mut MessagePacket,
+        callbacks: &mut dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         todo!()
     }
 }
 
 struct MockWrapper<T: RawHandler + ?Sized>(std::boxed::Box<T>);
 impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
-    fn handle_query(&self, message_packet: &mut MessagePacket, callbacks: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
+    fn handle_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        self.0.handle_query(message_packet, callbacks, allocator)
     }
 
-    fn handle_msg(&self, message_packet: &mut MessagePacket, callbacks: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
+    fn handle_msg(
+        &self,
+        message_packet: &mut MessagePacket,
+        callbacks: &mut dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        self.0.handle_msg(message_packet, callbacks, allocator)
     }
 
-    fn handle_system(&self, message_packet: &mut MessagePacket, callbacks: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
+    fn handle_system(
+        &self,
+        message_packet: &mut MessagePacket,
+        callbacks: &mut dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        self.0.handle_system(message_packet, callbacks, allocator)
     }
-    // fn handle(
-    //     &self,
-    //     message_packet: &mut MessagePacket,
-    //     callbacks: &dyn HostBackend,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     self.0.handle(message_packet, callbacks, allocator)
-    // }
 }
 
 #[ixc::handler(DefaultAccount)]

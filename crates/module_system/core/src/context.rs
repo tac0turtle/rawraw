@@ -1,5 +1,5 @@
 use crate::message::Message;
-use core::cell::Cell;
+use core::cell::{Cell, RefCell};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::packet::MessagePacket;
@@ -13,13 +13,13 @@ pub struct Context<'a> {
     pub(crate) backend: BackendHandle<'a>,
     pub(crate) account: AccountID, // 16 bytes
     pub(crate) caller: AccountID,  // 16 bytes
-    #[allow(unused)]
     gas_left: Cell<u64>,
 }
 
 enum BackendHandle<'a> {
     Mut(&'a mut dyn HostBackend),
     Immutable(&'a dyn HostBackend),
+    RefCell(&'a RefCell<dyn HostBackend>),
 }
 
 impl<'a> Context<'a> {
@@ -57,6 +57,24 @@ impl<'a> Context<'a> {
         }
     }
 
+    /// Creates a new context with a RefCell host backend and a pre-allocated memory manager.
+    /// This constructor is primarily intended for use in testing.
+    pub fn new_ref_cell(
+        account: AccountID,
+        caller: AccountID,
+        gas_left: u64,
+        host_callbacks: &'a RefCell<dyn HostBackend>,
+        mem: &'a MemoryManager,
+    ) -> Self {
+        Self {
+            mem,
+            backend: BackendHandle::RefCell(host_callbacks),
+            account,
+            caller,
+            gas_left: Cell::new(gas_left),
+        }
+    }
+
     /// This is the address of the account that is getting called.
     /// In a receiving account, this is the account's own address.
     pub fn self_account_id(&self) -> AccountID {
@@ -83,6 +101,13 @@ impl<'a> Context<'a> {
             BackendHandle::Mut(ref mut backend) => {
                 (*backend).invoke_msg(packet, &self.mem)
             }
+            BackendHandle::RefCell(ref mut backend) => {
+                if let Ok(mut backend) = backend.try_borrow_mut() {
+                    (*backend).invoke_msg(packet, &self.mem)
+                } else {
+                    Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
+                }
+            }
             BackendHandle::Immutable(backend) => {
                 Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
             }
@@ -98,6 +123,9 @@ impl<'a> Context<'a> {
         let backend = match self.backend {
             BackendHandle::Mut(ref backend) => *backend,
             BackendHandle::Immutable(ref backend) => *backend,
+            BackendHandle::RefCell(ref backend) => {
+                return backend.borrow().invoke_query(packet, &self.mem)
+            }
         };
         backend.invoke_query(packet, &self.mem)
     }

@@ -1,7 +1,7 @@
 //! Rust Cosmos SDK RFC 003 hypervisor/state-handler function implementation.
 
 mod authz;
-mod id_generator;
+pub mod id_generator;
 pub mod state_handler;
 pub mod vm_manager;
 
@@ -45,12 +45,30 @@ impl<'a, CM: VM> AccountManager<'a, CM> {
 impl<'a, CM: VM> AccountManager<'a, CM>
 {
     /// Invokes a message packet in the context of the provided state handler.
-    pub fn invoke<'b, ST: StateHandler<&'b dyn Allocator>, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
+    pub fn invoke_msg<'b, ST: StateHandler<&'b dyn Allocator>, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
         &self,
-        id_generator: &'b mut IDG,
         state_handler: &'b mut ST,
-        message_packet: &mut MessagePacket,
+        id_generator: &'b mut IDG,
         authz: &'b AUTHZ,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        // let mut exec_context = ExecContext{
+        //     account_manager: self,
+        //     state_handler,
+        //     id_generator,
+        //     authz,
+        //     call_stack: Vec::new_in(allocator),
+        // };
+        // exec_context.invoke(message_packet, allocator)
+        todo!()
+    }
+
+    /// Invokes a message packet in the context of the provided state handler.
+    pub fn invoke_query<'b, ST: StateHandler<&'b dyn Allocator>>(
+        &self,
+        state_handler: &'b ST,
+        message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         // let mut exec_context = ExecContext{
