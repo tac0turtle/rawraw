@@ -43,18 +43,31 @@ pub type QueryRoute<T> = (
     ) -> Result<(), ErrorCode>,
 );
 
-// Execute a message packet on a router.
-// pub fn exec_route<R: Router + ?Sized>(
-//     rtr: &R,
-//     packet: &mut MessagePacket,
-//     callbacks: &dyn HostBackend,
-//     allocator: &dyn Allocator,
-// ) -> Result<(), ErrorCode> {
-//     match find_route(packet.header().message_selector) {
-//         Some(rt) => rt.1(rtr, packet, callbacks, allocator),
-//         None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
-//     }
-// }
+/// Execute a message packet on a router.
+pub fn exec_route<R: Router + ?Sized>(
+    rtr: &R,
+    packet: &mut MessagePacket,
+    callbacks: &mut dyn HostBackend,
+    allocator: &dyn Allocator,
+) -> Result<(), ErrorCode> {
+    match find_route(R::SORTED_MSG_ROUTES, packet.header().message_selector) {
+        Some(rt) => rt(rtr, packet, callbacks, allocator),
+        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+    }
+}
+
+/// Execute a query message packet on a router.
+pub fn exec_query_route<R: Router + ?Sized>(
+    rtr: &R,
+    packet: &mut MessagePacket,
+    callbacks: &dyn HostBackend,
+    allocator: &dyn Allocator,
+) -> Result<(), ErrorCode> {
+    match find_route(R::SORTED_QUERY_ROUTES, packet.header().message_selector) {
+        Some(rt) => rt(rtr, packet, callbacks, allocator),
+        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+    }
+}
 
 /// Find a route for a message selector.
 pub fn find_route<R>(sorted_routes: &[(u64, R)], sel: MessageSelector) -> Option<&R> {

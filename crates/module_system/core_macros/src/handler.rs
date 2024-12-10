@@ -72,12 +72,12 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     for publish_trait in publish_traits.iter() {
         let trait_ident = &publish_trait.ident;
         trait_msg_routers.push(quote! {
-            if let Some(rt) = ::ixc::core::routing::find_route::<dyn #trait_ident>(sel) {
+            if let Some(rt) = ::ixc::core::routing::find_route(<dyn #trait_ident as ::ixc::core::routing::Router>::SORTED_MSG_ROUTES, sel) {
                 return rt(self, message_packet, callbacks, allocator)
             }
         });
         trait_query_routers.push(quote! {
-            if let Some(rt) = ::ixc::core::routing::find_route::<dyn #trait_ident>(sel) {
+            if let Some(rt) = ::ixc::core::routing::find_route(<dyn #trait_ident as ::ixc::core::routing::Router>::SORTED_QUERY_ROUTES, sel) {
                 return rt(self, message_packet, callbacks, allocator)
             }
         });

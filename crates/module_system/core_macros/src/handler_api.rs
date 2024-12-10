@@ -50,8 +50,12 @@ pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow
         #(#items)*
 
         impl ::ixc::message_api::handler::RawHandler for dyn #trait_ident {
-            fn handle(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
+            fn handle_msg(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &mut dyn ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
                 ::ixc::core::routing::exec_route(self, message_packet, callbacks, allocator)
+            }
+
+            fn handle_query(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
+                ::ixc::core::routing::exec_query_route(self, message_packet, callbacks, allocator)
             }
         }
 
