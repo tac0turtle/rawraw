@@ -1,4 +1,6 @@
 //! State handler traits.
+pub mod std;
+
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
 use ixc_message_api::AccountID;
@@ -7,21 +9,17 @@ use ixc_message_api::packet::MessagePacket;
 use crate::{ROOT_ACCOUNT};
 use crate::id_generator::IDGenerator;
 
-/// Store trait.
-pub trait Store<A: Allocator> {
+/// A wrapper for gas.
+pub struct Gas(u64);
+
+/// The state handler trait.
+pub trait StateHandler<A: Allocator> {
     /// Get the value of the key.
     fn kv_get(&self, account_id: AccountID, key: &[u8], gas: &mut Gas, allocator: A) -> Result<Option<Vec<u8, A>>, ErrorCode>;
     /// Set the value of the key.
     fn kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8], gas: &mut Gas) -> Result<(), ErrorCode>;
     /// Delete the value of the key.
     fn kv_delete(&mut self, account_id: AccountID, key: &[u8], gas: &mut Gas) -> Result<(), ErrorCode>;
-}
-
-/// A wrapper for gas.
-pub struct Gas(u64);
-
-/// The state handler trait.
-pub trait StateHandler<A: Allocator>: Store<A> {
     /// Begin a transaction.
     fn begin_tx(&mut self) -> Result<(), ErrorCode>;
     /// Commit a transaction.
@@ -50,7 +48,7 @@ pub trait StateHandler<A: Allocator>: Store<A> {
     fn delete_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode>;
 }
 
-pub(crate) fn get_account_handler_id<A: Allocator, ST: Store<A>>(
+pub(crate) fn get_account_handler_id<A: Allocator, ST: StateHandler<A>>(
     state_handler: &ST,
     account_id: AccountID,
     gas: &mut Gas,
