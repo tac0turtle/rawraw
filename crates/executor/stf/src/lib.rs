@@ -1,13 +1,15 @@
 //! A state transition function that can be used to execute transactions and query state.
 mod info;
+use crate::info::Info;
 
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::{code::ErrorCode, header::MessageSelector, packet::MessagePacket, AccountID};
+use ixc_state_handler::{Handler, StateHandler, Store};
 
-/// A store that can be used to store and retrieve state.
-pub trait Store {
-    /// Get the value for the given key.
-    fn get(&self, key: &Vec<u8>) -> Option<Vec<u8>>;
+pub struct BlockReq<T: Transation> {
+    pub height: u64,
+    pub time: u64,
+    pub transactions: Vec<T>,
 }
 
 /// A transaction that can be used to execute a message .
@@ -38,30 +40,60 @@ pub trait AccountManager {
 }
 
 /// A state transition function that can be used to execute transactions and query state.
-pub struct STF {
-    account_manager: dyn AccountManager,
+pub struct STF<A: AccountManager> {
+    account_manager: A,
+    preexecution: Vec<AccountID>,
+    postexecution: Vec<AccountID>,
 }
 
-impl STF {
+impl<A: AccountManager + 'static> STF<A> {
     /// new creates a new state transition function.
-    pub fn new() -> Self {
+    pub fn new(
+        account_manager: A,
+        preexecution: Vec<AccountID>,
+        postexecution: Vec<AccountID>,
+    ) -> Self {
         Self {
-            account_manager: Default::default(),
+            account_manager,
+            preexecution,
+            postexecution,
         }
     }
 
     /// execute_txs executes a list of transactions and updates the state.
-    pub fn execute_txs<S: Store, T: Transation>(
+    pub unsafe fn execute_txs<S: Store, T: Transation>(
+        mut self,
         store: &S,
-        transactions: &Vec<T>,
+        block: &BlockReq<T>,
+        allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        // set header
+        // set height and time
+        let i = Info::new(block.height, block.time);
+
+        let mut state_handler = Handler::new(store);
 
         // Begin block
+        for account in self.preexecution {
+            let mut packet = MessagePacket::allocate(allocator, 0)?;
+            let header = packet.header_mut();
+            header.account = account;
+            header.caller = account;
+            header.message_selector = 0;
+            self.account_manager.invoke_msg(&mut packet, allocator)?;
+        }
 
         // execute transactions
-        for tx in transactions {
-            Self::exec_tx(store, tx)?;
+        for tx in block.transactions {
+            self.exec_tx(&state_handler, &tx, allocator)?;
+        }
+
+        for account in self.postexecution {
+            let mut packet = MessagePacket::allocate(allocator, 0)?;
+            let header = packet.header_mut();
+            header.account = account;
+            header.caller = account;
+            header.message_selector = 0;
+            self.account_manager.invoke_msg(&mut packet, allocator)?;
         }
 
         // End block
@@ -69,24 +101,40 @@ impl STF {
     }
 
     /// exec_tx executes a transaction and updates the state.
-    pub fn exec_tx<S: Store, T: Transation>(store: &S, tx: &T) -> Result<(), ErrorCode> {
+    pub unsafe fn exec_tx<S: StateHandler, T: Transation>(
+        mut self,
+        state_handler: &S,
+        tx: &T,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         // Verify the transaction signature
+        let sender = tx.sender().to_owned();
+        let mut packet = MessagePacket::allocate(allocator, 0)?;
+        let header = packet.header_mut();
+        header.account = sender;
+        header.caller = sender;
+        header.message_selector = 0;
+        let res = self.account_manager.invoke_msg(&mut packet, allocator);
+        if res.is_err() {
+            return res;
+        }
 
         // antehandler operations
 
         // execute the transaction
+
         Ok(())
     }
 
     /// query queries the state.
-    pub fn query<T: Store>(store: &T) -> Result<(), ErrorCode> {
+    pub fn query<S: Store, C: Allocator>(store: &S, allocator: &C) -> Result<(), ErrorCode> {
         // set header
         // query operations
         Ok(())
     }
 
     ///simulate_txs simulates a list of transactions and returns the state changes.
-    pub fn simulate_txs<T: Store>(store: &T) {
+    pub fn simulate_txs<S: Store, C: Allocator>(store: &S, allocator: &C) {
         // set header
 
         // verify the transaction signature
