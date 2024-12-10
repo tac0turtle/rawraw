@@ -2,9 +2,6 @@
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
 use ixc_core_macros::message_selector;
-use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
-use ixc_message_api::code::SystemCode::{FatalExecutionError, InvalidHandler};
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
@@ -12,6 +9,8 @@ use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
 use ixc_account_manager::state_handler::{Gas, StateHandler};
+use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
+use ixc_account_manager::state_handler::std::StdStateError::FatalExecutionError;
 
 #[derive(Default, Clone)]
 pub struct VersionedMultiStore {
@@ -19,13 +18,12 @@ pub struct VersionedMultiStore {
 }
 
 impl VersionedMultiStore {
-    pub fn new_transaction(&self, account_id: AccountID, volatile: bool) -> Result<Tx, ()> {
+    pub fn new_transaction(&self, volatile: bool) -> Result<Tx, ()> {
         let latest = self.versions.last().cloned().unwrap_or_default();
         Ok(Tx {
             call_stack: vec![],
             current_frame: RefCell::new(Frame {
                 store: latest,
-                account: account_id,
                 changes: vec![],
                 volatile,
                 user_tx: true,
@@ -80,42 +78,8 @@ const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
 
-impl<A: Allocator> StateHandler<A> for Tx {
-    fn kv_get(
-        &self,
-        account_id: AccountID,
-        key: &[u8],
-        gas: &mut Gas,
-        allocator: A,
-    ) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
-        // let current_frame = self.current_frame.borrow();
-        // current_frame
-        //     .store
-        //     .stores
-        //     .get(&account_id)
-        //     .and_then(|s| s.kv_store.get(key).cloned())
-        todo!()
-    }
-
-    fn kv_set(
-        &mut self,
-        account_id: AccountID,
-        key: &[u8],
-        value: &[u8],
-        gas: &mut Gas,
-    ) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
-    fn kv_delete(
-        &mut self,
-        account_id: AccountID,
-        key: &[u8],
-        gas: &mut Gas,
-    ) -> Result<(), ErrorCode> {
-        todo!()
-    }
-    fn begin_tx(&mut self) -> Result<(), ErrorCode> {
+impl<A: Allocator> StdStateManager<A> for Tx {
+    fn begin_tx(&mut self) -> Result<(), StdStateError> {
         // let next_frame = Frame {
         //     store: self.current_frame.borrow().store.clone(),
         //     changes: vec![],
@@ -128,53 +92,65 @@ impl<A: Allocator> StateHandler<A> for Tx {
         todo!()
     }
 
-    fn commit_tx(&mut self) -> Result<(), ErrorCode> {
-        if let Some(mut previous_frame) = self.call_stack.pop() {
-            let current_frame = self.current_frame.borrow();
-            previous_frame.store = current_frame.store.clone();
-            previous_frame
-                .changes
-                .append(&mut current_frame.changes.clone());
-            self.current_frame = RefCell::new(previous_frame);
-            Ok(())
-        } else {
-            Err(SystemCode(FatalExecutionError))
-        }
-    }
-
-    fn rollback_tx(&mut self) -> Result<(), ErrorCode> {
-        if let Some(mut previous_frame) = self.call_stack.pop() {
-            self.current_frame = RefCell::new(previous_frame);
-            Ok(())
-        } else {
-            Err(SystemCode(FatalExecutionError))
-        }
-    }
-
-    fn handle_exec(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+    fn commit_tx(&mut self) -> Result<(), StdStateError> {
+        // if let Some(mut previous_frame) = self.call_stack.pop() {
+        //     let current_frame = self.current_frame.borrow();
+        //     previous_frame.store = current_frame.store.clone();
+        //     previous_frame
+        //         .changes
+        //         .append(&mut current_frame.changes.clone());
+        //     self.current_frame = RefCell::new(previous_frame);
+        //     Ok(())
+        // } else {
+        //     Err(FatalExecutionError)
+        // }
         todo!()
     }
 
-    fn handle_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        todo!()
+    fn rollback_tx(&mut self) -> Result<(), StdStateError> {
+        if let Some(mut previous_frame) = self.call_stack.pop() {
+            self.current_frame = RefCell::new(previous_frame);
+            Ok(())
+        } else {
+            Err(FatalExecutionError)
+        }
     }
-
-    fn create_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode> {
-        Ok(())
-    }
-
-    fn delete_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode> {
+    fn delete_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError> {
         let mut current_frame = self.current_frame.borrow_mut();
         current_frame.store.stores.remove(&account);
         Ok(())
+    }
+
+    fn kv_get(&self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], allocator: A) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, StdStateError> {
+        todo!()
+    }
+
+    fn kv_set(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], value: &[u8]) -> Result<(), StdStateError> {
+        todo!()
+    }
+
+    fn kv_delete(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8]) -> Result<(), StdStateError> {
+        todo!()
+    }
+
+    fn accumulator_get(&self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], allocator: A) -> Result<u128, StdStateError> {
+        todo!()
+    }
+
+    fn accumulator_add(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], value: u128) -> Result<(), StdStateError> {
+        todo!()
+    }
+
+    fn accumulator_safe_sub(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], value: u128) -> Result<bool, StdStateError> {
+        todo!()
+    }
+
+    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError> {
+        todo!()
+    }
+
+    fn create_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError> {
+        todo!()
     }
 
     // fn init_account_storage(&mut self, account: AccountID) -> Result<(), PushFrameError> {
@@ -278,71 +254,71 @@ enum Access {
 }
 
 impl Tx {
-    unsafe fn get(
-        &self,
-        packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let key = packet.header().in_pointer1.get(packet);
-        self.track_access(key, Access::Read)
-            .map_err(|_| SystemCode(InvalidHandler))?;
-        let mut current_frame = self.current_frame.borrow_mut();
-        let account = current_frame.account;
-        let current_store = current_frame.get_kv_store(account);
-        match current_store.kv_store.get(key) {
-            None => {
-                return Err(HandlerCode(0)); // KV-stores should use handler code 0 to indicate not found
-            }
-            Some(value) => unsafe {
-                let out = allocator
-                    .allocate(Layout::from_size_align_unchecked(value.len(), 16))
-                    .map_err(|_| SystemCode(FatalExecutionError))?;
-                let out_slice =
-                    core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
-                out_slice.copy_from_slice(value.as_slice());
-                packet.header_mut().out_pointer1.set_slice(out_slice);
-            },
-        }
-        Ok(())
-    }
-
-    unsafe fn set(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
-        let key = packet.header().in_pointer1.get(packet);
-        let value = packet.header().in_pointer2.get(packet);
-        self.track_access(key, Access::Write)
-            .map_err(|_| SystemCode(InvalidHandler))?;
-        let mut current_frame = self.current_frame.borrow_mut();
-        let account = current_frame.account;
-        let current_store = current_frame.get_kv_store(account);
-        current_store.kv_store.insert(key.to_vec(), value.to_vec());
-        current_frame.changes.push(Update {
-            account,
-            key: key.to_vec(),
-            operation: Operation::Set(value.to_vec()),
-        });
-        Ok(())
-    }
-
-    unsafe fn delete(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
-        let key = packet.header().in_pointer1.get(packet);
-        self.track_access(key, Access::Write)
-            .map_err(|_| SystemCode(InvalidHandler))?;
-        let mut current_frame = self.current_frame.borrow_mut();
-        let account = current_frame.account;
-        let current_store = current_frame.get_kv_store(account);
-        current_store.kv_store.remove(key);
-        current_frame.changes.push(Update {
-            account,
-            key: key.to_vec(),
-            operation: Operation::Remove,
-        });
-        Ok(())
-    }
-
-    fn track_access(&self, key: &[u8], access: Access) -> Result<(), AccessError> {
-        // TODO track reads and writes for parallel execution
-        Ok(())
-    }
+    // unsafe fn get(
+    //     &self,
+    //     packet: &mut MessagePacket,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode> {
+    //     let key = packet.header().in_pointer1.get(packet);
+    //     self.track_access(key, Access::Read)
+    //         .map_err(|_| SystemCode(InvalidHandler))?;
+    //     let mut current_frame = self.current_frame.borrow_mut();
+    //     let account = current_frame.account;
+    //     let current_store = current_frame.get_kv_store(account);
+    //     match current_store.kv_store.get(key) {
+    //         None => {
+    //             return Err(HandlerCode(0)); // KV-stores should use handler code 0 to indicate not found
+    //         }
+    //         Some(value) => unsafe {
+    //             let out = allocator
+    //                 .allocate(Layout::from_size_align_unchecked(value.len(), 16))
+    //                 .map_err(|_| SystemCode(FatalExecutionError))?;
+    //             let out_slice =
+    //                 core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
+    //             out_slice.copy_from_slice(value.as_slice());
+    //             packet.header_mut().out_pointer1.set_slice(out_slice);
+    //         },
+    //     }
+    //     Ok(())
+    // }
+    //
+    // unsafe fn set(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
+    //     let key = packet.header().in_pointer1.get(packet);
+    //     let value = packet.header().in_pointer2.get(packet);
+    //     self.track_access(key, Access::Write)
+    //         .map_err(|_| SystemCode(InvalidHandler))?;
+    //     let mut current_frame = self.current_frame.borrow_mut();
+    //     let account = current_frame.account;
+    //     let current_store = current_frame.get_kv_store(account);
+    //     current_store.kv_store.insert(key.to_vec(), value.to_vec());
+    //     current_frame.changes.push(Update {
+    //         account,
+    //         key: key.to_vec(),
+    //         operation: Operation::Set(value.to_vec()),
+    //     });
+    //     Ok(())
+    // }
+    //
+    // unsafe fn delete(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
+    //     let key = packet.header().in_pointer1.get(packet);
+    //     self.track_access(key, Access::Write)
+    //         .map_err(|_| SystemCode(InvalidHandler))?;
+    //     let mut current_frame = self.current_frame.borrow_mut();
+    //     let account = current_frame.account;
+    //     let current_store = current_frame.get_kv_store(account);
+    //     current_store.kv_store.remove(key);
+    //     current_frame.changes.push(Update {
+    //         account,
+    //         key: key.to_vec(),
+    //         operation: Operation::Remove,
+    //     });
+    //     Ok(())
+    // }
+    //
+    // fn track_access(&self, key: &[u8], access: Access) -> Result<(), AccessError> {
+    //     // TODO track reads and writes for parallel execution
+    //     Ok(())
+    // }
 }
 
 #[derive(Debug, Error)]

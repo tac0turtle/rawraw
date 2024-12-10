@@ -67,7 +67,7 @@ pub trait StdStateManager<A: Allocator> {
     /// Rollback a transaction.
     fn rollback_tx(&mut self) -> Result<(), StdStateError>;
     /// Initialize storage for a new account.
-    fn init_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError>;
+    fn create_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError>;
     /// Delete all of an account's storage. Keys scoped under the account
     /// by another account, however, must not be deleted.
     fn delete_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError>;
