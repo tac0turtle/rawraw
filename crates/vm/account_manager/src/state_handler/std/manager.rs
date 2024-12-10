@@ -48,6 +48,7 @@ pub trait StdStateManager<A: Allocator> {
     fn rollback_tx(&mut self) -> Result<(), StdStateError>;
     fn init_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError>;
     fn delete_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError>;
+    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError>;
 }
 
 pub enum StdStateError {
