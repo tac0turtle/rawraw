@@ -2,7 +2,7 @@ use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::packet::MessagePacket;
-use crate::state_handler::{Gas, StateHandler};
+use crate::state_handler::{GasMeter, StateHandler};
 use crate::state_handler::std::manager::StdStateManager;
 
 /// The standard state handler.
@@ -35,27 +35,27 @@ impl<'a, A: Allocator, S: StdStateManager<A>> StdStateHandler<'a, A, S> {
 }
 
 impl<'a, A: Allocator, S: StdStateManager<A>> StateHandler<A> for StdStateHandler<'a, A, S> {
-    fn kv_get(&self, account_id: AccountID, key: &[u8], gas: &mut Gas, allocator: A) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
+    fn kv_get(&self, account_id: AccountID, key: &[u8], gas: &mut GasMeter, allocator: A) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
         todo!()
     }
 
-    fn kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8], gas: &mut Gas) -> Result<(), ErrorCode> {
+    fn kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8], gas: &mut GasMeter) -> Result<(), ErrorCode> {
         todo!()
     }
 
-    fn kv_delete(&mut self, account_id: AccountID, key: &[u8], gas: &mut Gas) -> Result<(), ErrorCode> {
+    fn kv_delete(&mut self, account_id: AccountID, key: &[u8], gas: &mut GasMeter) -> Result<(), ErrorCode> {
         todo!()
     }
 
-    fn begin_tx(&mut self) -> Result<(), ErrorCode> {
+    fn begin_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
         todo!()
     }
 
-    fn commit_tx(&mut self) -> Result<(), ErrorCode> {
+    fn commit_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
         todo!()
     }
 
-    fn rollback_tx(&mut self) -> Result<(), ErrorCode> {
+    fn rollback_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
         todo!()
     }
 
@@ -67,11 +67,11 @@ impl<'a, A: Allocator, S: StdStateManager<A>> StateHandler<A> for StdStateHandle
         todo!()
     }
 
-    fn create_account_storage(&mut self, account: AccountID, gas: &mut Gas) -> Result<(), ErrorCode> {
+    fn create_account_storage(&mut self, account: AccountID, gas: &mut GasMeter) -> Result<(), ErrorCode> {
         todo!()
     }
 
-    fn delete_account_storage(&mut self, account: AccountID, gas: &mut Gas) -> Result<(), ErrorCode> {
+    fn delete_account_storage(&mut self, account: AccountID, gas: &mut GasMeter) -> Result<(), ErrorCode> {
         todo!()
     }
 }

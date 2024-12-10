@@ -8,7 +8,7 @@ use ixc_message_api::AccountID;
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
-use ixc_account_manager::state_handler::{Gas, StateHandler};
+use ixc_account_manager::state_handler::{GasMeter, StateHandler};
 use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
 use ixc_account_manager::state_handler::std::StdStateError::FatalExecutionError;
 
