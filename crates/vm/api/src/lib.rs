@@ -5,7 +5,7 @@
 
 use ixc_message_api::AccountID;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::handler::{Allocator, HostBackend};
+use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
 use allocator_api2::vec::Vec;
 
@@ -15,36 +15,40 @@ pub trait VM {
     /// or return None if the handler ID is not valid.
     /// This allows for multiple ways of addressing a single handler in code and for ensuring that
     /// the handler actually exists.
-    fn resolve_handler_id(&self, store: &dyn ReadonlyStore, handler_id: &[u8]) -> Option<Vec<u8>>;
-    /// Runs a handler with the provided message packet and host backend.
-    fn run_message(
-        &self,
-        store: &dyn ReadonlyStore,
-        handler_id: &[u8],
-        message_packet: &mut MessagePacket,
-        backend: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+    fn resolve_handler_id<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
 
-    /// Runs a query handler with the provided message packet and host backend.
-    fn run_query(
-        &self,
-        store: &dyn ReadonlyStore,
-        handler_id: &[u8],
-        message_packet: &mut MessagePacket,
-        backend: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+    /// Resolves a handler ID to an executable handler or returns an error if the handler is not found.
+    fn resolve_handler<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<&'a dyn RawHandler, ErrorCode>;
 
-    /// Runs a system message handler with the provided message packet and host backend.
-    fn run_system_message(
-        &self,
-        store: &dyn ReadonlyStore,
-        handler_id: &[u8],
-        message_packet: &mut MessagePacket,
-        backend: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+    // /// Runs a handler with the provided message packet and host backend.
+    // fn run_message(
+    //     &self,
+    //     store: &dyn ReadonlyStore,
+    //     handler_id: &[u8],
+    //     message_packet: &mut MessagePacket,
+    //     backend: &mut dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode>;
+    //
+    // /// Runs a query handler with the provided message packet and host backend.
+    // fn run_query(
+    //     &self,
+    //     store: &dyn ReadonlyStore,
+    //     handler_id: &[u8],
+    //     message_packet: &mut MessagePacket,
+    //     backend: &dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode>;
+    //
+    // /// Runs a system message handler with the provided message packet and host backend.
+    // fn run_system_message(
+    //     &self,
+    //     store: &dyn ReadonlyStore,
+    //     handler_id: &[u8],
+    //     message_packet: &mut MessagePacket,
+    //     backend: &mut dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode>;
 }
 
 /// A store that can only be read from.

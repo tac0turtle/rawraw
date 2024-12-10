@@ -5,11 +5,11 @@ use allocator_api2::vec::Vec;
 /// The standard state manager trait which is the interface
 /// that the storage layer must implement in order to be
 /// wrapped by the standard state handler.
-pub trait StdStateManager<A: Allocator> {
+pub trait StdStateManager {
     /// Get the value of a key in storage.
     /// Keys are scoped to an account and optionally to a scope which is another account
     /// under which this storage key would be scoped.
-    fn kv_get(
+    fn kv_get<A: Allocator>(
         &self,
         account_id: AccountID,
         scope: Option<AccountID>,
@@ -37,7 +37,6 @@ pub trait StdStateManager<A: Allocator> {
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-        allocator: A,
     ) -> Result<u128, StdStateError>;
     /// Add to the value of an accumulator in storage.
     /// Adds are saturating and can never overflow or fail.

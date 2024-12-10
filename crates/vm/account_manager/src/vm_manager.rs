@@ -1,7 +1,7 @@
 //! Defines a VM manager that can be used to register VMs and resolve handler IDs.
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::handler::HostBackend;
+use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
 use ixc_vm_api::{ReadonlyStore, VM};
 use std::collections::HashMap;
@@ -46,19 +46,11 @@ impl VMManager {
 }
 
 impl VM for VMManager {
-    fn resolve_handler_id(&self, store: &dyn ReadonlyStore, handler_id: &[u8]) -> Option<allocator_api2::vec::Vec<u8>> {
+    fn resolve_handler_id<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<Option<allocator_api2::vec::Vec<u8, &'a dyn Allocator>>, ErrorCode> {
         todo!()
     }
 
-    fn run_message(&self, store: &dyn ReadonlyStore, handler_id: &[u8], message_packet: &mut MessagePacket, backend: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
-    fn run_query(&self, store: &dyn ReadonlyStore, handler_id: &[u8], message_packet: &mut MessagePacket, backend: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
-    fn run_system_message(&self, store: &dyn ReadonlyStore, handler_id: &[u8], message_packet: &mut MessagePacket, backend: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn resolve_handler<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<&'a dyn RawHandler, ErrorCode> {
         todo!()
     }
 }

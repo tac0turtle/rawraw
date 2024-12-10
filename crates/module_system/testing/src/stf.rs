@@ -26,19 +26,11 @@ impl NativeVM {
 }
 
 impl VM for NativeVM {
-    fn resolve_handler_id(&self, store: &dyn ReadonlyStore, handler_id: &[u8]) -> Option<allocator_api2::vec::Vec<u8>> {
+    fn resolve_handler_id<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<Option<allocator_api2::vec::Vec<u8, &'a dyn Allocator>>, ErrorCode> {
         todo!()
     }
 
-    fn run_message(&self, store: &dyn ReadonlyStore, handler_id: &[u8], message_packet: &mut MessagePacket, backend: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
-    fn run_query(&self, store: &dyn ReadonlyStore, handler_id: &[u8], message_packet: &mut MessagePacket, backend: &dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
-    fn run_system_message(&self, store: &dyn ReadonlyStore, handler_id: &[u8], message_packet: &mut MessagePacket, backend: &mut dyn HostBackend, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn resolve_handler<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<&'a dyn RawHandler, ErrorCode> {
         todo!()
     }
     // fn describe_handler(&self, vm_handler_id: &str) -> Option<HandlerDescriptor> {

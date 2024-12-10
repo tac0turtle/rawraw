@@ -15,6 +15,7 @@ impl GasMeter {
         self.0
     }
 
+    /// Consume gas.
     pub fn consume(&mut self, amount: u64) -> Result<(), ErrorCode> {
         if self.0 == 0 {
             // if the gas value is 0, that means we're not metering gas

@@ -1,15 +1,19 @@
-use allocator_api2::alloc::Allocator;
-use ixc_message_api::AccountID;
-use ixc_message_api::code::ErrorCode;
-use ixc_message_api::packet::MessagePacket;
-use crate::state_handler::{GasMeter, StateHandler};
 use crate::state_handler::std::manager::StdStateManager;
+use crate::state_handler::{GasMeter, StateHandler};
+use allocator_api2::alloc::Allocator;
+use ixc_core_macros::message_selector;
+use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
+use ixc_message_api::header::MessageSelector;
+use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::AccountID;
+use std::alloc::Layout;
+use ixc_message_api::code::ErrorCode::SystemCode;
 
 /// The standard state handler.
-pub struct StdStateHandler<'a, A: Allocator, S: StdStateManager<A>> {
+pub struct StdStateHandler<'a, S: StdStateManager> {
     state: &'a mut S,
     gas_config: GasConfig,
-    _phantom: core::marker::PhantomData<A>,
 }
 
 /// Gas configuration for the standard state handler.
@@ -27,51 +31,147 @@ pub struct GasConfig {
     pub write_cost_per_byte: u64,
 }
 
-impl<'a, A: Allocator, S: StdStateManager<A>> StdStateHandler<'a, A, S> {
+impl<'a, S: StdStateManager> StdStateHandler<'a, S> {
     /// Create a new standard state handler.
     pub fn new(state: &'a mut S, gas_config: GasConfig) -> Self {
-        Self { state, gas_config, _phantom: Default::default() }
+        Self { state, gas_config }
     }
 }
 
-impl<'a, A: Allocator, S: StdStateManager<A>> StateHandler<A> for StdStateHandler<'a, A, S> {
-    fn kv_get(&self, account_id: AccountID, key: &[u8], gas: &mut GasMeter, allocator: A) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
-        todo!()
+impl<'a, S: StdStateManager> StateHandler for StdStateHandler<'a, S> {
+    fn kv_get<A: Allocator>(
+        &self,
+        account_id: AccountID,
+        key: &[u8],
+        gas: &mut GasMeter,
+        allocator: A,
+    ) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
+        self.state
+            .kv_get(account_id, None, key, allocator)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn kv_set(&mut self, account_id: AccountID, key: &[u8], value: &[u8], gas: &mut GasMeter) -> Result<(), ErrorCode> {
-        todo!()
+    fn kv_set(
+        &mut self,
+        account_id: AccountID,
+        key: &[u8],
+        value: &[u8],
+        gas: &mut GasMeter,
+    ) -> Result<(), ErrorCode> {
+        self.state
+            .kv_set(account_id, None, key, value)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn kv_delete(&mut self, account_id: AccountID, key: &[u8], gas: &mut GasMeter) -> Result<(), ErrorCode> {
-        todo!()
+    fn kv_delete(
+        &mut self,
+        account_id: AccountID,
+        key: &[u8],
+        gas: &mut GasMeter,
+    ) -> Result<(), ErrorCode> {
+        self.state
+            .kv_delete(account_id, None, key)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
     fn begin_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
-        todo!()
+        self.state
+            .begin_tx()
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
     fn commit_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
-        todo!()
+        self.state
+            .commit_tx()
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
     fn rollback_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
-        todo!()
+        self.state
+            .rollback_tx()
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn handle_exec(&mut self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
+    fn handle_exec(
+        &mut self,
+        packet: &mut MessagePacket,
+        _allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        unsafe {
+            let header = packet.header();
+            match header.message_selector {
+                SET_SELECTOR => {
+                    let key = header.in_pointer1.get(packet);
+                    let value = header.in_pointer2.get(packet);
+                    let mut gas = GasMeter::new(header.gas_left);
+                    self.kv_set(header.account, key, value, &mut gas)?;
+                    packet.header_mut().gas_left = gas.get();
+                    Ok(())
+                }
+                DELETE_SELECTOR => {
+                    let key = header.in_pointer1.get(packet);
+                    let mut gas = GasMeter::new(header.gas_left);
+                    self.kv_delete(header.account, key, &mut gas)?;
+                    packet.header_mut().gas_left = gas.get();
+                    Ok(())
+                }
+                _ => Err(ErrorCode::SystemCode(MessageNotHandled)),
+            }
+        }
     }
 
-    fn handle_query(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
-        todo!()
+    fn handle_query(
+        &self,
+        packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        unsafe {
+            let header = packet.header();
+            match header.message_selector {
+                GET_SELECTOR => {
+                    let key = header.in_pointer1.get(packet);
+                    let mut gas = GasMeter::new(header.gas_left);
+                    let value = self.kv_get(header.account, key, &mut gas, allocator)?;
+                    packet.header_mut().gas_left = gas.get();
+                    if let Some(value) = value {
+                        let out = allocator
+                            .allocate(Layout::from_size_align_unchecked(value.len(), 16))
+                            .map_err(|_| SystemCode(FatalExecutionError))?;
+                        let out_slice =
+                            core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
+                        out_slice.copy_from_slice(value.as_slice());
+                        packet.header_mut().out_pointer1.set_slice(out_slice);
+                        Ok(())
+                    } else {
+                        Err(ErrorCode::HandlerCode(0)) // KV-stores should use handler code 0 to indicate not found
+                    }
+                }
+                _ => Err(SystemCode(MessageNotHandled)),
+            }
+        }
     }
 
-    fn create_account_storage(&mut self, account: AccountID, gas: &mut GasMeter) -> Result<(), ErrorCode> {
-        todo!()
+    fn create_account_storage(
+        &mut self,
+        account: AccountID,
+        gas: &mut GasMeter,
+    ) -> Result<(), ErrorCode> {
+        self.state
+            .create_account_storage(account)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn delete_account_storage(&mut self, account: AccountID, gas: &mut GasMeter) -> Result<(), ErrorCode> {
-        todo!()
+    fn delete_account_storage(
+        &mut self,
+        account: AccountID,
+        gas: &mut GasMeter,
+    ) -> Result<(), ErrorCode> {
+        self.state
+            .delete_account_storage(account)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 }
+
+const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
+const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
+const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");

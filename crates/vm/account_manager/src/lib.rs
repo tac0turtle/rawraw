@@ -7,14 +7,18 @@ pub mod vm_manager;
 
 use crate::authz::AuthorizationMiddleware;
 use crate::id_generator::IDGenerator;
-use crate::state_handler::{get_account_handler_id, StateHandler};
+use crate::state_handler::gas::GasMeter;
+use crate::state_handler::{
+    destroy_account_data, get_account_handler_id, init_next_account, StateHandler,
+};
 use allocator_api2::vec::Vec;
 use core::borrow::BorrowMut;
+use std::alloc::Layout;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{
-    AccountNotFound, FatalExecutionError, InvalidHandler, MessageNotHandled,
+    AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled,
     UnauthorizedCallerAccess,
 };
 use ixc_message_api::handler::{Allocator, HostBackend};
@@ -22,7 +26,6 @@ use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{ReadonlyStore, VM};
 use std::cell::RefCell;
-use crate::state_handler::gas::GasMeter;
 
 /// The account manager manages the execution, creation, and destruction of accounts.
 pub struct AccountManager<'a, CM: VM> {
@@ -40,10 +43,9 @@ impl<'a, CM: VM> AccountManager<'a, CM> {
     }
 }
 
-impl<'a, CM: VM> AccountManager<'a, CM>
-{
+impl<'a, CM: VM> AccountManager<'a, CM> {
     /// Invokes a message packet in the context of the provided state handler.
-    pub fn invoke_msg<'b:'a, ST: StateHandler<&'b dyn Allocator>, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
+    pub fn invoke_msg<'b, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
         &'b self,
         state_handler: &'b mut ST,
         id_generator: &'b mut IDG,
@@ -51,18 +53,22 @@ impl<'a, CM: VM> AccountManager<'a, CM>
         message_packet: &mut MessagePacket,
         allocator: &'b dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let mut exec_context = ExecContext{
+        let mut call_stack = Vec::new_in(allocator);
+        call_stack.push(Frame {
+            active_account: message_packet.header().account,
+        });
+        let mut exec_context = ExecContext {
             account_manager: self,
             state_handler,
             id_generator,
             authz,
-            call_stack: Vec::new_in(allocator),
+            call_stack,
         };
         exec_context.invoke_msg(message_packet, allocator)
     }
 
     /// Invokes a message packet in the context of the provided state handler.
-    pub fn invoke_query<'b, ST: StateHandler<&'b dyn Allocator>>(
+    pub fn invoke_query<'b, ST: StateHandler>(
         &self,
         state_handler: &'b ST,
         message_packet: &mut MessagePacket,
@@ -81,13 +87,7 @@ impl<'a, CM: VM> AccountManager<'a, CM>
     }
 }
 
-struct ExecContext<
-    'a,
-    CM: VM,
-    ST: StateHandler<&'a dyn Allocator>,
-    IDG: IDGenerator,
-    AUTHZ: AuthorizationMiddleware,
-> {
+struct ExecContext<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware> {
     account_manager: &'a AccountManager<'a, CM>,
     state_handler: &'a mut ST,
     id_generator: &'a mut IDG,
@@ -99,7 +99,7 @@ struct Frame {
     active_account: AccountID,
 }
 
-struct QueryContext<'a, CM: VM, ST: StateHandler<&'a dyn Allocator>> {
+struct QueryContext<'a, CM: VM, ST: StateHandler> {
     account_manager: &'a AccountManager<'a, CM>,
     state_handler: &'a ST,
     call_stack: RefCell<Vec<Frame, &'a dyn Allocator>>,
@@ -109,13 +109,8 @@ const ROOT_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
 /// Invoke a message packet in the context of the provided state handler.
-impl<
-        'a,
-        CM: VM,
-        ST: StateHandler<&'a dyn Allocator>,
-        IDG: IDGenerator,
-        AUTHZ: AuthorizationMiddleware,
-    > HostBackend for ExecContext<'a, CM, ST, IDG, AUTHZ>
+impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware> HostBackend
+    for ExecContext<'a, CM, ST, IDG, AUTHZ>
 {
     fn invoke_msg(
         &mut self,
@@ -162,17 +157,17 @@ impl<
             self.handle_system_message(message_packet, allocator)
         } else {
             // find the account's handler ID
-            let handler_id = get_account_handler_id(self.state_handler, target_account, &mut gas, allocator)?
-                .ok_or(SystemCode(AccountNotFound))?;
+            let handler_id =
+                get_account_handler_id(self.state_handler, target_account, &mut gas, allocator)?
+                    .ok_or(SystemCode(AccountNotFound))?;
 
             // run the handler
-            self.account_manager.code_manager.run_message(
+            let handler = self.account_manager.code_manager.resolve_handler(
                 &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
                 &handler_id,
-                message_packet,
-                self,
                 allocator,
-            )
+            )?;
+            handler.handle_msg(message_packet, self, allocator)
         };
 
         // commit or rollback the transaction
@@ -192,10 +187,16 @@ impl<
         res
     }
 
-    fn invoke_query(&self, message_packet: &mut MessagePacket, allocator: &dyn Allocator) -> Result<(), ErrorCode> {
+    fn invoke_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
         let target_account = message_packet.header().account;
         let mut call_stack = Vec::new_in(allocator);
-        call_stack.push(Frame { active_account: target_account });
+        call_stack.push(Frame {
+            active_account: target_account,
+        });
         // create a nested execution frame for the target account
         let query_ctx = QueryContext {
             account_manager: self.account_manager,
@@ -214,21 +215,21 @@ impl<
         let mut gas = GasMeter::new(message_packet.header().gas_left);
 
         // find the account's handler ID
-        let handler_id = get_account_handler_id(self.state_handler, target_account, &mut gas, allocator)?
-            .ok_or(SystemCode(AccountNotFound))?;
+        let handler_id =
+            get_account_handler_id(self.state_handler, target_account, &mut gas, allocator)?
+                .ok_or(SystemCode(AccountNotFound))?;
 
         // run the handler
-        self.account_manager.code_manager.run_query(
+        let handler = self.account_manager.code_manager.resolve_handler(
             &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
             &handler_id,
-            message_packet,
-            &query_ctx,
             allocator,
-        )
+        )?;
+        handler.handle_query(message_packet, &query_ctx, allocator)
     }
 }
 
-impl<'a, CM: VM, ST: StateHandler<&'a dyn Allocator>> HostBackend for QueryContext<'a, CM, ST> {
+impl<'a, CM: VM, ST: StateHandler> HostBackend for QueryContext<'a, CM, ST> {
     fn invoke_msg(
         &mut self,
         message_packet: &mut MessagePacket,
@@ -244,58 +245,42 @@ impl<'a, CM: VM, ST: StateHandler<&'a dyn Allocator>> HostBackend for QueryConte
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        // let target_account = message_packet.header().account;
-        // message_packet.header_mut().caller = self.active_account;
-        // if target_account == STATE_ACCOUNT {
-        //     return self
-        //         .query_context
-        //         .state_handler
-        //         .handler_query(message_packet, allocator);
-        // }
-        //
-        // message_packet.header_mut().caller = AccountID::EMPTY;
-        //
-        // // find the account's handler ID
-        // let handler_id = get_account_handler_id(self.query_context.state_handler, target_account)
-        //     .ok_or(SystemCode(AccountNotFound))?;
-        //
-        // // create a nested execution frame for the target account
-        // let frame = QueryFrame {
-        //     active_account: target_account,
-        //     query_context: self,
-        // };
+        let target_account = message_packet.header().account;
+        if target_account == STATE_ACCOUNT {
+            message_packet.header_mut().caller =
+                self.call_stack.borrow().last().unwrap().active_account;
+            return self.state_handler.handle_query(message_packet, allocator);
+        }
+
+        message_packet.header_mut().caller = AccountID::EMPTY;
+
+        let mut gas = GasMeter::new(message_packet.header().gas_left);
+
+        // find the account's handler ID
+        let handler_id =
+            get_account_handler_id(self.state_handler, target_account, &mut gas, allocator)?
+                .ok_or(SystemCode(AccountNotFound))?;
+
+        // create a nested execution frame for the target account
+        let frame = Frame {
+            active_account: target_account,
+        };
+
+        self.call_stack.borrow_mut().push(frame);
 
         // run the handler
-        // self.query_context.code_manager.run_query(
-        //     self.query_context.state_handler,
-        //     &handler_id,
-        //     message_packet,
-        //     &frame,
-        //     allocator,
-        // )
-        todo!()
+        let handler = self.account_manager.code_manager.resolve_handler(
+            &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
+            &handler_id,
+            allocator,
+        )?;
+        handler.handle_query(message_packet, self, allocator)
     }
 }
 
-impl<'a, CM: VM, ST: StateHandler<&'a dyn Allocator>, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
+impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
     ExecContext<'a, CM, ST, IDG, AUTHZ>
 {
-    fn invoke(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
-    fn invoke_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
     fn handle_system_message(
         &mut self,
         message_packet: &mut MessagePacket,
@@ -315,106 +300,109 @@ impl<'a, CM: VM, ST: StateHandler<&'a dyn Allocator>, IDG: IDGenerator, AUTHZ: A
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        // // get the input data
-        // let create_header = message_packet.header_mut();
-        // let handler_id = create_header.in_pointer1.get(message_packet);
-        // let init_data = create_header.in_pointer2.get(message_packet);
-        //
-        // // resolve the handler ID and retrieve the VM
-        // let handler_id = self
-        //     .account_manager
-        //     .code_manager
-        //     .resolve_handler_id(self.state_handler, handler_id)
-        //     .ok_or(SystemCode(HandlerNotFound))?;
-        //
-        // // get the next account ID and initialize the account storage
-        // let id = init_next_account(self.id_generator, self.state_handler, &handler_id)
-        //     .map_err(|_| SystemCode(InvalidHandler))?;
-        //
-        // // create a packet for calling on_create
-        // let mut on_create_packet =
-        //     MessagePacket::allocate(allocator, 0).map_err(|_| SystemCode(FatalExecutionError))?;
-        // let on_create_header = on_create_packet.header_mut();
-        // on_create_header.account = id;
-        // on_create_header.caller = create_header.caller;
-        // on_create_header.message_selector = ON_CREATE_SELECTOR;
-        // on_create_header.in_pointer1.set_slice(init_data);
+        // get the input data
+        let create_header = message_packet.header_mut();
+        let handler_id = create_header.in_pointer1.get(message_packet);
+        let init_data = create_header.in_pointer2.get(message_packet);
+
+        let mut gas = GasMeter::new(message_packet.header().gas_left);
+
+        // resolve the handler ID and retrieve the VM
+        let handler_id = self
+            .account_manager
+            .code_manager
+            .resolve_handler_id(
+                &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
+                handler_id,
+                allocator,
+            )?.ok_or(SystemCode(HandlerNotFound))?;
+
+        // get the next account ID and initialize the account storage
+        let id = init_next_account(self.id_generator, self.state_handler, &handler_id, allocator, &mut gas)
+            .map_err(|_| SystemCode(InvalidHandler))?;
+
+        // create a packet for calling on_create
+        let mut on_create_packet =
+            MessagePacket::allocate(allocator, 0).map_err(|_| SystemCode(FatalExecutionError))?;
+        let on_create_header = on_create_packet.header_mut();
+        on_create_header.account = id;
+        on_create_header.caller = create_header.caller;
+        on_create_header.message_selector = ON_CREATE_SELECTOR;
+        on_create_header.in_pointer1.set_slice(init_data);
 
         // run the on_create handler
-        // let mut frame = Frame::new(id, self);
-        // let res = self.code_manager.run_system_message(
-        //     self.state_handler,
-        //     &handler_id,
-        //     &mut on_create_packet,
-        //     &mut frame,
-        //     allocator,
-        // );
+        let handler =  self.account_manager.code_manager.resolve_handler(
+            &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
+            &handler_id,
+            allocator,
+        )?;
 
-        // let is_ok = match res {
-        //     Ok(_) => true,
-        //     // we accept the case where the handler doesn't have an on_create method
-        //     Err(SystemCode(MessageNotHandled)) => true,
-        //     _ => false,
-        // };
-        //
-        // if is_ok {
-        //     // the result is ID of the newly created account
-        //     let mut res = allocator
-        //         .allocate(Layout::from_size_align_unchecked(16, 16))
-        //         .map_err(|_| SystemCode(FatalExecutionError))?;
-        //     let id: u128 = id.into();
-        //     res.as_mut().copy_from_slice(&id.to_le_bytes());
-        //     create_header.in_pointer1.set_slice(res.as_ref());
-        //     Ok(())
-        // } else {
-        //     res
-        // }
-        todo!()
+        let res = handler.handle_system(
+            &mut on_create_packet,
+            self,
+            allocator,
+        );
+
+        let is_ok = match res {
+            Ok(_) => true,
+            // we accept the case where the handler doesn't have an on_create method
+            Err(SystemCode(MessageNotHandled)) => true,
+            _ => false,
+        };
+
+        if is_ok {
+            // the result is ID of the newly created account
+            let mut res = allocator
+                .allocate(Layout::from_size_align_unchecked(16, 16))
+                .map_err(|_| SystemCode(FatalExecutionError))?;
+            let id: u128 = id.into();
+            res.as_mut().copy_from_slice(&id.to_le_bytes());
+            create_header.in_pointer1.set_slice(res.as_ref());
+            Ok(())
+        } else {
+            res
+        }
     }
 
     unsafe fn handle_self_destruct(
         &mut self,
         message_packet: &mut MessagePacket,
     ) -> Result<(), ErrorCode> {
-        // destroy_account_data(self.state_handler, message_packet.header().caller)
-        //     .map_err(|_| SystemCode(FatalExecutionError))
-        todo!()
+        let mut gas = GasMeter::new(message_packet.header().gas_left);
+        destroy_account_data(self.state_handler, message_packet.header().caller, &mut gas)
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 }
-
-// fn invoke_query<
-//     'a,
-//     CM: CodeManager,
-//     ST: StateHandler>
-// (
-//     code_handler: &'a CM,
-//     state_handler: &'a ST,
-//     message_packet: &mut MessagePacket,
-//     allocator: &dyn Allocator,
-// ) -> Result<(), ErrorCode> {
-//     let mut exec_context = ExecContext::new(code_handler, state_handler);
-//     let mut exec_frame = ExecFrame::new(message_packet.header().account, &mut exec_context);
-//     todo!()
-// }
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
 const ON_CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_create");
 const SELF_DESTRUCT_SELECTOR: u64 = message_selector!("ixc.account.v1.self_destruct");
 
-struct ReadOnlyStoreWrapper<'b, 'a, S: StateHandler<&'b dyn Allocator>> {
+struct ReadOnlyStoreWrapper<'a, S: StateHandler> {
     state_handler: &'a S,
-    gas: &'a mut GasMeter,
-    _phantom: core::marker::PhantomData<&'b ()>,
+    gas: RefCell<&'a mut GasMeter>,
 }
 
-impl<'b, 'a, S: StateHandler<&'b dyn Allocator>> ReadOnlyStoreWrapper<'b, 'a, S> {
+impl<'a, S: StateHandler> ReadOnlyStoreWrapper<'a, S> {
     fn wrap(state_handler: &'a S, gas: &'a mut GasMeter) -> Self {
-        Self { state_handler, gas, _phantom: Default::default() }
+        Self {
+            state_handler,
+            gas: RefCell::new(gas),
+        }
     }
 }
 
-impl<'b, 'a, S: StateHandler<&'b dyn Allocator>> ReadonlyStore for ReadOnlyStoreWrapper<'b, 'a, S> {
-    fn get<'c>(&self, account_id: AccountID, key: &[u8], allocator: &'c dyn Allocator) -> Result<Option<Vec<u8, &'c dyn Allocator>>, ErrorCode> {
-        self.state_handler.kv_get(account_id, key, self.gas, allocator)
+impl<'a, S: StateHandler> ReadonlyStore for ReadOnlyStoreWrapper<'a, S> {
+    fn get<'b>(
+        &self,
+        account_id: AccountID,
+        key: &[u8],
+        allocator: &'b dyn Allocator,
+    ) -> Result<Option<Vec<u8, &'b dyn Allocator>>, ErrorCode> {
+        let mut gas = self
+            .gas
+            .try_borrow_mut()
+            .map_err(|_| SystemCode(FatalExecutionError))?;
+        self.state_handler.kv_get(account_id, key, *gas, allocator)
     }
 }

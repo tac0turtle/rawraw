@@ -7,6 +7,8 @@ use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 use crate::stf::NativeVM;
 use crate::store::VersionedMultiStore;
 use allocator_api2::alloc::Allocator;
+use ixc_account_manager::id_generator::IncrementingIDGenerator;
+use ixc_account_manager::state_handler::std::StdStateHandler;
 use ixc_account_manager::vm_manager::VMManager;
 use ixc_account_manager::AccountManager;
 #[doc(hidden)]
@@ -17,16 +19,13 @@ use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use std::os::macos::raw::stat;
-use ixc_account_manager::id_generator::IncrementingIDGenerator;
-use ixc_account_manager::state_handler::std::StdStateHandler;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp {
@@ -142,9 +141,7 @@ impl HostBackend for Backend {
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         let account_manager = AccountManager::new(&self.vm_manager);
-        let mut tx = self.state
-            .new_transaction(true)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        let mut tx = self.state .new_transaction();
 
         let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
 
@@ -159,9 +156,7 @@ impl HostBackend for Backend {
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         let account_manager = AccountManager::new(&self.vm_manager);
-        let mut tx = self.state
-            .new_transaction(false)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        let mut tx = self.state .new_transaction();
 
         let state_handler = StdStateHandler::new(&mut tx, Default::default());
 
