@@ -12,7 +12,7 @@ pub mod counter {
 
     impl Counter {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+        pub fn create(&self, _ctx: &mut Context) -> Result<()> {
             Ok(())
         }
 
