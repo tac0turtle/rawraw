@@ -99,7 +99,7 @@ impl TestApp {
 
     /// Creates a new client for the given account.
     pub fn client_context_for(&self, account_id: AccountID) -> Context {
-        let ctx = Context::new(account_id, account_id, 0, self);
+        let ctx = Context::new(account_id, account_id, 0, self, &self.mem);
         ctx
     }
 

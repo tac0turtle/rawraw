@@ -260,10 +260,10 @@ impl APIBuilder {
             )?;
             ensure!(context_name.is_some(), "no context parameter found");
             let context_name = context_name.unwrap();
-            let maybe_mut = if is_query {
-                quote! {}
+            let (maybe_mut, new_ctx) = if is_query {
+                (quote! {}, quote! { new })
             } else {
-                quote! { mut }
+                (quote! { mut }, quote! { new_mut })
             };
             let route = quote! {
                         (< #msg_struct_name #opt_underscore_lifetime as ::ixc::core::message::MessageBase >::SELECTOR, |h: &Self, packet, cb, a| {
@@ -273,7 +273,7 @@ impl APIBuilder {
                                 let in1 = header.in_pointer1.get(packet);
                                 let mem = ::ixc::schema::mem::MemoryManager::new();
                                 let #msg_struct_name { #(#msg_deconstruct)* } = ::ixc::schema::codec::decode_value::< #msg_struct_name >(&cdc, in1, &mem)?;
-                                let #maybe_mut ctx = ::ixc::core::Context::new_with_mem(header.account, header.caller, header.gas_left, cb, &mem);
+                                let #maybe_mut ctx = ::ixc::core::Context::#new_ctx(header.account, header.caller, header.gas_left, cb, &mem);
                                 let res = h.#fn_name(& #maybe_mut ctx, #(#fn_call_args)*);
                                 ::ixc::core::low_level::encode_response::< #msg_struct_name >(&cdc, res, a, packet)
                             }
@@ -309,7 +309,7 @@ impl APIBuilder {
                         let in1 = header.in_pointer1.get(packet);
                         let mem = ::ixc::schema::mem::MemoryManager::new();
                         let #msg_struct_name { #(#msg_deconstruct)* } = ::ixc::schema::codec::decode_value::< #msg_struct_name > ( & cdc, in1, &mem)?;
-                        let mut ctx =::ixc::core::Context::new_with_mem(header.account, header.caller, header.gas_left, cb, &mem);
+                        let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, &mem);
                         let res = h.#fn_name(&mut ctx, #(#fn_call_args)*);
                         ::ixc::core::low_level::encode_default_response(res, a, packet)
                     }
@@ -334,8 +334,8 @@ impl APIBuilder {
                             #(#routes)*
                         ]);
 
-                    const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
-                        &::ixc::core::routing::sort_routes([
+                    const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::QueryRoute<Self>] =
+                        &::ixc::core::routing::sort_query_routes([
                             #(#query_routes)*
                         ]);
 

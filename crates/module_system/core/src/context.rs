@@ -1,83 +1,56 @@
-use crate::error::ClientError;
-use crate::low_level::create_packet;
 use crate::message::Message;
-use crate::result::ClientResult;
-use alloc::string::String;
 use core::cell::Cell;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
-use ixc_message_api::AccountID;
 use ixc_message_api::packet::MessagePacket;
-use ixc_schema::codec::Codec;
+use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
-use ixc_schema::value::OptionalValue;
 
 /// Context wraps a single message request (and possibly response as well) along with
 /// the router callbacks necessary for making nested message calls.
 pub struct Context<'a> {
-    pub(self) mem: MemHandle<'a>,
-    pub(crate) backend: &'a mut dyn HostBackend,
+    pub(self) mem: &'a MemoryManager,
+    pub(crate) backend: BackendHandle<'a>,
     pub(crate) account: AccountID, // 16 bytes
     pub(crate) caller: AccountID,  // 16 bytes
     #[allow(unused)]
     gas_left: Cell<u64>,
 }
 
-enum MemHandle<'a> {
-    Borrowed(&'a MemoryManager),
-    Owned(MemoryManager),
+enum BackendHandle<'a> {
+    Mut(&'a mut dyn HostBackend),
+    Immutable(&'a dyn HostBackend),
 }
-// enum BackendHandle<'a> {
-//     Mut(&'a mut dyn HostBackend),
-//     Immutable(&'a dyn HostBackend),
-// }
 
 impl<'a> Context<'a> {
-    /// Create a new context from a message packet and host callbacks.
-    pub fn new(
-        account: AccountID,
-        caller: AccountID,
-        gas_left: u64,
-        host_callbacks: &'a dyn HostBackend,
-    ) -> Self {
-        // Self {
-        //     mem: MemHandle::Owned(MemoryManager::new()),
-        //     backend: BackendHandle::Immutable(host_callbacks),
-        //     account,
-        //     caller,
-        //     gas_left: Cell::new(gas_left),
-        // }
-        todo!()
-    }
-
     /// Create a new context from a message packet and host callbacks with a pre-allocated memory manager.
-    pub fn new_with_mem(
+    pub fn new(
         account: AccountID,
         caller: AccountID,
         gas_left: u64,
         host_callbacks: &'a dyn HostBackend,
         mem: &'a MemoryManager,
     ) -> Self {
-        // Self {
-        //     mem: MemHandle::Borrowed(mem),
-        //     backend: BackendHandle::Immutable(host_callbacks),
-        //     account,
-        //     caller,
-        //     gas_left: Cell::new(gas_left),
-        // }
-        todo!()
+        Self {
+            mem,
+            backend: BackendHandle::Immutable(host_callbacks),
+            account,
+            caller,
+            gas_left: Cell::new(gas_left),
+        }
     }
 
-    /// Creates a new context with mutable host backend.
+    /// Creates a new context with mutable host backend and a pre-allocated memory manager.
     pub fn new_mut(
         account: AccountID,
         caller: AccountID,
         gas_left: u64,
         host_callbacks: &'a mut dyn HostBackend,
+        mem: &'a MemoryManager,
     ) -> Self {
         Self {
-            mem: MemHandle::Owned(MemoryManager::new()),
-            backend: host_callbacks,
+            mem,
+            backend: BackendHandle::Mut(host_callbacks),
             account,
             caller,
             gas_left: Cell::new(gas_left),
@@ -95,46 +68,48 @@ impl<'a> Context<'a> {
         self.caller
     }
 
-    /// Get the host backend.
-    pub unsafe fn host_backend(&self) -> Option<&dyn HostBackend> {
-        // match self.backend {
-        //     BackendHandle::Immutable(backend) => Some(backend),
-        //     BackendHandle::Mut(_) => None,
-        // }
-        todo!()
-    }
-
-    /// Get the mutable host backend.
-    pub unsafe fn host_backend_mut(
-        &mut self,
-        host_backend: &mut dyn HostBackend,
-    ) -> Option<&mut dyn HostBackend> {
-        // match self.backend {
-        //     BackendHandle::Immutable(_) => None,
-        //     BackendHandle::Mut(host_backend) => Some(host_backend),
-        // }
-        todo!()
-    }
-
     /// Get the memory manager.
-    pub fn memory_manager(&self) -> &MemoryManager {
-        self.mem.get()
+    pub fn memory_manager(&self) -> &'a MemoryManager {
+        self.mem
     }
 
-    /// Dynamically invokes a message.
-    pub fn dynamic_invoke_msg<'b, M: Message<'b>>(
+    /// Dynamically invokes a message packet.
+    /// This is marked unsafe because it should only be called by generated code or library functions.
+    pub unsafe fn dynamic_invoke_msg(
         &mut self,
         packet: &mut MessagePacket,
     ) -> core::result::Result<(), ErrorCode> {
-        todo!()
+        match self.backend {
+            BackendHandle::Mut(ref mut backend) => {
+                (*backend).invoke_msg(packet, &self.mem)
+            }
+            BackendHandle::Immutable(backend) => {
+                Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
+            }
+        }
     }
 
     /// Dynamically invokes a query.
-    pub fn dynamic_invoke_query<'b, M: Message<'b>>(
+    /// This is marked unsafe because it should only be called by generated code or library functions.
+    pub unsafe fn dynamic_invoke_query(
         &self,
         packet: &mut MessagePacket,
     ) -> core::result::Result<(), ErrorCode> {
-        todo!()
+        let backend = match self.backend {
+            BackendHandle::Mut(ref backend) => *backend,
+            BackendHandle::Immutable(ref backend) => *backend,
+        };
+        backend.invoke_query(packet, &self.mem)
+    }
+
+    /// Consume gas. Returns an out of gas error if there is not enough gas.
+    pub fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
+        if self.gas_left.get() < gas {
+            self.gas_left.set(0);
+            return Err(ErrorCode::SystemCode(SystemCode::OutOfGas));
+        }
+        self.gas_left.set(self.gas_left.get() - gas);
+        Ok(())
     }
 
     // /// Dynamically invokes a message.
@@ -176,13 +151,4 @@ impl<'a> Context<'a> {
     //     // }
     //     todo!()
     // }
-}
-
-impl MemHandle<'_> {
-    pub fn get(&self) -> &MemoryManager {
-        match self {
-            MemHandle::Borrowed(mem) => mem,
-            MemHandle::Owned(mem) => mem,
-        }
-    }
 }

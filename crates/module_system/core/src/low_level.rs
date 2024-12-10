@@ -69,14 +69,15 @@ pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
 
 /// Create a new message packet with the given account and message selector.
 pub fn create_packet<'a, E: HandlerCode>(
-    context: &'a Context,
+    self_account_id: AccountID,
+    allocator: &'a dyn Allocator,
     account: AccountID,
     selector: u64,
 ) -> ClientResult<MessagePacket<'a>, E> {
     unsafe {
-        let packet = MessagePacket::allocate(context.memory_manager(), 0)?;
+        let packet = MessagePacket::allocate(allocator, 0)?;
         let header = packet.header_mut();
-        header.caller = context.self_account_id();
+        header.caller = self_account_id;
         header.account = account;
         header.message_selector = selector;
         Ok(packet)

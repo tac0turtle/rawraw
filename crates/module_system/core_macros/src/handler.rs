@@ -73,12 +73,12 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
         let trait_ident = &publish_trait.ident;
         trait_msg_routers.push(quote! {
             if let Some(rt) = ::ixc::core::routing::find_route::<dyn #trait_ident>(sel) {
-                return rt.1(self, message_packet, callbacks, allocator)
+                return rt(self, message_packet, callbacks, allocator)
             }
         });
         trait_query_routers.push(quote! {
             if let Some(rt) = ::ixc::core::routing::find_route::<dyn #trait_ident>(sel) {
-                return rt.1(self, message_packet, callbacks, allocator)
+                return rt(self, message_packet, callbacks, allocator)
             }
         });
     }
@@ -90,7 +90,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
                 fn handle_msg(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
                     let sel = message_packet.header().message_selector;
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_MSG_ROUTES, sel) {
-                        return rt.1(self, message_packet, callbacks, allocator)
+                        return rt(self, message_packet, callbacks, allocator)
                     }
 
                     #(#trait_msg_routers)*
@@ -101,7 +101,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
                 fn handle_query(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
                     let sel = message_packet.header().message_selector;
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_QUERY_ROUTES, sel) {
-                        return rt.1(self, message_packet, callbacks, allocator)
+                        return rt(self, message_packet, callbacks, allocator)
                     }
 
                     #(#trait_query_routers)*
@@ -112,7 +112,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
                 fn handle_system(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
                     let sel = message_packet.header().message_selector;
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_SYSTEM_ROUTES, sel) {
-                        return rt.1(self, message_packet, callbacks, allocator)
+                        return rt(self, message_packet, callbacks, allocator)
                     }
 
                     Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
