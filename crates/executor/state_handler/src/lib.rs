@@ -11,8 +11,19 @@ pub trait Store {
     fn get(&self, key: &Vec<u8>) -> Option<Vec<u8>>;
 }
 
+// TODO: remove this trait once https://github.com/tac0turtle/rawraw/pull/20
+/// A state handler that can be used to store and retrieve state.
+pub trait StateHandler {
+    /// Begins a new transaction.
+    fn begin_tx(&mut self) -> Result<(), ()>;
+    /// Commits the current transaction.
+    fn commit_tx(&mut self) -> Result<(), ()>;
+    /// Rolls back the current transaction.
+    fn rollback_tx(&mut self) -> Result<(), ()>;
+}
+
 /// StateHandler is a cache-based state handler that can be used to store and retrieve state.
-pub struct StateHandler<'a, S: Store> {
+pub struct Handler<'a, S: Store> {
     snapshot_state: SnapshotState<'a, S>,
     /// Checkpoints are used to revert state changes.
     /// checkpoints are used to follow the call stack of a transaction
@@ -20,7 +31,7 @@ pub struct StateHandler<'a, S: Store> {
     checkpoints: Vec<Snapshot>,
 }
 
-impl<'a, S: Store> StateHandler<'a, S> {
+impl<'a, S: Store> Handler<'a, S> {
     /// Create a new state handler with the given store.
     pub fn new(store: &'a S) -> Self {
         Self {
