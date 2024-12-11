@@ -73,7 +73,7 @@ unsafe fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
     packet: &MessagePacket<'a>,
     res: Result<(), ErrorCode>,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    let out1 = packet.header().out_pointer1.get(&packet);
+    let out1 = packet.header().out_pointer1.get(packet);
 
     match res {
         Ok(_) => {
@@ -92,12 +92,12 @@ unsafe fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
 }
 
 /// Create a new message packet with the given account and message selector.
-pub fn create_packet<'a, E: HandlerCode>(
+pub fn create_packet<E: HandlerCode>(
     self_account_id: AccountID,
-    allocator: &'a dyn Allocator,
+    allocator: &dyn Allocator,
     account: AccountID,
     selector: u64,
-) -> ClientResult<MessagePacket<'a>, E> {
+) -> ClientResult<MessagePacket<'_>, E> {
     unsafe {
         let mut packet = MessagePacket::allocate(allocator, 0)?;
         let header = packet.header_mut();

@@ -46,6 +46,8 @@ pub const fn to_field<T: Type>() -> Field<'static> {
 trait Private {}
 
 /// The trait implemented for types that can be referenced by other types.
+/// # Safety
+/// the trait is marked as unsafe to detour users from creating it
 pub unsafe trait ReferenceableType {
     /// The schema type of the referenced type.
     const SCHEMA_TYPE: Option<SchemaType<'static>>;

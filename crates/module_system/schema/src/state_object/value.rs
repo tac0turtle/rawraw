@@ -92,7 +92,7 @@ impl<A: ObjectFieldValue> ObjectValue for A {
         decoder: &mut dyn Decoder<'a>,
         mem: &'a MemoryManager,
     ) -> Result<Self::Out<'a>, DecodeError> {
-        Ok(decode_one(decoder)?)
+        decode_one(decoder)
     }
 }
 

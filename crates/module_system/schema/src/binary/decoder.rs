@@ -73,15 +73,13 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         visitor: &mut dyn StructDecodeVisitor<'a>,
         struct_type: &StructType,
     ) -> Result<(), DecodeError> {
-        let mut i = 0;
         let mut sub = Decoder {
             buf: self.buf,
             scope: self.scope,
         };
         let mut inner = InnerDecoder { outer: &mut sub };
-        for _ in struct_type.fields.iter() {
+        for (i, _) in struct_type.fields.iter().enumerate() {
             visitor.decode_field(i, &mut inner)?;
-            i += 1;
         }
         Ok(())
     }

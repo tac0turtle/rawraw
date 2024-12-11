@@ -15,6 +15,8 @@ pub struct MessagePacket<'a> {
 
 impl<'a> MessagePacket<'a> {
     /// Creates a new message packet.
+    /// # Safety
+    /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn new(data: NonNull<MessageHeader>, len: usize) -> Self {
         Self {
             data,
@@ -24,6 +26,8 @@ impl<'a> MessagePacket<'a> {
     }
 
     /// Allocates a new message packet with the given extra capacity.
+    /// # Safety
+    /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn allocate(
         allocator: &'a dyn Allocator,
         extra_capacity: usize,

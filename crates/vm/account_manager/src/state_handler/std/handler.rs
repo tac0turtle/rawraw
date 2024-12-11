@@ -41,7 +41,7 @@ impl<'a, S: StdStateManager> StdStateHandler<'a, S> {
     }
 }
 
-impl<'a, S: StdStateManager> StateHandler for StdStateHandler<'a, S> {
+impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
     fn kv_get<A: Allocator>(
         &self,
         account_id: AccountID,

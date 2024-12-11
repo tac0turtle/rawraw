@@ -92,6 +92,8 @@ impl<'a> Context<'a> {
 
     /// Dynamically invokes a message packet.
     /// This is marked unsafe because it should only be called by generated code or library functions.
+    /// # Safety
+    /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn dynamic_invoke_msg(
         &mut self,
         packet: &mut MessagePacket,
@@ -112,6 +114,7 @@ impl<'a> Context<'a> {
     }
 
     /// Dynamically invokes a query.
+    /// # Safety
     /// This is marked unsafe because it should only be called by generated code or library functions.
     pub unsafe fn dynamic_invoke_query(
         &self,
@@ -119,8 +122,8 @@ impl<'a> Context<'a> {
     ) -> core::result::Result<(), ErrorCode> {
         let backend = match self.backend {
             BackendHandle::Mut(ref backend) => *backend,
-            BackendHandle::Immutable(ref backend) => *backend,
-            BackendHandle::RefCell(ref backend) => {
+            BackendHandle::Immutable(backend) => backend,
+            BackendHandle::RefCell(backend) => {
                 return backend.borrow().invoke_query(packet, &self.mem)
             }
         };

@@ -7,6 +7,8 @@ use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 
 /// A router for message packets.
+/// # Safety
+/// the trait is marked as unsafe to detour users from creating it
 pub unsafe trait Router
 where
     Self: 'static,
@@ -90,9 +92,7 @@ pub const fn sort_query_routes<const N: usize, T: ?Sized>(
     sort_routes_base(arr)
 }
 
-const fn sort_routes_base<const N: usize, R: ?Sized + Copy>(
-    mut arr: [(u64, R); N],
-) -> [(u64, R); N] {
+const fn sort_routes_base<const N: usize, R: Copy>(mut arr: [(u64, R); N]) -> [(u64, R); N] {
     // const bubble sort
     loop {
         let mut swapped = false;
