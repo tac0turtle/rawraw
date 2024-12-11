@@ -1,12 +1,12 @@
 //! The item module contains the `Item` struct, which represents a single item in storage.
 
+use crate::prefix::Prefix;
 use crate::Map;
 use core::borrow::Borrow;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_schema::state_object::ObjectValue;
-use crate::prefix::Prefix;
 
 /// A single item in storage.
 pub struct Item<V> {

@@ -18,11 +18,14 @@ use ixc_schema::value::OptionalValue;
 /// Dynamically invokes an account message.
 /// Static account client instances should be preferred wherever possible,
 /// so that static dependency analysis can be performed.
-pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(context: &'a mut Context, account: AccountID, message: M)
-                                              -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error>
-{
+pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
+    context: &'a mut Context,
+    account: AccountID,
+    message: M,
+) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     unsafe {
-        let mut packet = encode_message_packet(context.account, context.memory_manager(), account, message)?;
+        let mut packet =
+            encode_message_packet(context.account, context.memory_manager(), account, message)?;
 
         let res = context.dynamic_invoke_msg(&mut packet);
 
@@ -39,7 +42,8 @@ pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     unsafe {
-        let mut packet = encode_message_packet(context.account, context.memory_manager(), account, message)?;
+        let mut packet =
+            encode_message_packet(context.account, context.memory_manager(), account, message)?;
 
         let res = context.dynamic_invoke_query(&mut packet);
 
@@ -107,7 +111,10 @@ pub fn create_packet<'a, E: HandlerCode>(
 /// Encodes the response to the out1 pointer of the message packet. Used for encoding the response of a message in macros.
 pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
     cdc: &dyn Codec,
-    res: crate::Result<<<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::Value, M::Error>,
+    res: crate::Result<
+        <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::Value,
+        M::Error,
+    >,
     allocator: &'b dyn Allocator,
     message_packet: &'b mut MessagePacket,
 ) -> core::result::Result<(), ErrorCode> {

@@ -1,4 +1,5 @@
 //! A u128 accumulator map.
+use crate::prefix::Prefix;
 use crate::{Item, Map};
 use core::borrow::Borrow;
 use ixc_core::error::{convert_client_error, ClientError};
@@ -8,7 +9,6 @@ use ixc_core::Context;
 use ixc_message_api::code::ErrorCode;
 use ixc_schema::state_object::ObjectKey;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use crate::prefix::Prefix;
 
 /// A 128-bit unsigned integer accumulator.
 pub struct Accumulator {

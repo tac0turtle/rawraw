@@ -2,12 +2,12 @@
 //! This is a macro utility crate for ixc_core.
 #![allow(unused)]
 
-mod message_selector;
+mod api_builder;
 mod handler;
 mod handler_api;
-mod api_builder;
-mod util;
+mod message_selector;
 mod resources;
+mod util;
 
 //TODO remove
 use blake2::{Blake2b512, Digest};
@@ -64,4 +64,3 @@ pub fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStream2> {
 pub fn message_selector(item: TokenStream) -> TokenStream {
     message_selector::message_selector(item)
 }
-

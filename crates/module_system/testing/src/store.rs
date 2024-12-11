@@ -1,6 +1,8 @@
 #![allow(unused)]
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
+use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
+use ixc_account_manager::state_handler::StateHandler;
 use ixc_core_macros::message_selector;
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
@@ -8,8 +10,6 @@ use ixc_message_api::AccountID;
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
-use ixc_account_manager::state_handler::{StateHandler};
-use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
 
 #[derive(Default, Clone)]
 pub struct VersionedMultiStore {
@@ -20,11 +20,7 @@ impl VersionedMultiStore {
     pub fn new_transaction(&self) -> Tx {
         let latest = self.versions.last().cloned().unwrap_or_default();
         Tx {
-            call_stack: vec![
-                Frame {
-                    store: latest,
-                },
-            ],
+            call_stack: vec![Frame { store: latest }],
         }
     }
 
@@ -32,8 +28,7 @@ impl VersionedMultiStore {
         if tx.call_stack.len() != 1 {
             return Err(());
         }
-        let current_frame = tx.current_frame()
-            .map_err(|_| ())?;
+        let current_frame = tx.current_frame().map_err(|_| ())?;
         self.versions.push_back(current_frame.store.clone());
         Ok(())
     }
@@ -59,16 +54,26 @@ const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete"
 
 impl Tx {
     fn current_frame(&self) -> Result<&Frame, StdStateError> {
-        self.call_stack.last().ok_or(StdStateError::FatalExecutionError)
+        self.call_stack
+            .last()
+            .ok_or(StdStateError::FatalExecutionError)
     }
 
     fn current_frame_mut(&mut self) -> Result<&mut Frame, StdStateError> {
-        self.call_stack.last_mut().ok_or(StdStateError::FatalExecutionError)
+        self.call_stack
+            .last_mut()
+            .ok_or(StdStateError::FatalExecutionError)
     }
 }
 
 impl StdStateManager for Tx {
-    fn kv_get<A: Allocator>(&self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], allocator: A) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, StdStateError> {
+    fn kv_get<A: Allocator>(
+        &self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        allocator: A,
+    ) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, StdStateError> {
         if scope.is_some() {
             todo!("scoped kv_get")
         }
@@ -85,7 +90,13 @@ impl StdStateManager for Tx {
         }
     }
 
-    fn kv_set(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], value: &[u8]) -> Result<(), StdStateError> {
+    fn kv_set(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        value: &[u8],
+    ) -> Result<(), StdStateError> {
         if scope.is_some() {
             todo!("scoped kv_set")
         }
@@ -100,7 +111,12 @@ impl StdStateManager for Tx {
         Ok(())
     }
 
-    fn kv_delete(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8]) -> Result<(), StdStateError> {
+    fn kv_delete(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+    ) -> Result<(), StdStateError> {
         if scope.is_some() {
             todo!("scoped kv_delete")
         }
@@ -109,15 +125,32 @@ impl StdStateManager for Tx {
         Ok(())
     }
 
-    fn accumulator_get(&self, account_id: AccountID, scope: Option<AccountID>, key: &[u8]) -> Result<u128, StdStateError> {
+    fn accumulator_get(
+        &self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+    ) -> Result<u128, StdStateError> {
         todo!("accumulator_get")
     }
 
-    fn accumulator_add(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], value: u128) -> Result<(), StdStateError> {
+    fn accumulator_add(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        value: u128,
+    ) -> Result<(), StdStateError> {
         todo!("accumulator_add")
     }
 
-    fn accumulator_safe_sub(&mut self, account_id: AccountID, scope: Option<AccountID>, key: &[u8], value: u128) -> Result<bool, StdStateError> {
+    fn accumulator_safe_sub(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        value: u128,
+    ) -> Result<bool, StdStateError> {
         todo!("accumulator_safe_sub")
     }
 

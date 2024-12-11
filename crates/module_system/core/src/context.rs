@@ -98,9 +98,7 @@ impl<'a> Context<'a> {
         packet: &mut MessagePacket,
     ) -> core::result::Result<(), ErrorCode> {
         match self.backend {
-            BackendHandle::Mut(ref mut backend) => {
-                (*backend).invoke_msg(packet, &self.mem)
-            }
+            BackendHandle::Mut(ref mut backend) => (*backend).invoke_msg(packet, &self.mem),
             BackendHandle::RefCell(ref mut backend) => {
                 if let Ok(mut backend) = backend.try_borrow_mut() {
                     (*backend).invoke_msg(packet, &self.mem)

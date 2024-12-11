@@ -1,10 +1,10 @@
-use manyhow::{bail, manyhow};
-use quote::{format_ident, quote};
-use syn::{Attribute, Item, ItemMod, Signature, Type};
-use proc_macro2::{Ident, TokenStream as TokenStream2};
-use crate::api_builder::{APIBuilder};
+use crate::api_builder::APIBuilder;
 use crate::util::{maybe_extract_attribute, push_item};
 use core::borrow::Borrow;
+use manyhow::{bail, manyhow};
+use proc_macro2::{Ident, TokenStream as TokenStream2};
+use quote::{format_ident, quote};
+use syn::{Attribute, Item, ItemMod, Signature, Type};
 
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
@@ -39,7 +39,6 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     builder.define_client_impl(&quote! {#client_ident}, &quote! {pub})?;
     builder.define_client_service(&client_ident, &quote! {#handler})?;
     builder.impl_router(quote! {#handler})?;
-
 
     // if there is a function annotated with #[on_create] then we generate a message type for it
     let on_create_msg = match builder.create_msg_name {
@@ -245,4 +244,3 @@ pub(crate) struct PublishedFnInfo {
 struct PublishedTraitInfo {
     ident: Ident,
 }
-

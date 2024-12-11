@@ -1,4 +1,5 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
+use crate::prefix::Prefix;
 use crate::store_client::KVStoreClient;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
@@ -8,7 +9,6 @@ use ixc_core::Context;
 use ixc_schema::state_object::{
     decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
 };
-use crate::prefix::Prefix;
 
 pub(crate) const MAX_SIZE: usize = 7;
 

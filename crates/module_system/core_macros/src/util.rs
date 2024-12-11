@@ -1,5 +1,5 @@
+use proc_macro2::TokenStream as TokenStream2;
 use syn::{parse2, Item};
-use proc_macro2::{TokenStream as TokenStream2};
 
 /// Parse an item from a token stream and add it to the items vector.
 pub(crate) fn push_item(items: &mut Vec<Item>, expanded: TokenStream2) -> manyhow::Result<()> {
@@ -25,4 +25,3 @@ where
     }
     Ok(Some(R::extract_attributes(t)?))
 }
-

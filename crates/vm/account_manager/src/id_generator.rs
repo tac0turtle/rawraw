@@ -1,11 +1,11 @@
 //! ID generator trait.
 
+use crate::state_handler::StateHandler;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
-use ixc_message_api::AccountID;
 use ixc_message_api::code::ErrorCode;
+use ixc_message_api::AccountID;
 use ixc_vm_api::ReadonlyStore;
-use crate::state_handler::StateHandler;
 
 /// ID generator trait.
 pub trait IDGenerator {
@@ -39,9 +39,8 @@ impl IDGenerator for IncrementingIDGenerator {
             let new_id = id + 1;
             store.set(b"I", &new_id.to_le_bytes())?;
             Ok(new_id)
-
         } else {
-            let id:u128 = 65536;
+            let id: u128 = 65536;
             store.set(b"I", &id.to_le_bytes())?;
             Ok(id)
         }

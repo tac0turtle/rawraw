@@ -1,5 +1,5 @@
-use ixc_core::resource::InitializationError;
 use crate::map::MAX_SIZE;
+use ixc_core::resource::InitializationError;
 
 pub(crate) struct Prefix {
     length: u8,

@@ -1,12 +1,15 @@
+use crate::api_builder::APIBuilder;
+use crate::handler::PublishedFnInfo;
 use manyhow::manyhow;
+use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::{ItemTrait, TraitItem};
-use proc_macro2::{Ident, TokenStream as TokenStream2};
-use crate::api_builder::{APIBuilder};
-use crate::handler::PublishedFnInfo;
 
 /// Handles the #[handler_api] attribute.
-pub(crate) fn handler_api(_attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Result<TokenStream2> {
+pub(crate) fn handler_api(
+    _attr: TokenStream2,
+    item_trait: ItemTrait,
+) -> manyhow::Result<TokenStream2> {
     let mut builder = APIBuilder::default();
     let trait_ident = &item_trait.ident;
     let dyn_trait = quote!(dyn #trait_ident);

@@ -1,6 +1,6 @@
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::AccountID;
 use allocator_api2::vec::Vec;
+use ixc_message_api::AccountID;
 
 /// The standard state manager trait which is the interface
 /// that the storage layer must implement in order to be
@@ -80,4 +80,3 @@ pub enum StdStateError {
     /// A fatal error occurred.
     FatalExecutionError,
 }
-

@@ -84,11 +84,15 @@ pub const fn sort_routes<const N: usize, T: ?Sized>(mut arr: [Route<T>; N]) -> [
 }
 
 /// Sorts the query routes by message selector.
-pub const fn sort_query_routes<const N: usize, T: ?Sized>(mut arr: [QueryRoute<T>; N]) -> [QueryRoute<T>; N] {
+pub const fn sort_query_routes<const N: usize, T: ?Sized>(
+    mut arr: [QueryRoute<T>; N],
+) -> [QueryRoute<T>; N] {
     sort_routes_base(arr)
 }
 
-const fn sort_routes_base<const N: usize, R: ?Sized + Copy>(mut arr: [(u64, R); N]) -> [(u64, R); N] {
+const fn sort_routes_base<const N: usize, R: ?Sized + Copy>(
+    mut arr: [(u64, R); N],
+) -> [(u64, R); N] {
     // const bubble sort
     loop {
         let mut swapped = false;

@@ -3,11 +3,11 @@
 //! Virtual Machine API
 #![no_std]
 
-use ixc_message_api::AccountID;
+use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
-use allocator_api2::vec::Vec;
+use ixc_message_api::AccountID;
 
 /// A virtual machine that can run message handlers.
 pub trait VM {
@@ -15,10 +15,20 @@ pub trait VM {
     /// or return None if the handler ID is not valid.
     /// This allows for multiple ways of addressing a single handler in code and for ensuring that
     /// the handler actually exists.
-    fn resolve_handler_id<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
+    fn resolve_handler_id<'a>(
+        &self,
+        store: &dyn ReadonlyStore,
+        handler_id: &[u8],
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
 
     /// Resolves a handler ID to an executable handler or returns an error if the handler is not found.
-    fn resolve_handler<'b, 'a:'b>(&'a self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'b dyn Allocator) -> Result<&'b dyn RawHandler, ErrorCode>;
+    fn resolve_handler<'b, 'a: 'b>(
+        &'a self,
+        store: &dyn ReadonlyStore,
+        handler_id: &[u8],
+        allocator: &'b dyn Allocator,
+    ) -> Result<&'b dyn RawHandler, ErrorCode>;
 
     // /// Runs a handler with the provided message packet and host backend.
     // fn run_message(
@@ -56,7 +66,12 @@ pub trait VM {
 /// this state should only be used to retrieve the code for a handler from the store.
 pub trait ReadonlyStore {
     /// Gets the value for the given key for the given account.
-    fn get<'a>(&self, account_id: AccountID, key: &[u8], allocator: &'a dyn Allocator) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
+    fn get<'a>(
+        &self,
+        account_id: AccountID,
+        key: &[u8],
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
 }
 
 /// A descriptor for a handler.

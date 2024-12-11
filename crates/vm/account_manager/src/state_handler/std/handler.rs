@@ -1,14 +1,14 @@
 use crate::state_handler::std::manager::StdStateManager;
 use crate::state_handler::{GasMeter, StateHandler};
 use allocator_api2::alloc::Allocator;
+use core::alloc::Layout;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
 use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
-use core::alloc::Layout;
-use ixc_message_api::code::ErrorCode::SystemCode;
 
 /// The standard state handler.
 pub struct StdStateHandler<'a, S: StdStateManager> {

@@ -4,8 +4,8 @@ extern crate alloc;
 
 mod authz;
 pub mod id_generator;
-pub mod state_handler;
 pub mod native_vm;
+pub mod state_handler;
 
 use crate::authz::AuthorizationMiddleware;
 use crate::id_generator::IDGenerator;
@@ -14,8 +14,9 @@ use crate::state_handler::{
     destroy_account_data, get_account_handler_id, init_next_account, StateHandler,
 };
 use allocator_api2::vec::Vec;
-use core::borrow::BorrowMut;
 use core::alloc::Layout;
+use core::borrow::BorrowMut;
+use core::cell::RefCell;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
@@ -27,7 +28,6 @@ use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{ReadonlyStore, VM};
-use core::cell::RefCell;
 
 /// The account manager manages the execution, creation, and destruction of accounts.
 pub struct AccountManager<'a, CM: VM> {
@@ -151,7 +151,9 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
             .begin_tx(&mut gas)
             .map_err(|_| SystemCode(InvalidHandler))?;
         // push the current caller onto the call stack
-        self.call_stack.push(Frame { active_account: target_account });
+        self.call_stack.push(Frame {
+            active_account: target_account,
+        });
 
         message_packet.header_mut().gas_left = gas.get();
 
@@ -318,11 +320,18 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
                 &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
                 handler_id,
                 allocator,
-            )?.ok_or(SystemCode(HandlerNotFound))?;
+            )?
+            .ok_or(SystemCode(HandlerNotFound))?;
 
         // get the next account ID and initialize the account storage
-        let id = init_next_account(self.id_generator, self.state_handler, &handler_id, allocator, &mut gas)
-            .map_err(|_| SystemCode(InvalidHandler))?;
+        let id = init_next_account(
+            self.id_generator,
+            self.state_handler,
+            &handler_id,
+            allocator,
+            &mut gas,
+        )
+        .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create
         let mut on_create_packet =
@@ -334,22 +343,18 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
         on_create_header.in_pointer1.set_slice(init_data);
 
         // run the on_create handler
-        let handler =  self.account_manager.code_manager.resolve_handler(
+        let handler = self.account_manager.code_manager.resolve_handler(
             &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
             &handler_id,
             allocator,
         )?;
 
         // push a frame onto the call stack
-        self.call_stack.borrow_mut().push(Frame {
-            active_account: id,
-        });
+        self.call_stack
+            .borrow_mut()
+            .push(Frame { active_account: id });
 
-        let res = handler.handle_system(
-            &mut on_create_packet,
-            self,
-            allocator,
-        );
+        let res = handler.handle_system(&mut on_create_packet, self, allocator);
 
         // pop the frame
         self.call_stack.borrow_mut().pop();

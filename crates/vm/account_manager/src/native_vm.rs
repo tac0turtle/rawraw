@@ -2,13 +2,13 @@
 extern crate alloc;
 
 use alloc::boxed::Box;
+use alloc::collections::btree_map::BTreeMap;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
+use core::borrow::Borrow;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::RawHandler;
 use ixc_vm_api::{ReadonlyStore, VM};
-use alloc::collections::btree_map::BTreeMap;
-use core::borrow::Borrow;
 
 /// The native Rust virtual machine implementation.
 #[derive(Default)]
@@ -29,7 +29,12 @@ impl NativeVM for NativeVMImpl {
 }
 
 impl VM for NativeVMImpl {
-    fn resolve_handler_id<'a>(&self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'a dyn Allocator) -> Result<Option<allocator_api2::vec::Vec<u8, &'a dyn Allocator>>, ErrorCode> {
+    fn resolve_handler_id<'a>(
+        &self,
+        store: &dyn ReadonlyStore,
+        handler_id: &[u8],
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<allocator_api2::vec::Vec<u8, &'a dyn Allocator>>, ErrorCode> {
         if self.handlers.contains_key(handler_id) {
             let mut res = Vec::new_in(allocator);
             res.extend_from_slice(handler_id);
@@ -39,7 +44,12 @@ impl VM for NativeVMImpl {
         }
     }
 
-    fn resolve_handler<'b, 'a:'b>(&'a self, store: &dyn ReadonlyStore, handler_id: &[u8], allocator: &'b dyn Allocator) -> Result<&'b dyn RawHandler, ErrorCode> {
+    fn resolve_handler<'b, 'a: 'b>(
+        &'a self,
+        store: &dyn ReadonlyStore,
+        handler_id: &[u8],
+        allocator: &'b dyn Allocator,
+    ) -> Result<&'b dyn RawHandler, ErrorCode> {
         if let Some(handler) = self.handlers.get(handler_id) {
             Ok(handler.borrow())
         } else {

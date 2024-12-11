@@ -1,8 +1,8 @@
-use proc_macro::TokenStream;
 use blake2::{Blake2b512, Digest};
+use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, LitStr};
 use syn::__private::TokenStream2;
+use syn::{parse_macro_input, LitStr};
 
 /// Handles the message_selector! macro.
 pub(crate) fn message_selector(item: TokenStream) -> TokenStream {
