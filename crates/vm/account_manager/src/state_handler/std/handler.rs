@@ -34,7 +34,10 @@ pub struct GasConfig {
 impl<'a, S: StdStateManager> StdStateHandler<'a, S> {
     /// Create a new standard state handler.
     pub fn new(state: &'a mut S, gas_config: GasConfig) -> Self {
-        Self { state, _gas_config: gas_config }
+        Self {
+            state,
+            _gas_config: gas_config,
+        }
     }
 }
 

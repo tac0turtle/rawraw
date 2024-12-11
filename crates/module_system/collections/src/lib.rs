@@ -4,11 +4,11 @@
 #![feature(concat_bytes)]
 extern crate alloc;
 
+pub mod accumulator;
 mod item;
 mod map;
-mod store_client;
-pub mod accumulator;
 mod prefix;
+mod store_client;
 
 pub use accumulator::{Accumulator, AccumulatorMap};
 pub use item::Item;
