@@ -31,7 +31,7 @@ impl NativeVM for NativeVMImpl {
 impl VM for NativeVMImpl {
     fn resolve_handler_id<'a>(
         &self,
-        store: &dyn ReadonlyStore,
+        _store: &dyn ReadonlyStore,
         handler_id: &[u8],
         allocator: &'a dyn Allocator,
     ) -> Result<Option<allocator_api2::vec::Vec<u8, &'a dyn Allocator>>, ErrorCode> {
@@ -46,9 +46,9 @@ impl VM for NativeVMImpl {
 
     fn resolve_handler<'b, 'a: 'b>(
         &'a self,
-        store: &dyn ReadonlyStore,
+        _store: &dyn ReadonlyStore,
         handler_id: &[u8],
-        allocator: &'b dyn Allocator,
+        _allocator: &'b dyn Allocator,
     ) -> Result<&'b dyn RawHandler, ErrorCode> {
         if let Some(handler) = self.handlers.get(handler_id) {
             Ok(handler.borrow())

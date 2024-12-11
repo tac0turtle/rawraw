@@ -1,11 +1,7 @@
 //! ID generator trait.
 
-use crate::state_handler::StateHandler;
-use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::AccountID;
-use ixc_vm_api::ReadonlyStore;
 
 /// ID generator trait.
 pub trait IDGenerator {

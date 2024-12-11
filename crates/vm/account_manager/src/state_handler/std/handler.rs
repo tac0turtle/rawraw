@@ -43,7 +43,7 @@ impl<'a, S: StdStateManager> StateHandler for StdStateHandler<'a, S> {
         &self,
         account_id: AccountID,
         key: &[u8],
-        gas: &mut GasMeter,
+        _gas: &mut GasMeter,
         allocator: A,
     ) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
         self.state
@@ -56,7 +56,7 @@ impl<'a, S: StdStateManager> StateHandler for StdStateHandler<'a, S> {
         account_id: AccountID,
         key: &[u8],
         value: &[u8],
-        gas: &mut GasMeter,
+        _gas: &mut GasMeter,
     ) -> Result<(), ErrorCode> {
         self.state
             .kv_set(account_id, None, key, value)
@@ -67,26 +67,26 @@ impl<'a, S: StdStateManager> StateHandler for StdStateHandler<'a, S> {
         &mut self,
         account_id: AccountID,
         key: &[u8],
-        gas: &mut GasMeter,
+        _gas: &mut GasMeter,
     ) -> Result<(), ErrorCode> {
         self.state
             .kv_delete(account_id, None, key)
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn begin_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
+    fn begin_tx(&mut self, _gas: &mut GasMeter) -> Result<(), ErrorCode> {
         self.state
             .begin_tx()
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn commit_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
+    fn commit_tx(&mut self, _gas: &mut GasMeter) -> Result<(), ErrorCode> {
         self.state
             .commit_tx()
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
     }
 
-    fn rollback_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode> {
+    fn rollback_tx(&mut self, _gas: &mut GasMeter) -> Result<(), ErrorCode> {
         self.state
             .rollback_tx()
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
@@ -154,7 +154,7 @@ impl<'a, S: StdStateManager> StateHandler for StdStateHandler<'a, S> {
     fn create_account_storage(
         &mut self,
         account: AccountID,
-        gas: &mut GasMeter,
+        _gas: &mut GasMeter,
     ) -> Result<(), ErrorCode> {
         self.state
             .create_account_storage(account)
@@ -164,7 +164,7 @@ impl<'a, S: StdStateManager> StateHandler for StdStateHandler<'a, S> {
     fn delete_account_storage(
         &mut self,
         account: AccountID,
-        gas: &mut GasMeter,
+        _gas: &mut GasMeter,
     ) -> Result<(), ErrorCode> {
         self.state
             .delete_account_storage(account)

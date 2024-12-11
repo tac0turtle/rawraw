@@ -14,6 +14,7 @@ use crate::state_handler::{
     destroy_account_data, get_account_handler_id, init_next_account, StateHandler,
 };
 use allocator_api2::vec::Vec;
+use arrayvec::ArrayVec;
 use core::alloc::Layout;
 use core::borrow::BorrowMut;
 use core::cell::RefCell;
@@ -21,31 +22,30 @@ use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{
-    AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled,
-    UnauthorizedCallerAccess,
+    AccountNotFound, CallStackOverflow, FatalExecutionError, HandlerNotFound, InvalidHandler,
+    MessageNotHandled, UnauthorizedCallerAccess,
 };
 use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_vm_api::{ReadonlyStore, VM};
 
+/// The default stack size for the account manager.
+pub const DEFAULT_STACK_SIZE: usize = 128;
+
 /// The account manager manages the execution, creation, and destruction of accounts.
-pub struct AccountManager<'a, CM: VM> {
+pub struct AccountManager<'a, CM: VM, const CALL_STACK_LIMIT: usize = DEFAULT_STACK_SIZE> {
     code_manager: &'a CM,
-    call_stack_limit: usize,
 }
 
-impl<'a, CM: VM> AccountManager<'a, CM> {
+impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STACK_LIMIT> {
     /// Creates a new account manager.
     pub fn new(code_manager: &'a CM) -> Self {
-        Self {
-            code_manager,
-            call_stack_limit: 128,
-        }
+        Self { code_manager }
     }
 }
 
-impl<'a, CM: VM> AccountManager<'a, CM> {
+impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STACK_LIMIT> {
     /// Invokes a message packet in the context of the provided state handler.
     pub fn invoke_msg<'b, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
         &'b self,
@@ -55,17 +55,20 @@ impl<'a, CM: VM> AccountManager<'a, CM> {
         message_packet: &mut MessagePacket,
         allocator: &'b dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let mut call_stack = Vec::new_in(allocator);
-        call_stack.push(Frame {
-            active_account: message_packet.header().caller,
-        });
         let mut exec_context = ExecContext {
             account_manager: self,
             state_handler,
             id_generator,
             authz,
-            call_stack,
+            call_stack: Default::default(),
         };
+        exec_context
+            .call_stack
+            .borrow_mut()
+            .try_push(Frame {
+                active_account: message_packet.header().caller,
+            })
+            .map_err(|_| SystemCode(CallStackOverflow))?;
         exec_context.invoke_msg(message_packet, allocator)
     }
 
@@ -76,25 +79,35 @@ impl<'a, CM: VM> AccountManager<'a, CM> {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let mut call_stack = Vec::new_in(allocator);
-        call_stack.push(Frame {
-            active_account: message_packet.header().caller,
-        });
+        let mut call_stack = ArrayVec::<Frame, CALL_STACK_LIMIT>::new();
+        call_stack
+            .try_push(Frame {
+                active_account: message_packet.header().caller,
+            })
+            .map_err(|_| SystemCode(CallStackOverflow))?;
+        let ref_cell = RefCell::new(call_stack);
         let query_ctx = QueryContext {
             account_manager: self,
             state_handler,
-            call_stack: RefCell::new(call_stack),
+            call_stack: &ref_cell,
         };
         query_ctx.invoke_query(message_packet, allocator)
     }
 }
 
-struct ExecContext<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware> {
-    account_manager: &'a AccountManager<'a, CM>,
+struct ExecContext<
+    'a,
+    CM: VM,
+    ST: StateHandler,
+    IDG: IDGenerator,
+    AUTHZ: AuthorizationMiddleware,
+    const CALL_STACK_LIMIT: usize,
+> {
+    account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
     state_handler: &'a mut ST,
     id_generator: &'a mut IDG,
     authz: &'a AUTHZ,
-    call_stack: Vec<Frame, &'a dyn Allocator>,
+    call_stack: RefCell<ArrayVec<Frame, CALL_STACK_LIMIT>>,
 }
 
 #[derive(Debug)]
@@ -102,18 +115,24 @@ struct Frame {
     active_account: AccountID,
 }
 
-struct QueryContext<'a, CM: VM, ST: StateHandler> {
-    account_manager: &'a AccountManager<'a, CM>,
+struct QueryContext<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> {
+    account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
     state_handler: &'a ST,
-    call_stack: RefCell<Vec<Frame, &'a dyn Allocator>>,
+    call_stack: &'b RefCell<ArrayVec<Frame, CALL_STACK_LIMIT>>,
 }
 
 const ROOT_ACCOUNT: AccountID = AccountID::new(1);
 const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
 /// Invoke a message packet in the context of the provided state handler.
-impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware> HostBackend
-    for ExecContext<'a, CM, ST, IDG, AUTHZ>
+impl<
+        'a,
+        CM: VM,
+        ST: StateHandler,
+        IDG: IDGenerator,
+        AUTHZ: AuthorizationMiddleware,
+        const CALL_STACK_LIMIT: usize,
+    > HostBackend for ExecContext<'a, CM, ST, IDG, AUTHZ, CALL_STACK_LIMIT>
 {
     fn invoke_msg(
         &mut self,
@@ -124,6 +143,7 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
         let target_account = message_packet.header().account;
         let active_account = self
             .call_stack
+            .borrow()
             .last()
             .map(|f| f.active_account)
             .ok_or(SystemCode(FatalExecutionError))?;
@@ -151,9 +171,12 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
             .begin_tx(&mut gas)
             .map_err(|_| SystemCode(InvalidHandler))?;
         // push the current caller onto the call stack
-        self.call_stack.push(Frame {
-            active_account: target_account,
-        });
+        self.call_stack
+            .borrow_mut()
+            .try_push(Frame {
+                active_account: target_account,
+            })
+            .map_err(|_| SystemCode(CallStackOverflow))?;
 
         message_packet.header_mut().gas_left = gas.get();
 
@@ -187,7 +210,7 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
         }
 
         // pop the call stack
-        self.call_stack.pop();
+        self.call_stack.borrow_mut().pop();
 
         res
     }
@@ -197,16 +220,11 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let target_account = message_packet.header().account;
-        let mut call_stack = Vec::new_in(allocator);
-        call_stack.push(Frame {
-            active_account: target_account,
-        });
         // create a nested execution frame for the target account
         let query_ctx = QueryContext {
             account_manager: self.account_manager,
             state_handler: self.state_handler,
-            call_stack: RefCell::new(call_stack),
+            call_stack: &self.call_stack,
         };
         //
         // we never pass the caller to query handlers and any value set in the caller field is ignored
@@ -234,7 +252,9 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
     }
 }
 
-impl<'a, CM: VM, ST: StateHandler> HostBackend for QueryContext<'a, CM, ST> {
+impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBackend
+    for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
+{
     fn invoke_msg(
         &mut self,
         _message_packet: &mut MessagePacket,
@@ -267,11 +287,11 @@ impl<'a, CM: VM, ST: StateHandler> HostBackend for QueryContext<'a, CM, ST> {
                 .ok_or(SystemCode(AccountNotFound))?;
 
         // create a nested execution frame for the target account
-        let frame = Frame {
-            active_account: target_account,
-        };
-
-        self.call_stack.borrow_mut().push(frame);
+        (*self.call_stack.borrow_mut())
+            .try_push(Frame {
+                active_account: target_account,
+            })
+            .map_err(|_| SystemCode(CallStackOverflow))?;
 
         // run the handler
         let handler = self.account_manager.code_manager.resolve_handler(
@@ -279,12 +299,24 @@ impl<'a, CM: VM, ST: StateHandler> HostBackend for QueryContext<'a, CM, ST> {
             &handler_id,
             allocator,
         )?;
-        handler.handle_query(message_packet, self, allocator)
+
+        let res = handler.handle_query(message_packet, self, allocator);
+
+        // pop the call stack
+        (*self.call_stack.borrow_mut()).pop();
+
+        res
     }
 }
 
-impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>
-    ExecContext<'a, CM, ST, IDG, AUTHZ>
+impl<
+        'a,
+        CM: VM,
+        ST: StateHandler,
+        IDG: IDGenerator,
+        AUTHZ: AuthorizationMiddleware,
+        const CALL_STACK_LIMIT: usize,
+    > ExecContext<'a, CM, ST, IDG, AUTHZ, CALL_STACK_LIMIT>
 {
     fn handle_system_message(
         &mut self,
@@ -352,7 +384,8 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
         // push a frame onto the call stack
         self.call_stack
             .borrow_mut()
-            .push(Frame { active_account: id });
+            .try_push(Frame { active_account: id })
+            .map_err(|_| SystemCode(CallStackOverflow))?;
 
         let res = handler.handle_system(&mut on_create_packet, self, allocator);
 

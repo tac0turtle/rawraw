@@ -140,7 +140,7 @@ impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let account_manager = AccountManager::new(&self.vm);
+        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
         let mut tx = self.state.new_transaction();
 
         let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
@@ -163,7 +163,7 @@ impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let account_manager = AccountManager::new(&self.vm);
+        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
         let mut tx = self.state.new_transaction();
 
         let state_handler = StdStateHandler::new(&mut tx, Default::default());

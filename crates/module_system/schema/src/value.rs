@@ -374,14 +374,6 @@ impl<'a> SchemaValue<'a> for ixc_message_api::AccountID {
     type Type = AccountIdT;
 }
 
-#[cfg(feature = "arrayvec")]
-impl<'a, T: Type, V: SchemaValue<'a, T>, const N: usize> SchemaValue<'a, ListT<T>>
-    for arrayvec::ArrayVec<T, N>
-{
-}
-#[cfg(feature = "arrayvec")]
-impl<'a, const N: usize> SchemaValue<'a, StrT> for arrayvec::ArrayString<T, N> {}
-
 /// OptionalValue is a trait that must be implemented by types that can be used as the return value
 /// or anywhere else where a value may or may not be necessary.
 /// The unit type `()` is used to represent the absence of a value.

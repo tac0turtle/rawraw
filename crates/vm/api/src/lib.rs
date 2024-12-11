@@ -5,8 +5,7 @@
 
 use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::handler::{Allocator, RawHandler};
 use ixc_message_api::AccountID;
 
 /// A virtual machine that can run message handlers.

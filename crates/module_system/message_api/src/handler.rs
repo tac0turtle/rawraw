@@ -5,11 +5,12 @@ use crate::packet::MessagePacket;
 /// A handler for an account.
 pub trait RawHandler {
     /// Handle a message.
+    #[allow(unused_variables)]
     fn handle_msg(
         &self,
-        message_packet: &mut MessagePacket,
-        callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
+        _message_packet: &mut MessagePacket,
+        _callbacks: &mut dyn HostBackend,
+        _allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }
@@ -17,9 +18,9 @@ pub trait RawHandler {
     /// Handle a query message.
     fn handle_query(
         &self,
-        message_packet: &mut MessagePacket,
-        callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
+        _message_packet: &mut MessagePacket,
+        _callbacks: &dyn HostBackend,
+        _allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }
@@ -27,9 +28,9 @@ pub trait RawHandler {
     /// Handle a system message.
     fn handle_system(
         &self,
-        message_packet: &mut MessagePacket,
-        callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
+        _message_packet: &mut MessagePacket,
+        _callbacks: &mut dyn HostBackend,
+        _allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }

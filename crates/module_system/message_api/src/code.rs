@@ -40,6 +40,8 @@ pub enum SystemCode {
     InvalidHandler = 5,
     /// A volatile message was attempted to be invoked by a query handler.
     VolatileAccessError = 6,
+    /// The call stack overflowed.
+    CallStackOverflow = 7,
 
     // Known errors that can be returned by handlers or the system:
     /// Any uncategorized error.
