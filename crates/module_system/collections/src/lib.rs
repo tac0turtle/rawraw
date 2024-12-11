@@ -10,6 +10,7 @@ mod map;
 mod store_client;
 // mod uint_map;
 pub mod accumulator;
+mod prefix;
 
 pub use accumulator::{Accumulator, AccumulatorMap};
 pub use item::Item;

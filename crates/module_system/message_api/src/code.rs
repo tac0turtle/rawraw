@@ -38,6 +38,8 @@ pub enum SystemCode {
     /// The handler code was invalid, failed to execute properly within its virtual machine
     /// or otherwise behaved incorrectly.
     InvalidHandler = 5,
+    /// A volatile message was attempted to be invoked by a query handler.
+    VolatileAccessError = 6,
 
     // Known errors that can be returned by handlers or the system:
     /// Any uncategorized error.
