@@ -137,44 +137,4 @@ impl<'a> Context<'a> {
         self.gas_left.set(self.gas_left.get() - gas);
         Ok(())
     }
-
-    // /// Dynamically invokes a message.
-    // pub fn dynamic_invoke_msg<'b, M: Message<'b>>(
-    //     &mut self,
-    //     account: AccountID,
-    //     message: M,
-    // ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    //     // unsafe {
-    //     //     // encode the message body
-    //     //     let mem = &self.mem;
-    //     //     let mem = mem.get();
-    //     //     let cdc = M::Codec::default();
-    //     //     let msg_body = cdc.encode_value(&message, mem)?;
-    //     //
-    //     //     // create the message packet and fill in call details
-    //     //     let mut packet = create_packet(self, account, M::SELECTOR)?;
-    //     //     let header = packet.header_mut();
-    //     //     header.in_pointer1.set_slice(msg_body);
-    //     //
-    //     //     // invoke the message
-    //     //     let res = self.backend.invoke_msg(&mut packet, mem);
-    //     //
-    //     //     let out1 = header.out_pointer1.get(&packet);
-    //     //
-    //     //     match res {
-    //     //         Ok(_) => {
-    //     //             let res = M::Response::<'a>::decode_value(&cdc, out1, mem)?;
-    //     //             Ok(res)
-    //     //         }
-    //     //         Err(e) => {
-    //     //             let c: u16 = e.into();
-    //     //             let code = ErrorCode::<M::Error>::from(c);
-    //     //             let msg = String::from_utf8(out1.to_vec())
-    //     //                 .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
-    //     //             Err(ClientError { message: msg, code })
-    //     //         }
-    //     //     }
-    //     // }
-    //     todo!()
-    // }
 }
