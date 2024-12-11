@@ -34,7 +34,7 @@ pub fn create_account_raw<'a>(
 
 /// Creates a new account for the named handler with opaque initialization data.
 fn do_create_account<'a>(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
-    let mut packet = create_packet(ctx.self_account_id(), ctx.memory_manager(), ROOT_ACCOUNT, CREATE_SELECTOR)?;
+    let mut packet = create_packet(ctx.account, ctx.memory_manager(), ROOT_ACCOUNT, CREATE_SELECTOR)?;
 
     unsafe {
         packet.header_mut().in_pointer1.set_slice(name.as_bytes());

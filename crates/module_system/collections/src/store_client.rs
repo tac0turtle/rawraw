@@ -17,7 +17,7 @@ pub(crate) struct KVStoreClient;
 
 impl KVStoreClient {
     pub(crate) fn get<'a>(&self, ctx: &'a Context, key: &[u8]) -> ClientResult<Option<&'a [u8]>> {
-        let mut packet = create_packet(ctx.caller(), ctx.memory_manager(), STATE_ACCOUNT, GET_SELECTOR)?;
+        let mut packet = create_packet(ctx.self_account_id(), ctx.memory_manager(), STATE_ACCOUNT, GET_SELECTOR)?;
         let header = packet.header_mut();
         unsafe {
             header.in_pointer1.set_slice(key);
@@ -36,7 +36,7 @@ impl KVStoreClient {
     }
 
     pub(crate) unsafe fn set(&self, ctx: &mut Context, key: &[u8], value: &[u8]) -> ClientResult<()> {
-        let mut packet = create_packet(ctx.caller(), ctx.memory_manager(), STATE_ACCOUNT, SET_SELECTOR)?;
+        let mut packet = create_packet(ctx.self_account_id(), ctx.memory_manager(), STATE_ACCOUNT, SET_SELECTOR)?;
         let header = packet.header_mut();
         unsafe {
             header.in_pointer1.set_slice(key);
@@ -47,7 +47,7 @@ impl KVStoreClient {
     }
 
     pub(crate) unsafe fn delete(&self, ctx: &mut Context, key: &[u8]) -> ClientResult<()> {
-        let mut packet = create_packet(ctx.caller(), ctx.memory_manager(), STATE_ACCOUNT, DELETE_SELECTOR)?;
+        let mut packet = create_packet(ctx.self_account_id(), ctx.memory_manager(), STATE_ACCOUNT, DELETE_SELECTOR)?;
         let header = packet.header_mut();
         unsafe {
             header.in_pointer1.set_slice(key);

@@ -22,7 +22,7 @@ pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(context: &'a mut Context, acco
                                               -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error>
 {
     unsafe {
-        let mut packet = encode_message_packet(context.caller, context.memory_manager(), account, message)?;
+        let mut packet = encode_message_packet(context.account, context.memory_manager(), account, message)?;
 
         let res = context.dynamic_invoke_msg(&mut packet);
 
@@ -39,7 +39,7 @@ pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     unsafe {
-        let mut packet = encode_message_packet(context.caller, context.memory_manager(), account, message)?;
+        let mut packet = encode_message_packet(context.account, context.memory_manager(), account, message)?;
 
         let res = context.dynamic_invoke_query(&mut packet);
 

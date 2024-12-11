@@ -97,6 +97,7 @@ struct ExecContext<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: Author
     call_stack: Vec<Frame, &'a dyn Allocator>,
 }
 
+#[derive(Debug)]
 struct Frame {
     active_account: AccountID,
 }
@@ -150,7 +151,7 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
             .begin_tx(&mut gas)
             .map_err(|_| SystemCode(InvalidHandler))?;
         // push the current caller onto the call stack
-        self.call_stack.push(Frame { active_account });
+        self.call_stack.push(Frame { active_account: target_account });
 
         message_packet.header_mut().gas_left = gas.get();
 
@@ -339,11 +340,19 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddlew
             allocator,
         )?;
 
+        // push a frame onto the call stack
+        self.call_stack.borrow_mut().push(Frame {
+            active_account: id,
+        });
+
         let res = handler.handle_system(
             &mut on_create_packet,
             self,
             allocator,
         );
+
+        // pop the frame
+        self.call_stack.borrow_mut().pop();
 
         let is_ok = match res {
             Ok(_) => true,
