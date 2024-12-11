@@ -8,8 +8,8 @@ use ixc_schema::mem::MemoryManager;
 /// Context wraps a single message request (and possibly response as well) along with
 /// the router callbacks necessary for making nested message calls.
 pub struct Context<'a> {
+    backend: BackendHandle<'a>,
     pub(crate) mem: &'a MemoryManager,
-    pub(crate) backend: BackendHandle<'a>,
     pub(crate) account: AccountID, // 16 bytes
     pub(crate) caller: AccountID,  // 16 bytes
     gas_left: Cell<u64>,

@@ -34,7 +34,7 @@ pub struct TestApp<V = NativeVMImpl> {
 
 impl Default for TestApp<NativeVMImpl> {
     fn default() -> Self {
-        let mut test_app = Self {
+        let test_app = Self {
             backend: RefCell::new(Default::default()),
             mem: Default::default(),
             mock_id: Cell::new(0),

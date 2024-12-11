@@ -16,7 +16,6 @@ use crate::state_handler::{
 use allocator_api2::vec::Vec;
 use arrayvec::ArrayVec;
 use core::alloc::Layout;
-use core::borrow::BorrowMut;
 use core::cell::RefCell;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;

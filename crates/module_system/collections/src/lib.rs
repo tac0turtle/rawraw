@@ -4,11 +4,9 @@
 #![feature(concat_bytes)]
 extern crate alloc;
 
-mod errors;
 mod item;
 mod map;
 mod store_client;
-// mod uint_map;
 pub mod accumulator;
 mod prefix;
 

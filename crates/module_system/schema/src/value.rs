@@ -305,6 +305,7 @@ impl<'a> SchemaValue<'a> for alloc::vec::Vec<u8> {
     type Type = BytesT;
 }
 /// A trait that must be implemented by value types that can be used as list elements.
+#[allow(private_bounds)]
 pub trait ListElementValue<'a>: SchemaValue<'a>
 where
     Self::Type: ListElementType,
@@ -400,17 +401,17 @@ impl<'a> OptionalValue<'a> for () {
     type Value = ();
 
     fn decode_value(
-        cdc: &dyn Codec,
-        data: &'a [u8],
-        memory_manager: &'a MemoryManager,
+        _cdc: &dyn Codec,
+        _data: &'a [u8],
+        _memory_manager: &'a MemoryManager,
     ) -> Result<Self::Value, DecodeError> {
         Ok(())
     }
 
     fn encode_value<'b>(
-        cdc: &dyn Codec,
-        value: &Self::Value,
-        writer_factory: &'b dyn WriterFactory,
+        _cdc: &dyn Codec,
+        _value: &Self::Value,
+        _writer_factory: &'b dyn WriterFactory,
     ) -> Result<Option<&'b [u8]>, EncodeError> {
         Ok(None)
     }
@@ -424,7 +425,7 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
         data: &'a [u8],
         memory_manager: &'a MemoryManager,
     ) -> Result<Self::Value, DecodeError> {
-        unsafe { decode_value(cdc, data, memory_manager) }
+        decode_value(cdc, data, memory_manager)
     }
 
     fn encode_value<'b>(

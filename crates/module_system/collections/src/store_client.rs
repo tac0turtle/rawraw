@@ -29,7 +29,7 @@ impl KVStoreClient {
             let res = ctx.dynamic_invoke_query(&mut packet);
             match res {
                 Ok(_) => {
-                    let res_bz = unsafe { packet.header().out_pointer1.get(&packet) };
+                    let res_bz = packet.header().out_pointer1.get(&packet);
                     Ok(Some(res_bz))
                 }
                 Err(ErrorCode::HandlerCode(0)) => Ok(None),

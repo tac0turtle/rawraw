@@ -79,13 +79,13 @@ pub fn find_route<R>(sorted_routes: &[(u64, R)], sel: MessageSelector) -> Option
 }
 
 /// Sorts the routes by message selector.
-pub const fn sort_routes<const N: usize, T: ?Sized>(mut arr: [Route<T>; N]) -> [Route<T>; N] {
+pub const fn sort_routes<const N: usize, T: ?Sized>(arr: [Route<T>; N]) -> [Route<T>; N] {
     sort_routes_base(arr)
 }
 
 /// Sorts the query routes by message selector.
 pub const fn sort_query_routes<const N: usize, T: ?Sized>(
-    mut arr: [QueryRoute<T>; N],
+    arr: [QueryRoute<T>; N],
 ) -> [QueryRoute<T>; N] {
     sort_routes_base(arr)
 }

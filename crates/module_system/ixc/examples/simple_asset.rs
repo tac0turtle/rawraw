@@ -48,10 +48,10 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut app = TestApp::default();
+        let app = TestApp::default();
         app.register_handler::<SimpleAsset>().unwrap();
         let mut alice = app.new_client_context().unwrap();
-        let mut bob = app.new_client_context().unwrap();
+        let bob = app.new_client_context().unwrap();
         let asset_client = create_account::<SimpleAsset>(
             &mut alice,
             SimpleAssetInit {
@@ -73,6 +73,7 @@ mod tests {
         let bob_balance = asset_client
             .get_balance(&bob, bob.self_account_id())
             .unwrap();
+        assert_eq!(bob_balance, 50);
     }
 }
 

@@ -13,7 +13,7 @@ use ixc_message_api::AccountID;
 /// The standard state handler.
 pub struct StdStateHandler<'a, S: StdStateManager> {
     state: &'a mut S,
-    gas_config: GasConfig,
+    _gas_config: GasConfig,
 }
 
 /// Gas configuration for the standard state handler.
@@ -34,7 +34,7 @@ pub struct GasConfig {
 impl<'a, S: StdStateManager> StdStateHandler<'a, S> {
     /// Create a new standard state handler.
     pub fn new(state: &'a mut S, gas_config: GasConfig) -> Self {
-        Self { state, gas_config }
+        Self { state, _gas_config: gas_config }
     }
 }
 

@@ -42,6 +42,7 @@ pub const fn to_field<T: Type>() -> Field<'static> {
     }
 }
 
+#[allow(unused)]
 trait Private {}
 
 /// The trait implemented for types that can be referenced by other types.
@@ -193,6 +194,7 @@ impl<T: Type> Type for Option<T> {
 impl<T: ListElementType> ListElementType for Option<T> {}
 
 /// The `ListT` type represents a list type.
+#[allow(private_bounds)]
 pub struct ListT<T: ListElementType> {
     _phantom: core::marker::PhantomData<T>,
 }

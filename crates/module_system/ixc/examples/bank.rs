@@ -21,7 +21,7 @@ pub mod bank {
         #[state(prefix = 6)]
         denom_send_hooks: Map<Str, AccountID>,
         #[state(prefix = 6)]
-        denom_burn_hooks: Map<Str, AccountID>,
+        _denom_burn_hooks: Map<Str, AccountID>,
     }
 
     #[derive(SchemaValue, Clone, Default)]
@@ -209,11 +209,11 @@ pub mod bank {
 
         fn burn(
             &self,
-            ctx: &mut Context,
-            from: AccountID,
-            denom: &str,
-            amount: u128,
-            evt: EventBus<EventBurn<'_>>,
+            _ctx: &mut Context,
+            _from: AccountID,
+            _denom: &str,
+            _amount: u128,
+            _evt: EventBus<EventBurn<'_>>,
         ) -> Result<()> {
             // TODO burn hooks
             todo!()
@@ -225,17 +225,12 @@ pub mod bank {
 mod tests {
     use super::bank::*;
     use ixc_core::account_api::ROOT_ACCOUNT;
-    use ixc_core::handler::{Client, Service};
-    use ixc_core::routing::{find_route, Router};
-    use ixc_message_api::code::ErrorCode;
-    use ixc_message_api::handler::{Allocator, HostBackend, RawHandler};
-    use ixc_message_api::packet::MessagePacket;
     use ixc_testing::*;
 
     #[test]
     fn test() {
         // initialize the app
-        let mut app = TestApp::default();
+        let app = TestApp::default();
         // register the Bank handler
         app.register_handler::<Bank>().unwrap();
 
@@ -270,7 +265,7 @@ mod tests {
         assert_eq!(alice_balance, 1000);
 
         // alice sends 100 foo coins to bob
-        let mut bob = app.new_client_context().unwrap();
+        let bob = app.new_client_context().unwrap();
         bank_client
             .send(
                 &mut alice,

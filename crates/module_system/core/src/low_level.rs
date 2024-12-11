@@ -99,7 +99,7 @@ pub fn create_packet<'a, E: HandlerCode>(
     selector: u64,
 ) -> ClientResult<MessagePacket<'a>, E> {
     unsafe {
-        let packet = MessagePacket::allocate(allocator, 0)?;
+        let mut packet = MessagePacket::allocate(allocator, 0)?;
         let header = packet.header_mut();
         header.caller = self_account_id;
         header.account = account;

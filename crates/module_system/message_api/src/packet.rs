@@ -41,7 +41,7 @@ impl<'a> MessagePacket<'a> {
     }
 
     /// Returns a mutable reference to the message header.
-    pub fn header_mut(&self) -> &'a mut MessageHeader {
+    pub fn header_mut(&mut self) -> &'a mut MessageHeader {
         unsafe { &mut *self.data.as_ptr() }
     }
 }
