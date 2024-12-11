@@ -1,5 +1,4 @@
 //! A u128 accumulator map.
-use crate::map::{Prefix, MAX_SIZE};
 use crate::{Item, Map};
 use core::borrow::Borrow;
 use ixc_core::error::{convert_client_error, ClientError};
@@ -9,6 +8,7 @@ use ixc_core::Context;
 use ixc_message_api::code::ErrorCode;
 use ixc_schema::state_object::ObjectKey;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use crate::prefix::Prefix;
 
 /// A 128-bit unsigned integer accumulator.
 pub struct Accumulator {
@@ -107,38 +107,18 @@ impl<K: ObjectKey> AccumulatorMap<K> {
 
 unsafe impl StateObjectResource for Accumulator {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
-        if scope.len() + 1 > MAX_SIZE {
-            return Err(InitializationError::ExceedsLength);
-        }
-        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
-        slice[0] = prefix;
-        slice[1..=scope.len()].copy_from_slice(scope);
-
-        let bytes = Prefix {
-            length: scope.len() as u8,
-            data: slice,
-        };
+        let prefix = Prefix::new(scope, prefix)?;
         Ok(Accumulator {
-            item: Item::new(bytes),
+            item: Item::new(prefix),
         })
     }
 }
 
 unsafe impl<K> StateObjectResource for AccumulatorMap<K> {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
-        if scope.len() + 1 > MAX_SIZE {
-            return Err(InitializationError::ExceedsLength);
-        }
-        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
-        slice[0] = prefix;
-        slice[1..=scope.len()].copy_from_slice(scope);
-
-        let bytes = Prefix {
-            length: scope.len() as u8,
-            data: slice,
-        };
+        let prefix = Prefix::new(scope, prefix)?;
         Ok(AccumulatorMap {
-            map: Map::new(bytes),
+            map: Map::new(prefix),
         })
     }
 }

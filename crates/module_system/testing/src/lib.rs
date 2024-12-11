@@ -16,7 +16,7 @@ use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
-use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::packet::MessagePacket;
@@ -100,10 +100,15 @@ impl<V: NativeVM + 'static> TestApp<V> {
         let mock_id = self.mock_id.get();
         self.mock_id.set(mock_id + 1);
         let handler_id = format!("mock{}", mock_id);
-        let mut backend = self.backend.borrow_mut();
-        backend
-            .vm
-            .register_handler(&handler_id, std::boxed::Box::new(mock));
+        {
+            // we need a scope here because we borrow the backend mutably
+            // and we want to release the borrow before we call create_account_raw
+            // because that will mutably borrow the backend again
+            let mut backend = self.backend.borrow_mut();
+            backend
+                .vm
+                .register_handler(&handler_id, std::boxed::Box::new(mock));
+        }
         create_account_raw(&mut root, &handler_id, &[])
     }
 
@@ -198,28 +203,36 @@ impl MockHandler {
 }
 
 impl RawHandler for MockHandler {
-    // fn handle(
-    //     &self,
-    //     message_packet: &mut MessagePacket,
-    //     callbacks: &dyn HostBackend,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     for mock in &self.mocks {
-    //         let res = mock.handle(message_packet, callbacks, allocator);
-    //         match res {
-    //             Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
-    //             _ => return res,
-    //         }
-    //     }
-    //     Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
-    // }
     fn handle_msg(
         &self,
         message_packet: &mut MessagePacket,
         callbacks: &mut dyn HostBackend,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        todo!()
+        for mock in &self.mocks {
+            let res = mock.handle_msg(message_packet, callbacks, allocator);
+            match res {
+                Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
+                _ => return res,
+            }
+        }
+        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+    }
+
+    fn handle_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        callbacks: &dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        for mock in &self.mocks {
+            let res = mock.handle_query(message_packet, callbacks, allocator);
+            match res {
+                Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
+                _ => return res,
+            }
+        }
+        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }
 }
 
