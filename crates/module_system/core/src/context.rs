@@ -1,4 +1,3 @@
-use crate::message::Message;
 use core::cell::{Cell, RefCell};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
@@ -106,7 +105,7 @@ impl<'a> Context<'a> {
                     Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
                 }
             }
-            BackendHandle::Immutable(backend) => {
+            BackendHandle::Immutable(_) => {
                 Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
             }
         }
