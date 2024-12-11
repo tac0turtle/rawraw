@@ -59,13 +59,8 @@ fn do_create_account<'a>(ctx: &mut Context, name: &str, init: &[u8]) -> ClientRe
 /// SAFETY: This function is unsafe because it can be used to destroy the account and all its state.
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
     let mut packet = create_packet(ctx.self_account_id(), ctx.memory_manager(), ROOT_ACCOUNT, SELF_DESTRUCT_SELECTOR)?;
-    // unsafe {
-    //     ctx.host_backend_mut(ctx.host_backend())
-    //         .unwrap()
-    //         .invoke_msg(&mut packet, ctx.memory_manager())?;
-    //     Ok(())
-    // }
-    todo!()
+    ctx.dynamic_invoke_msg(&mut packet)?;
+    Ok(())
 }
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
