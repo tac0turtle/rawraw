@@ -11,10 +11,7 @@ use core::ptr::{drop_in_place, NonNull};
 /// A memory manager that tracks allocated memory using a bump allocator and ensures that
 /// memory is deallocated and dropped properly when the manager is dropped.
 pub struct MemoryManager {
-    #[cfg(feature = "bumpalo")]
-    bump: bumpalo::Bump,
-    #[cfg(not(feature = "bumpalo"))]
-    bump: crate::bump::Bump,
+    bump: crate::bump::BumpAllocator,
     drop_cells: Cell<Option<NonNull<DropCell>>>,
 }
 
