@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+#![allow(clippy::needless_lifetimes)]
 #[ixc::handler(Bank)]
 pub mod bank {
     use ixc::*;
