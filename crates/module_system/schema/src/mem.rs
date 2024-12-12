@@ -134,6 +134,7 @@ mod test {
     use allocator_api2::vec::Vec;
 
     struct NeedsDrop<'a> {
+        #[allow(dead_code)]
         x: String,
         drop_counter: &'a Cell<u32>,
     }
@@ -147,7 +148,7 @@ mod test {
     #[test]
     /// This test makes sure that all values that are exposed through unpack_slice are properly dropped.
     fn test_unpack_slice() {
-        let mut drop_counter = Cell::new(0);
+        let drop_counter = Cell::new(0);
         {
             let mem = MemoryManager::default();
             let mut v: Vec<NeedsDrop, &dyn Allocator> = Vec::new_in(&mem);

@@ -37,7 +37,8 @@ impl<A: Allocator + Default> Default for BumpAllocator<A> {
 }
 
 impl<A: Allocator> BumpAllocator<A> {
-    pub fn new(base_allocator: A) -> Self {
+    #[allow(unused)] // false positive, this is used in tests
+    pub(crate) fn new(base_allocator: A) -> Self {
         Self {
             cur: Cell::new(None),
             base_allocator,
