@@ -7,6 +7,8 @@ use ixc_schema::codec::Codec;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::SchemaValue;
 
+/// The trait that must be implemented by Resources structs that have a name
+/// such as handlers or handler structs maintained strictly for migration purposes.
 pub trait NamedResources: Resources {
     /// The name of the handler.
     const NAME: &'static str;

@@ -1,10 +1,11 @@
-use crate::api_builder::APIBuilder;
+use crate::api_builder::{APIBuilder};
 use crate::util::{maybe_extract_attribute, push_item};
 use core::borrow::Borrow;
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{Attribute, Item, ItemMod, Signature, Type};
+use syn::{Attribute, FnArg, ImplItemFn, Item, ItemMod, Signature, Type};
+use crate::migration::{collect_on_migrate_info, OnMigrateInfo};
 
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
@@ -49,8 +50,15 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     push_item(
         items,
         quote! {
-            impl ::ixc::core::handler::Handler for #handler {
+            impl ::ixc::core::handler::NamedResources for #handler {
                 const NAME: &'static str = stringify!(#handler);
+            }
+        },
+    )?;
+    push_item(
+        items,
+        quote! {
+            impl ::ixc::core::handler::Handler for #handler {
                 type Init<'a> = #on_create_msg #create_msg_lifetime;
             }
         },
@@ -201,15 +209,22 @@ fn collect_publish_targets(
                     // we define a publish attribute for the fn if it is annotated directly with #[publish] or if the impl block has #[publish]
                     let publish = publish_all.clone().or(publish);
                     // if it's either a publish fn or an on_create fn
-                    if publish.is_some() || on_create.is_some() {
+                    if  publish.is_some() || on_create.is_some() || on_migrate.is_some() {
+                        let ty = if let Some(on_create) = on_create {
+                            PublishedFnType::OnCreate { attr: on_create }
+                        } else if let Some(publish) = publish {
+                            PublishedFnType::Publish { attr: Some(publish) }
+                        } else if let Some(on_migrate) = on_migrate {
+                            PublishedFnType::OnMigrate(collect_on_migrate_info(impl_fn, on_migrate)?)
+                        } else {
+                            unreachable!()
+                        };
                         // TODO check visibility - we should probably only allow pub fns
                         // collect the signature and attributes of the fn and add it to the collected_fns vector
                         collected_fns.push(PublishedFnInfo {
                             signature: impl_fn.sig.clone(),
-                            on_create,
-                            on_migrate,
-                            publish,
                             attrs: impl_fn.attrs.clone(),
+                            ty,
                         });
                     }
                 }
@@ -235,9 +250,14 @@ pub(crate) struct OnCreateAttr {
 }
 
 /// Represents the data in an #[on_migrate] attribute.
-#[derive(deluxe::ExtractAttributes, Debug)]
+#[derive(deluxe::ExtractAttributes, Debug, Clone)]
 #[deluxe(attributes(on_migrate))]
 pub(crate) struct OnMigrateAttr {}
+
+/// Represents the data in an #[on_migrate] attribute.
+#[derive(deluxe::ExtractAttributes, Debug)]
+#[deluxe(attributes(from))]
+pub(crate) struct FromAttr {}
 
 /// Describes a function that is published as a message handler.
 /// Contains the raw signature, the #[on_create] attribute, the #[publish] attribute,
@@ -245,10 +265,15 @@ pub(crate) struct OnMigrateAttr {}
 #[derive(Debug)]
 pub(crate) struct PublishedFnInfo {
     pub(crate) signature: Signature,
-    pub(crate) on_create: Option<OnCreateAttr>,
-    pub(crate) on_migrate: Option<OnMigrateAttr>,
-    pub(crate) publish: Option<PublishAttr>,
     pub(crate) attrs: Vec<Attribute>,
+    pub(crate) ty: PublishedFnType,
+}
+
+#[derive(Debug)]
+pub(crate) enum PublishedFnType {
+    Publish{attr: Option<PublishAttr>},
+    OnCreate{attr: OnCreateAttr},
+    OnMigrate(OnMigrateInfo),
 }
 
 /// Describes a trait that is implemented by a handler.

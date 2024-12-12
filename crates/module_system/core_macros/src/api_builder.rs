@@ -1,4 +1,4 @@
-use crate::handler::PublishedFnInfo;
+use crate::handler::{FromAttr, PublishedFnInfo, PublishedFnType};
 use crate::message_selector::message_selector_from_str;
 use crate::util::{maybe_extract_attribute, push_item};
 use core::borrow::Borrow;
@@ -90,6 +90,11 @@ impl APIBuilder {
         _handler_ty: &TokenStream2,
         publish_target: &PublishedFnInfo,
     ) -> manyhow::Result<()> {
+        if let PublishedFnType::OnMigrate { .. } = &publish_target.ty {
+            // we don't handle on_migrate functions here
+            return Ok(());
+        }
+
         let signature = &publish_target.signature;
         let fn_name = &signature.ident;
         // we generate the message struct name by appending the camel case version of the function name to the handler name
@@ -112,7 +117,6 @@ impl APIBuilder {
         let mut context_name: Option<Ident> = None;
         // whether or not the function is a query, meaning it has &Context rather than &mut Context
         let mut is_query = false;
-        let mut from = None;
         for field in &mut signature.inputs {
             match field {
                 // check that we have a &self receiver
@@ -127,25 +131,6 @@ impl APIBuilder {
 
                 // other function inputs should end up here
                 syn::FnArg::Typed(pat_type) => {
-                    // this case extracts the #[from] attribute in #[on_migrate] functions
-                    if publish_target.on_migrate.is_some() {
-                        if let Some(from_attr) = maybe_extract_attribute(pat_type)? {
-                            if from.is_some() {
-                                bail!(
-                                    "error with fn {}: only one #[from] attribute is allowed",
-                                    fn_name
-                                );
-                            }
-                            match pat_type.ty.as_ref() {
-                                Type::Reference(tyref) => {
-                                    from = Some(tyref.elem.clone());
-                                    continue;
-                                }
-                                _ => bail!("error with fn {}: the #[from] attribute must be attached to a reference to the handler from which the account is migrating", fn_name),
-                            }
-                        }
-                    }
-
                     match pat_type.pat.as_ref() {
                         Pat::Ident(pat_ident) => {
                             let mut ty = pat_type.ty.clone();
@@ -259,16 +244,16 @@ impl APIBuilder {
                 bail!("expected return type")
             }
         };
-        if publish_target.on_create.is_none() {
+        if let PublishedFnType::Publish { .. } = &publish_target.ty {
             push_item(
                 &mut self.items,
                 quote! {
-                impl < 'a >::ixc::core::message::MessageBase < 'a > for # msg_struct_name # opt_lifetime {
-                const SELECTOR: ::ixc::message_api::header::MessageSelector = # selector;
-                type Response < 'b > = < # return_type as::ixc::core::message::ExtractResponseTypes >::Response;
-                type Error = < # return_type as::ixc::core::message::ExtractResponseTypes >::Error;
-                type Codec =::ixc::schema::binary::NativeBinaryCodec;
-                }
+                    impl < 'a >::ixc::core::message::MessageBase < 'a > for # msg_struct_name # opt_lifetime {
+                        const SELECTOR: ::ixc::message_api::header::MessageSelector = # selector;
+                        type Response < 'b > = < # return_type as::ixc::core::message::ExtractResponseTypes >::Response;
+                        type Error = < # return_type as::ixc::core::message::ExtractResponseTypes >::Error;
+                        type Codec =::ixc::schema::binary::NativeBinaryCodec;
+                   }
                 },
             )?;
             push_item(
@@ -288,16 +273,16 @@ impl APIBuilder {
             };
             let route = quote! {
             ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, a| {
-            unsafe {
-            let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
-            let header = packet.header();
-            let in1 = header.in_pointer1.get(packet);
-            let mem = ::ixc::schema::mem::MemoryManager::new();
-            let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-            let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(header.account, header.caller, header.gas_left, cb, & mem);
-            let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
-            ::ixc::core::low_level::encode_response::< #msg_struct_name > ( & cdc, res, a, packet)
-            }
+                unsafe {
+                    let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
+                    let header = packet.header();
+                    let in1 = header.in_pointer1.get(packet);
+                    let mem = ::ixc::schema::mem::MemoryManager::new();
+                    let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
+                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(header.account, header.caller, header.gas_left, cb, & mem);
+                    let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
+                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( & cdc, res, a, packet)
+                }
             }),
             };
             if is_query {
@@ -321,7 +306,7 @@ impl APIBuilder {
                     unsafe { # dynamic_invoke }
                 }
             });
-        } else {
+        } else if let PublishedFnType::OnCreate { .. } = &publish_target.ty {
             self.system_routes.push(quote ! {
                 (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, packet, cb, a | {
                     unsafe {
@@ -369,8 +354,3 @@ impl APIBuilder {
         )
     }
 }
-
-/// Represents the data in an #[on_migrate] attribute.
-#[derive(deluxe::ExtractAttributes, Debug)]
-#[deluxe(attributes(from))]
-pub(crate) struct FromAttr {}

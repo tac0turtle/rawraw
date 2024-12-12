@@ -5,9 +5,9 @@ mod handler1 {
     use ixc_core::account_api;
 
     #[derive(Resources)]
-    pub(crate) struct Handler1 {
+    pub struct Handler1 {
         #[state(prefix = 0)]
-        pub(crate) value: Item<u32>,
+        pub value: Item<u32>,
         #[state(prefix = 1)]
         owner: Item<AccountID>,
     }
@@ -37,9 +37,9 @@ mod handler2 {
     use ixc_core::account_api;
 
     #[derive(Resources)]
-    pub(crate) struct Handler2 {
+    pub struct Handler2 {
         #[state(prefix = 0)]
-        pub(crate) value: Item<u64>,
+        pub value: Item<u64>,
         #[state(prefix = 1)]
         owner: Item<AccountID>,
     }
@@ -72,10 +72,9 @@ mod handler3 {
     use crate::handler1::Handler1;
     use crate::handler2::Handler2;
     use ixc::*;
-    use ixc_core::account_api;
 
     #[derive(Resources)]
-    struct Handler3 {
+    pub struct Handler3 {
         #[state(prefix = 0)]
         value: Item<u128>,
         #[state(prefix = 1)]

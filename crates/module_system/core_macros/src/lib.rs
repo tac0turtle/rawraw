@@ -8,6 +8,7 @@ mod handler_api;
 mod message_selector;
 mod resources;
 mod util;
+mod migration;
 
 //TODO remove
 use blake2::{Blake2b512, Digest};
@@ -54,8 +55,15 @@ pub fn on_create(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<To
 
 /// This attribute macro should be attached functions are called when an
 /// account has been migrated to new handler.
+///
 /// It requires a #[from] parameter to specify the handler from
 /// which the account is being migrated.
+/// Parameters annotated with #[from] must be borrowed references
+/// to handler structs or any struct that implements [`ixc::core::handler::NamedResources`].
+/// This makes it possible to migrate an account to a new handler
+/// while reading the state of the old handler,
+/// and only retaining the handler struct itself rather than all the old implementation code.
+///
 /// A unique migration function should be defined for each handler
 /// from which the account can be migrated.
 #[manyhow]

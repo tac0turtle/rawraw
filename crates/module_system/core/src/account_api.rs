@@ -2,7 +2,7 @@
 
 use crate::context::Context;
 use crate::error::ClientError;
-use crate::handler::{Handler, InitMessage, Service};
+use crate::handler::{Handler, InitMessage, NamedResources, Service};
 use crate::low_level::create_packet;
 use crate::result::ClientResult;
 use ixc_core_macros::message_selector;
@@ -19,7 +19,7 @@ pub fn create_account<H: Handler>(
     let cdc = <<H as Handler>::Init<'_> as InitMessage<'_>>::Codec::default();
     let init_bz = cdc.encode_value(&init, ctx.memory_manager())?;
 
-    let account_id = do_create_account(ctx, <H as Handler>::NAME, init_bz)?;
+    let account_id = do_create_account(ctx, <H as NamedResources>::NAME, init_bz)?;
     Ok(<H as Service>::new_client(account_id))
 }
 

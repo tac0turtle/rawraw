@@ -1,5 +1,5 @@
 use crate::api_builder::APIBuilder;
-use crate::handler::PublishedFnInfo;
+use crate::handler::{PublishedFnInfo, PublishedFnType};
 use manyhow::manyhow;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
@@ -18,9 +18,7 @@ pub(crate) fn handler_api(
         if let TraitItem::Fn(f) = item {
             let publish_target = PublishedFnInfo {
                 signature: f.sig.clone(),
-                on_create: None,
-                on_migrate: None,
-                publish: None,
+                ty: PublishedFnType::Publish { attr: None },
                 attrs: f.attrs.clone(),
             };
             builder.extract_method_data(trait_ident, &dyn_trait, &publish_target)?;
