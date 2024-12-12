@@ -170,7 +170,7 @@ mod tests {
         fn test_dealloc(layouts in vec(layout(), 1..100)) {
             #[derive(Default)]
             struct TrackingAllocator {allocations: RefCell<BTreeSet<NonNull<[u8]>>>}
-            unsafe impl <'a> Allocator for &'a TrackingAllocator {
+            unsafe impl Allocator for &TrackingAllocator {
                 fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
                     let allocation = Global.allocate(layout)?;
                     self.allocations.borrow_mut().insert(allocation);

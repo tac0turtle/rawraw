@@ -139,7 +139,7 @@ mod test {
         drop_counter: &'a Cell<u32>,
     }
 
-    impl<'a> Drop for NeedsDrop<'a> {
+    impl Drop for NeedsDrop<'_> {
         fn drop(&mut self) {
             self.drop_counter.set(self.drop_counter.get() - 1);
         }
@@ -155,7 +155,7 @@ mod test {
             for i in 0..10 {
                 drop_counter.set(drop_counter.get() + 1);
                 v.push(NeedsDrop {
-                    x: String::from(format!("x{}", i)),
+                    x: format!("x{}", i),
                     drop_counter: &drop_counter,
                 });
             }
