@@ -1,6 +1,6 @@
 //! The item module contains the `Item` struct, which represents a single item in storage.
 
-use crate::map::{Prefix, MAX_SIZE};
+use crate::prefix::Prefix;
 use crate::Map;
 use core::borrow::Borrow;
 use ixc_core::resource::{InitializationError, StateObjectResource};
@@ -15,7 +15,7 @@ pub struct Item<V> {
 
 impl<K> Item<K> {
     /// Creates a new item with the given prefix.
-    pub const fn new(prefix: Prefix) -> Self {
+    pub(crate) const fn new(prefix: Prefix) -> Self {
         Self {
             map: Map::new(prefix),
         }
@@ -43,19 +43,9 @@ where
 
 unsafe impl<T> StateObjectResource for Item<T> {
     unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
-        if scope.len() + 1 > MAX_SIZE {
-            return Err(InitializationError::ExceedsLength);
-        }
-        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
-        slice[0] = prefix;
-        slice[1..=scope.len()].copy_from_slice(scope);
-
-        let bytes = Prefix {
-            length: scope.len() as u8,
-            data: slice,
-        };
+        let prefix = Prefix::new(scope, prefix)?;
         Ok(Self {
-            map: Map::new(bytes),
+            map: Map::new(prefix),
         })
     }
 }

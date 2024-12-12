@@ -309,7 +309,7 @@ impl KeyFieldValue for ixc_message_api::AccountID {
 impl KeyFieldValue for Str {
     fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         // write null terminator
-        writer.write(&[0]);
+        writer.write(&[0])?;
         writer.write(key.as_bytes())
     }
 

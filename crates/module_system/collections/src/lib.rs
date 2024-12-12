@@ -1,15 +1,13 @@
 //! **WARNING: This is an API preview! Most code won't work or even type check properly!**
 //! State objects projects a state management framework that works well with interchain_core.
 
-#![feature(concat_bytes)]
 extern crate alloc;
 
-mod errors;
+pub mod accumulator;
 mod item;
 mod map;
+mod prefix;
 mod store_client;
-// mod uint_map;
-pub mod accumulator;
 
 pub use accumulator::{Accumulator, AccumulatorMap};
 pub use item::Item;

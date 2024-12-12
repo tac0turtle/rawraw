@@ -20,7 +20,7 @@ pub trait Writer {
     fn pos(&self) -> usize;
 }
 
-impl<'a> WriterFactory for MemoryManager {
+impl WriterFactory for MemoryManager {
     fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter, EncodeError> {
         unsafe {
             let ptr = self

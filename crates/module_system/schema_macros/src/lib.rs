@@ -76,12 +76,6 @@ fn derive_struct_schema(
             #index => <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::decode(&mut self.#field_name, decoder),
         }
     });
-    let field_inits = str.fields.iter().map(|field| {
-        let field_name = field.ident.as_ref().unwrap();
-        quote! {
-            #field_name,
-        }
-    });
     Ok(quote! {
         unsafe impl #impl_generics #ixc_schema_path::structs::StructSchema for #struct_name #ty_generics #where_clause {
             const STRUCT_TYPE: #ixc_schema_path::structs::StructType<'static> = #ixc_schema_path::structs::StructType {

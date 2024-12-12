@@ -24,24 +24,24 @@ pub fn create_account<H: Handler>(
 }
 
 /// Creates a new account for the named handler with opaque initialization data.
-pub fn create_account_raw<'a>(
-    ctx: &mut Context,
-    name: &str,
-    init: &[u8],
-) -> ClientResult<AccountID> {
+pub fn create_account_raw(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
     do_create_account(ctx, name, init)
 }
 
 /// Creates a new account for the named handler with opaque initialization data.
-fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
-    let mut packet = create_packet(ctx, ROOT_ACCOUNT, CREATE_SELECTOR)?;
+fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
+    let mut packet = create_packet(
+        ctx.account,
+        ctx.memory_manager(),
+        ROOT_ACCOUNT,
+        CREATE_SELECTOR,
+    )?;
 
     unsafe {
         packet.header_mut().in_pointer1.set_slice(name.as_bytes());
         packet.header_mut().in_pointer2.set_slice(init);
 
-        ctx.host_backend()
-            .invoke(&mut packet, ctx.memory_manager())?;
+        ctx.dynamic_invoke_msg(&mut packet)?;
 
         let res = packet.header().in_pointer1.get(&packet);
         if res.len() != size_of::<u128>() {
@@ -57,14 +57,17 @@ fn do_create_account<'a>(ctx: &Context, name: &str, init: &[u8]) -> ClientResult
 
 /// Self-destructs the account.
 ///
-/// SAFETY: This function is unsafe because it can be used to destroy the account and all its state.
+/// # Safety
+/// This function is unsafe because it can be used to destroy the account and all its state.
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
-    let mut packet = create_packet(ctx, ROOT_ACCOUNT, SELF_DESTRUCT_SELECTOR)?;
-    unsafe {
-        ctx.host_backend()
-            .invoke(&mut packet, ctx.memory_manager())?;
-        Ok(())
-    }
+    let mut packet = create_packet(
+        ctx.self_account_id(),
+        ctx.memory_manager(),
+        ROOT_ACCOUNT,
+        SELF_DESTRUCT_SELECTOR,
+    )?;
+    ctx.dynamic_invoke_msg(&mut packet)?;
+    Ok(())
 }
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");

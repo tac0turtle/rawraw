@@ -6,8 +6,8 @@ use ixc_schema::codec::Codec;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::value::{OptionalValue, SchemaValue};
 
-/// The Message trait for invoking messages dynamically.
-pub trait Message<'a>: SchemaValue<'a> + StructSchema {
+/// The MessageBase trait for invoking messages dynamically.
+pub trait MessageBase<'a>: SchemaValue<'a> + StructSchema {
     /// The message selector.
     const SELECTOR: MessageSelector;
     /// The optional response type.
@@ -17,6 +17,12 @@ pub trait Message<'a>: SchemaValue<'a> + StructSchema {
     /// The codec to use for encoding and decoding the message.
     type Codec: Codec + Default;
 }
+
+/// The Message trait for invoking messages dynamically.
+pub trait Message<'a>: MessageBase<'a> {}
+
+/// The QueryMessage trait for invoking query messages dynamically.
+pub trait QueryMessage<'a>: MessageBase<'a> {}
 
 /// Extract the response and error types from a Result.
 /// Used internally in macros for building the Message implementation and ClientResult type.

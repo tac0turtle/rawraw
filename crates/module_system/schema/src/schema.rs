@@ -33,7 +33,7 @@ impl<'a> SchemaType<'a> {
 
 impl PartialOrd for SchemaType<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        self.name().partial_cmp(other.name())
+        Some(self.cmp(other))
     }
 }
 

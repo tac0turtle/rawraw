@@ -1,32 +1,76 @@
 //! **WARNING: This is an API preview! Expect major bugs, glaring omissions, and breaking changes!**
 //!
 //! Virtual Machine API
-use ixc_message_api::code::ErrorCode;
-use ixc_message_api::handler::{Allocator, HostBackend};
-use ixc_message_api::packet::MessagePacket;
+#![no_std]
 
-/// A unique identifier for a handler implementation.
-#[derive(Debug, Clone)]
-pub struct HandlerID {
-    // NOTE: encoding these as strings should be considered a temporary
-    /// The unique identifier for the virtual machine that the handler is implemented in.
-    pub vm: String,
-    /// The unique identifier for the handler within the virtual machine.
-    pub vm_handler_id: String,
-}
+use allocator_api2::vec::Vec;
+use ixc_message_api::code::ErrorCode;
+use ixc_message_api::handler::{Allocator, RawHandler};
+use ixc_message_api::AccountID;
 
 /// A virtual machine that can run message handlers.
 pub trait VM {
-    /// Describe a handler within the virtual machine.
-    fn describe_handler(&self, vm_handler_id: &str) -> Option<HandlerDescriptor>;
-    /// Run a handler within the virtual machine.
-    fn run_handler(
+    /// Resolves a handler ID provided by a caller to the handler ID which should be stored in state
+    /// or return None if the handler ID is not valid.
+    /// This allows for multiple ways of addressing a single handler in code and for ensuring that
+    /// the handler actually exists.
+    fn resolve_handler_id<'a>(
         &self,
-        vm_handler_id: &str,
-        message_packet: &mut MessagePacket,
-        callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+        store: &dyn ReadonlyStore,
+        handler_id: &[u8],
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
+
+    /// Resolves a handler ID to an executable handler or returns an error if the handler is not found.
+    fn resolve_handler<'b, 'a: 'b>(
+        &'a self,
+        store: &dyn ReadonlyStore,
+        handler_id: &[u8],
+        allocator: &'b dyn Allocator,
+    ) -> Result<&'b dyn RawHandler, ErrorCode>;
+
+    // /// Runs a handler with the provided message packet and host backend.
+    // fn run_message(
+    //     &self,
+    //     store: &dyn ReadonlyStore,
+    //     handler_id: &[u8],
+    //     message_packet: &mut MessagePacket,
+    //     backend: &mut dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode>;
+    //
+    // /// Runs a query handler with the provided message packet and host backend.
+    // fn run_query(
+    //     &self,
+    //     store: &dyn ReadonlyStore,
+    //     handler_id: &[u8],
+    //     message_packet: &mut MessagePacket,
+    //     backend: &dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode>;
+    //
+    // /// Runs a system message handler with the provided message packet and host backend.
+    // fn run_system_message(
+    //     &self,
+    //     store: &dyn ReadonlyStore,
+    //     handler_id: &[u8],
+    //     message_packet: &mut MessagePacket,
+    //     backend: &mut dyn HostBackend,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode>;
+}
+
+/// A store that can only be read from.
+/// In the context of a VM,
+/// this state should only be used to retrieve the code for a handler from the store.
+pub trait ReadonlyStore {
+    /// Gets the value for the given key for the given account.
+    fn get<'a>(
+        &self,
+        account_id: AccountID,
+        key: &[u8],
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
 }
 
 /// A descriptor for a handler.
