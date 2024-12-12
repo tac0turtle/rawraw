@@ -145,12 +145,9 @@ mod tests {
     use super::*;
     use alloc::alloc::Layout;
     use alloc::collections::BTreeSet;
-    use alloc::format;
     use core::cell::RefCell;
     use proptest::collection::vec;
     use proptest::prelude::*;
-    use proptest::sample::size_range;
-    use proptest_derive::Arbitrary;
     use rangemap::RangeSet;
 
     fn layout() -> impl Strategy<Value = Layout> {
