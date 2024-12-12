@@ -2,6 +2,7 @@ use allocator_api2::{
     alloc::{Allocator, Global},
     vec::Vec,
 };
+use ixc_account_manager::state_handler::std::StdStateManager;
 use std::{borrow::Borrow, collections::HashMap};
 
 use crate::Store;
@@ -12,7 +13,7 @@ pub struct Snapshot {
 
 pub struct SnapshotState<'a, S> {
     state: &'a S,
-    changes: HashMap<Vec<u8>, Value>,
+    changes: HashMap<[u8; 32], Value>,
     changelog: Vec<StateChange>,
 }
 
@@ -27,12 +28,16 @@ impl<'a, S> SnapshotState<'a, S> {
 }
 
 impl<'a, S: Store> SnapshotState<'a, S> {
-    pub fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
+    pub fn get<A: Allocator>(&self, key: &[u8], allocator: A) -> Option<Vec<u8, A>> {
         // try to get from values
         match self.changes.get(key) {
             // get from disk db
             None => {
-                let v = self.state.get(key).unwrap();
+                let v = self
+                    .state
+                    .get(key.to_vec())
+                    .unwrap_or_else(|| self.state.get(key).map(|v| v.to_vec()))
+                    .unwrap();
                 let mut vec = Vec::new_in(allocator);
                 vec.extend_from_slice(&v);
                 Some(vec)
@@ -50,7 +55,7 @@ impl<'a, S: Store> SnapshotState<'a, S> {
         }
     }
 
-    pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
+    pub fn set(&mut self, key: &[u8], value: &[u8]) {
         let previous_value = self
             .changes
             .insert(key.clone(), Value::Updated(value.clone()));
@@ -61,7 +66,7 @@ impl<'a, S: Store> SnapshotState<'a, S> {
         });
     }
 
-    pub fn delete(&mut self, key: &Vec<u8>) {
+    pub fn delete(&mut self, key: &[u8]) {
         let value = self.get(key, Global); //TODO: change from global allocator
         self.changes.insert(key.clone(), Value::Deleted);
         self.changelog.push(StateChange::Delete {

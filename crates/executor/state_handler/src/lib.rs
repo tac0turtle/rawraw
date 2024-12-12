@@ -4,6 +4,8 @@ mod snapshot_state;
 use crate::snapshot_state::{Snapshot, SnapshotState};
 use allocator_api2::alloc::{Allocator, Global};
 use allocator_api2::vec::Vec;
+use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
+use ixc_message_api::AccountID;
 
 /// A store that can be used to store and retrieve state.
 pub trait Store {
@@ -28,39 +30,93 @@ impl<'a, S: Store> StateHandler<'a, S> {
             checkpoints: Vec::with_capacity_in(200, Global),
         }
     }
+}
+
+impl<'a, S: Store> StdStateManager for StateHandler<'a, S> {
+    fn kv_get<A: Allocator>(
+        &self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        allocator: A,
+    ) -> Result<Option<Vec<u8, A>>, StdStateError> {
+        todo!()
+    }
+
+    fn kv_set(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        value: &[u8],
+    ) -> Result<(), StdStateError> {
+        todo!()
+    }
+
+    fn kv_delete(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+    ) -> Result<(), StdStateError> {
+        todo!()
+    }
+
+    fn accumulator_get(
+        &self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+    ) -> Result<u128, StdStateError> {
+        todo!()
+    }
+
+    fn accumulator_add(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        value: u128,
+    ) -> Result<(), StdStateError> {
+        todo!()
+    }
+    fn accumulator_safe_sub(
+        &mut self,
+        account_id: AccountID,
+        scope: Option<AccountID>,
+        key: &[u8],
+        value: u128,
+    ) -> Result<bool, StdStateError> {
+        todo!()
+    }
 
     /// Begins a new transaction.
-    pub fn begin_tx(&mut self) -> Result<(), ()> {
-        let snapshot = self.snapshot_state.snapshot();
-        self.checkpoints.push(snapshot);
-        Ok(())
+    fn begin_tx(&mut self) -> Result<(), StdStateError> {
+        todo!()
     }
 
     /// Commits the current transaction.
-    pub fn commit_tx(&mut self) -> Result<(), ()> {
-        self.checkpoints.pop();
-        Ok(())
+    fn commit_tx(&mut self) -> Result<(), StdStateError> {
+        todo!()
     }
 
     /// Rolls back the current transaction.
-    pub fn rollback_tx(&mut self) -> Result<(), ()> {
-        let checkpoint = self.checkpoints.pop().unwrap();
-        self.snapshot_state.revert_to_snapshot(checkpoint)?;
-        Ok(())
+    fn rollback_tx(&mut self) -> Result<(), StdStateError> {
+        todo!()
     }
 
-    /// Gets the value for the given key.
-    pub fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
-        self.snapshot_state.get(key, allocator)
+    /// Create storage for a new account.
+    fn create_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError> {
+        todo!()
     }
 
-    /// Sets the value for the given key.
-    pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
-        self.snapshot_state.set(key, value);
+    /// Delete all of an account's storage.
+    fn delete_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError> {
+        todo!()
     }
 
-    /// Deletes the value for the given key.
-    pub fn delete(&mut self, key: &Vec<u8>) {
-        self.snapshot_state.delete(key);
+    /// Emit an event.
+    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError> {
+        todo!()
     }
 }
