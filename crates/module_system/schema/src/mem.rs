@@ -10,6 +10,11 @@ use core::ptr::{drop_in_place, NonNull};
 
 /// A memory manager that tracks allocated memory using a bump allocator and ensures that
 /// memory is deallocated and dropped properly when the manager is dropped.
+///
+/// Currently, the bump allocator uses the global allocator as its base allocator,
+/// but this could be customized in the future.
+/// For instance, one strategy could be to have a fixed chunk of memory per thread that is used
+/// for the bump allocator under the hood.
 pub struct MemoryManager {
     bump: crate::bump::BumpAllocator,
     drop_cells: Cell<Option<NonNull<DropCell>>>,
