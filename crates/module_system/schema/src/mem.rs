@@ -55,10 +55,9 @@ impl MemoryManager {
                     // Rust doesn't know what the lifetime of this data is, but we do because
                     // we allocated it and own the allocator,
                     // so we transmute it to have the appropriate lifetime
-                    dropper: transmute::<
-                        NonNull<dyn DeferDrop>,
-                        NonNull<dyn DeferDrop>,
-                    >(dropper as NonNull<dyn DeferDrop>),
+                    dropper: transmute::<NonNull<dyn DeferDrop>, NonNull<dyn DeferDrop>>(
+                        dropper as NonNull<dyn DeferDrop>,
+                    ),
                     next: self.drop_cells.get(),
                 },
                 &self.bump,
@@ -129,8 +128,8 @@ impl<T> DeferDrop for T {}
 
 #[cfg(test)]
 mod test {
-    use alloc::format;
     use super::*;
+    use alloc::format;
     use alloc::string::String;
     use allocator_api2::vec::Vec;
 
@@ -139,7 +138,7 @@ mod test {
         drop_counter: &'a Cell<u32>,
     }
 
-    impl <'a> Drop for NeedsDrop<'a> {
+    impl<'a> Drop for NeedsDrop<'a> {
         fn drop(&mut self) {
             self.drop_counter.set(self.drop_counter.get() - 1);
         }
@@ -154,7 +153,10 @@ mod test {
             let mut v: Vec<NeedsDrop, &dyn Allocator> = Vec::new_in(&mem);
             for i in 0..10 {
                 drop_counter.set(drop_counter.get() + 1);
-                v.push(NeedsDrop { x: String::from(format!("x{}", i)), drop_counter: &drop_counter });
+                v.push(NeedsDrop {
+                    x: String::from(format!("x{}", i)),
+                    drop_counter: &drop_counter,
+                });
             }
             let slc = mem.unpack_slice(v);
             assert_eq!(slc.len(), 10);
