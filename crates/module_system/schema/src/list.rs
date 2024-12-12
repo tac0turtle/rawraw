@@ -38,7 +38,7 @@ impl<'a, T: SchemaValue<'a>> Default for AllocatorVecBuilder<'a, T> {
 }
 
 impl<'a, T: SchemaValue<'a>> AllocatorVecBuilder<'a, T> {
-    fn get_xs<'b>(&mut self, mem: &'a MemoryManager) -> &mut Vec<T, &'a dyn Allocator> {
+    fn get_xs(&mut self, mem: &'a MemoryManager) -> &mut Vec<T, &'a dyn Allocator> {
         if self.xs.is_none() {
             self.xs = Some(Vec::new_in(mem));
         }

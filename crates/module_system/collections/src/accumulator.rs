@@ -1,5 +1,5 @@
 //! A u128 accumulator map.
-use crate::map::{Prefix, MAX_SIZE};
+use crate::prefix::Prefix;
 use crate::{Item, Map};
 use core::borrow::Borrow;
 use ixc_core::error::{convert_client_error, ClientError};
@@ -30,12 +30,12 @@ pub enum SafeSubError {
 
 impl Accumulator {
     /// Gets the current value, defaulting always to 0.
-    pub fn get<'a>(&self, ctx: &Context) -> ClientResult<u128> {
+    pub fn get(&self, ctx: &Context) -> ClientResult<u128> {
         self.item.get(ctx)
     }
 
     /// Adds the given value to the current value.
-    pub fn add<'a>(&self, ctx: &mut Context, value: u128) -> ClientResult<u128> {
+    pub fn add(&self, ctx: &mut Context, value: u128) -> ClientResult<u128> {
         let current = self.item.get(ctx)?;
         let new_value = current.saturating_add(value);
         self.item.set(ctx, &new_value)?;
@@ -44,7 +44,7 @@ impl Accumulator {
 
     /// Subtracts the given value from the current value,
     /// returning an error if the subtraction would result in a negative value.
-    pub fn safe_sub<'a>(&self, ctx: &mut Context, value: u128) -> ClientResult<u128, SafeSubError> {
+    pub fn safe_sub(&self, ctx: &mut Context, value: u128) -> ClientResult<u128, SafeSubError> {
         let current = self.item.get(ctx).map_err(convert_client_error)?;
         let new_value = current.checked_sub(value).ok_or_else(|| {
             ClientError::new(
@@ -107,38 +107,18 @@ impl<K: ObjectKey> AccumulatorMap<K> {
 
 unsafe impl StateObjectResource for Accumulator {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
-        if scope.len() + 1 > MAX_SIZE {
-            return Err(InitializationError::ExceedsLength);
-        }
-        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
-        slice[0] = prefix;
-        slice[1..=scope.len()].copy_from_slice(scope);
-
-        let bytes = Prefix {
-            length: scope.len() as u8,
-            data: slice,
-        };
+        let prefix = Prefix::new(scope, prefix)?;
         Ok(Accumulator {
-            item: Item::new(bytes),
+            item: Item::new(prefix),
         })
     }
 }
 
 unsafe impl<K> StateObjectResource for AccumulatorMap<K> {
     unsafe fn new(scope: &[u8], prefix: u8) -> std::result::Result<Self, InitializationError> {
-        if scope.len() + 1 > MAX_SIZE {
-            return Err(InitializationError::ExceedsLength);
-        }
-        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
-        slice[0] = prefix;
-        slice[1..=scope.len()].copy_from_slice(scope);
-
-        let bytes = Prefix {
-            length: scope.len() as u8,
-            data: slice,
-        };
+        let prefix = Prefix::new(scope, prefix)?;
         Ok(AccumulatorMap {
-            map: Map::new(bytes),
+            map: Map::new(prefix),
         })
     }
 }

@@ -1,4 +1,5 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
+use crate::prefix::Prefix;
 use crate::store_client::KVStoreClient;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
@@ -17,25 +18,12 @@ pub struct Map<K, V> {
     prefix: Prefix,
 }
 
-/// The prefix of the map.
-pub struct Prefix {
-    pub length: u8,
-    pub data: [u8; 7],
-}
-
-impl Prefix {
-    /// as_slice returns the underlying slice of the prefix.
-    pub fn as_slice(&self) -> &[u8] {
-        &self.data[..self.length as usize]
-    }
-}
-
 impl<K, V> Map<K, V> {
     /// Creates a new map with the given prefix.
-    pub const fn new(prefix: Prefix) -> Self {
+    pub(crate) const fn new(prefix: Prefix) -> Self {
         Self {
             _phantom: (PhantomData, PhantomData),
-            prefix: prefix,
+            prefix,
         }
     }
 }
@@ -47,7 +35,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         L: Borrow<K::In<'b>>,
     {
         let key_bz =
-            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
+            encode_object_key::<K>(self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
 
         let value_bz = KVStoreClient.get(ctx, key_bz)?;
         let value_bz = match value_bz {
@@ -66,7 +54,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         U: Borrow<V::In<'a>>,
     {
         let key_bz =
-            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
+            encode_object_key::<K>(self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
         let value_bz = encode_object_value::<V>(value.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.set(ctx, key_bz, value_bz) }
     }
@@ -77,28 +65,17 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         L: Borrow<K::In<'a>>,
     {
         let key_bz =
-            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
+            encode_object_key::<K>(self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.delete(ctx, key_bz) }
     }
 }
 
 unsafe impl<K, V> StateObjectResource for Map<K, V> {
     unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
-        if scope.len() + 1 > MAX_SIZE {
-            return Err(InitializationError::ExceedsLength);
-        }
-        let mut slice: [u8; MAX_SIZE] = [0u8; MAX_SIZE];
-        slice[0..scope.len()].copy_from_slice(scope);
-        slice[scope.len()] = prefix;
-
-        let bytes = Prefix {
-            length: scope.len() as u8,
-            data: slice,
-        };
-
+        let prefix = Prefix::new(scope, prefix)?;
         Ok(Self {
             _phantom: (PhantomData, PhantomData),
-            prefix: bytes,
+            prefix,
         })
     }
 }

@@ -19,6 +19,11 @@ pub mod counter {
             Ok(())
         }
 
+        pub fn get(&self, ctx: &Context) -> Result<u64> {
+            let res = self.value.get(ctx)?;
+            Ok(res)
+        }
+
         pub fn inc(&self, ctx: &mut Context) -> Result<u64> {
             let value = self.value.get(ctx)?;
             let new_value = value
@@ -50,6 +55,8 @@ mod tests {
         assert_eq!(value, 1);
         // Alice increments the counter again
         let value = counter_client.inc(&mut alice_ctx).unwrap();
+        assert_eq!(value, 2);
+        let value = counter_client.get(&alice_ctx).unwrap();
         assert_eq!(value, 2);
     }
 }
