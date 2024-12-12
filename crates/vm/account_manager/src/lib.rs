@@ -10,7 +10,10 @@ pub mod state_handler;
 use crate::authz::AuthorizationMiddleware;
 use crate::id_generator::IDGenerator;
 use crate::state_handler::gas::GasMeter;
-use crate::state_handler::{destroy_account_data, get_account_handler_id, init_next_account, update_handler_id, StateHandler};
+use crate::state_handler::{
+    destroy_account_data, get_account_handler_id, init_next_account, update_handler_id,
+    StateHandler,
+};
 use allocator_api2::vec::Vec;
 use arrayvec::ArrayVec;
 use core::alloc::Layout;
@@ -442,12 +445,8 @@ impl<
             .ok_or(SystemCode(HandlerNotFound))?;
 
         // update the handler ID
-        update_handler_id(
-            self.state_handler,
-            caller,
-            &new_handler_id,
-            &mut gas,
-        ).map_err(|_| SystemCode(InvalidHandler))?;
+        update_handler_id(self.state_handler, caller, &new_handler_id, &mut gas)
+            .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create
         let mut on_migrate_packet =
@@ -457,7 +456,9 @@ impl<
         on_migrate_header.caller = caller;
         on_migrate_header.message_selector = ON_MIGRATE_SELECTOR;
         on_migrate_header.in_pointer1.set_slice(on_migrate_data);
-        on_migrate_header.in_pointer2.set_slice(old_handler_id.as_slice());
+        on_migrate_header
+            .in_pointer2
+            .set_slice(old_handler_id.as_slice());
 
         // retrieve the handler
         let handler = self.account_manager.code_manager.resolve_handler(

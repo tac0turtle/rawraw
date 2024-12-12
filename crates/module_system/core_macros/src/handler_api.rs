@@ -19,6 +19,7 @@ pub(crate) fn handler_api(
             let publish_target = PublishedFnInfo {
                 signature: f.sig.clone(),
                 on_create: None,
+                on_migrate: None,
                 publish: None,
                 attrs: f.attrs.clone(),
             };

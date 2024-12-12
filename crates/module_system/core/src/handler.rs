@@ -7,10 +7,13 @@ use ixc_schema::codec::Codec;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::SchemaValue;
 
-/// Handler trait for account and module handlers.
-pub trait Handler: RawHandler + Router + Resources + Service {
+pub trait NamedResources: Resources {
     /// The name of the handler.
     const NAME: &'static str;
+}
+
+/// Handler trait for account and module handlers.
+pub trait Handler: RawHandler + Router + NamedResources + Service {
     /// The parameter used for initializing the handler.
     type Init<'a>: InitMessage<'a>;
 }

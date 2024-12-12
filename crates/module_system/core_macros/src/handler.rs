@@ -190,8 +190,13 @@ fn collect_publish_targets(
                     let on_create = maybe_extract_attribute(impl_fn)?;
                     // check if the function has the #[publish] attribute
                     let publish = maybe_extract_attribute(impl_fn)?;
-                    if publish.is_some() && on_create.is_some() {
-                        bail!("on_create and publish attributes must not be attached to the same function");
+                    // check if the function has the #[on_migrate] attribute
+                    let on_migrate = maybe_extract_attribute(impl_fn)?;
+                    let attr_count = on_create.is_some() as usize
+                        + publish.is_some() as usize
+                        + on_migrate.is_some() as usize;
+                    if attr_count > 1 {
+                        bail!("only one of #[on_create], #[publish], or #[on_migrate] can be attached to a function");
                     }
                     // we define a publish attribute for the fn if it is annotated directly with #[publish] or if the impl block has #[publish]
                     let publish = publish_all.clone().or(publish);
@@ -202,6 +207,7 @@ fn collect_publish_targets(
                         collected_fns.push(PublishedFnInfo {
                             signature: impl_fn.sig.clone(),
                             on_create,
+                            on_migrate,
                             publish,
                             attrs: impl_fn.attrs.clone(),
                         });
@@ -228,6 +234,11 @@ pub(crate) struct OnCreateAttr {
     message_name: Option<String>,
 }
 
+/// Represents the data in an #[on_migrate] attribute.
+#[derive(deluxe::ExtractAttributes, Debug)]
+#[deluxe(attributes(on_migrate))]
+pub(crate) struct OnMigrateAttr {}
+
 /// Describes a function that is published as a message handler.
 /// Contains the raw signature, the #[on_create] attribute, the #[publish] attribute,
 /// and any other attributes on the function.
@@ -235,6 +246,7 @@ pub(crate) struct OnCreateAttr {
 pub(crate) struct PublishedFnInfo {
     pub(crate) signature: Signature,
     pub(crate) on_create: Option<OnCreateAttr>,
+    pub(crate) on_migrate: Option<OnMigrateAttr>,
     pub(crate) publish: Option<PublishAttr>,
     pub(crate) attrs: Vec<Attribute>,
 }

@@ -5,11 +5,11 @@ use ixc_message_api::AccountID;
 /// An account or module handler's resources.
 /// This is usually derived by the state management framework.
 /// # Safety
-/// the trait is marked as unsafe to detour users from creating it
+/// The trait is marked as unsafe to detour users from creating it
 pub unsafe trait Resources: Sized {
     /// Initializes the resources.
     /// # Safety
-    /// the function is marked as unsafe to detour users from calling it directly
+    /// The function is marked as unsafe to detour users from calling it directly
     unsafe fn new(scope: &ResourceScope) -> Result<Self, InitializationError>;
 }
 

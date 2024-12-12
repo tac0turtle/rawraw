@@ -55,6 +55,21 @@ fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult
     }
 }
 
+/// Migrates the account to the new handler with the specified ID.
+pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
+    let mut packet = create_packet(
+        ctx.self_account_id(),
+        ctx.memory_manager(),
+        ROOT_ACCOUNT,
+        MIGRATE_SELECTOR,
+    )?;
+    unsafe {
+        packet.header_mut().in_pointer1.set_slice(new_handler_id.as_bytes());
+        ctx.dynamic_invoke_msg(&mut packet)?;
+    }
+    Ok(())
+}
+
 /// Self-destructs the account.
 ///
 /// # Safety
@@ -72,6 +87,8 @@ pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
 
+const MIGRATE_SELECTOR: u64 = message_selector!("ixc.account.v1.migrate");
+
 const SELF_DESTRUCT_SELECTOR: u64 = message_selector!("ixc.account.v1.self_destruct");
 
 /// The ID of the root account which creates and manages accounts.
@@ -79,6 +96,9 @@ pub const ROOT_ACCOUNT: AccountID = AccountID::new(1);
 
 /// The message selector for the on_create message.
 pub const ON_CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_create");
+
+/// The message selector for the on_migrate message.
+pub const ON_MIGRATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_migrate");
 
 // TODO:
 // // #[ixc_schema_macros::handler_api]
