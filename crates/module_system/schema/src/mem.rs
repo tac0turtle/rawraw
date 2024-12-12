@@ -10,11 +10,15 @@ use core::ptr::{drop_in_place, NonNull};
 
 /// A memory manager that tracks allocated memory using a bump allocator and ensures that
 /// memory is deallocated and dropped properly when the manager is dropped.
+/// The big difference between a raw bump allocator and the memory manager is that it ensures
+/// that any values borrowed as slices (ex. &[T]) are properly dropped.
+///
+/// Currently, the bump allocator uses the global allocator as its base allocator,
+/// but this could be customized in the future.
+/// For instance, one strategy could be to have a fixed chunk of memory per thread that is used
+/// for the bump allocator under the hood.
 pub struct MemoryManager {
-    #[cfg(feature = "bumpalo")]
-    bump: bumpalo::Bump,
-    #[cfg(not(feature = "bumpalo"))]
-    bump: crate::bump::Bump,
+    bump: crate::bump::BumpAllocator,
     drop_cells: Cell<Option<NonNull<DropCell>>>,
 }
 
@@ -51,10 +55,9 @@ impl MemoryManager {
                     // Rust doesn't know what the lifetime of this data is, but we do because
                     // we allocated it and own the allocator,
                     // so we transmute it to have the appropriate lifetime
-                    dropper: transmute::<
-                        core::ptr::NonNull<dyn DeferDrop>,
-                        core::ptr::NonNull<dyn DeferDrop>,
-                    >(dropper as NonNull<dyn DeferDrop>),
+                    dropper: transmute::<NonNull<dyn DeferDrop>, NonNull<dyn DeferDrop>>(
+                        dropper as NonNull<dyn DeferDrop>,
+                    ),
                     next: self.drop_cells.get(),
                 },
                 &self.bump,
@@ -122,3 +125,44 @@ impl Drop for MemoryManager {
 
 trait DeferDrop {}
 impl<T> DeferDrop for T {}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use alloc::format;
+    use alloc::string::String;
+    use allocator_api2::vec::Vec;
+
+    struct NeedsDrop<'a> {
+        #[allow(dead_code)]
+        x: String,
+        drop_counter: &'a Cell<u32>,
+    }
+
+    impl Drop for NeedsDrop<'_> {
+        fn drop(&mut self) {
+            self.drop_counter.set(self.drop_counter.get() - 1);
+        }
+    }
+
+    #[test]
+    /// This test makes sure that all values that are exposed through unpack_slice are properly dropped.
+    fn test_unpack_slice() {
+        let drop_counter = Cell::new(0);
+        {
+            let mem = MemoryManager::default();
+            let mut v: Vec<NeedsDrop, &dyn Allocator> = Vec::new_in(&mem);
+            for i in 0..10 {
+                drop_counter.set(drop_counter.get() + 1);
+                v.push(NeedsDrop {
+                    x: format!("x{}", i),
+                    drop_counter: &drop_counter,
+                });
+            }
+            let slc = mem.unpack_slice(v);
+            assert_eq!(slc.len(), 10);
+            assert_eq!(drop_counter.get(), 10);
+        }
+        assert_eq!(drop_counter.get(), 0);
+    }
+}

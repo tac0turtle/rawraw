@@ -1,4 +1,4 @@
-use allocator_api2::alloc::{AllocError, Allocator};
+use allocator_api2::alloc::{AllocError, Allocator, Global};
 use core::alloc::Layout;
 use core::cell::Cell;
 use core::cmp::max;
@@ -6,10 +6,11 @@ use core::ptr::NonNull;
 
 // Very simple, custom bump allocator to avoid third party dependencies,
 // reduce code size, and customize where chunks are allocated from and their sizes.
-#[derive(Default)]
-pub struct Bump {
+pub struct BumpAllocator<A: Allocator = Global> {
     // the current chunk that is being allocated, if any
     cur: Cell<Option<NonNull<Footer>>>,
+    // the base allocator to use for allocating chunks
+    base_allocator: A,
 }
 
 // a footer describing the chunk that is at the end of the chunk
@@ -24,10 +25,29 @@ struct Footer {
     layout: Layout,
 }
 
-const FOOTER_SIZE: usize = core::mem::size_of::<Footer>();
+const FOOTER_SIZE: usize = size_of::<Footer>();
 
-unsafe impl Allocator for Bump {
-    fn allocate(&self, layout: allocator_api2::alloc::Layout) -> Result<NonNull<[u8]>, AllocError> {
+impl<A: Allocator + Default> Default for BumpAllocator<A> {
+    fn default() -> Self {
+        Self {
+            cur: Cell::new(None),
+            base_allocator: Default::default(),
+        }
+    }
+}
+
+impl<A: Allocator> BumpAllocator<A> {
+    #[allow(unused)] // false positive, this is used in tests
+    pub(crate) fn new(base_allocator: A) -> Self {
+        Self {
+            cur: Cell::new(None),
+            base_allocator,
+        }
+    }
+}
+
+unsafe impl<A: Allocator> Allocator for BumpAllocator<A> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         unsafe {
             match self.cur.get() {
                 None => {
@@ -68,7 +88,7 @@ unsafe impl Allocator for Bump {
     // }
 }
 
-impl Bump {
+impl<A: Allocator> BumpAllocator<A> {
     unsafe fn alloc_chunk(
         &self,
         start_size: usize,
@@ -85,7 +105,7 @@ impl Bump {
         // the layout of the chunk
         let chunk_layout = Layout::from_size_align(size, align).map_err(|_| AllocError)?;
         // allocate the chunk, this will also be the newly allocated memory for the layout
-        let start = NonNull::new_unchecked(alloc::alloc::alloc(chunk_layout));
+        let start = self.base_allocator.allocate(chunk_layout)?.cast::<u8>();
         // update the allocation position
         let pos = start.add(layout.size());
         // find the end of the chunk
@@ -108,54 +128,87 @@ impl Bump {
     }
 }
 
-impl Drop for Bump {
+impl<A: Allocator> Drop for BumpAllocator<A> {
     fn drop(&mut self) {
         let mut maybe_footer = self.cur.get();
         while let Some(footer) = maybe_footer {
             let footer = unsafe { footer.as_ref() };
             maybe_footer = footer.prev;
             unsafe {
-                alloc::alloc::dealloc(footer.start.as_ptr(), footer.layout);
+                self.base_allocator.deallocate(footer.start, footer.layout);
             }
         }
     }
 }
 
-// struct Pool<const M: u32, const STEPS: usize> {
-//     head_by_size: [Cell<Option<NonNull<Footer>>>; STEPS],
-// }
-//
-// impl<const M: u32, const N: usize> Pool<M, N> {
-//     const START_SIZE: usize = 2usize.pow(M);
-//     unsafe fn alloc_chunk(&self, step: usize) -> Result<NonNull<Footer>, AllocError> {
-//         if step >= N {
-//             return Err(AllocError);
-//         }
-//         if let Some(mut footer) = self.head_by_size[step].get() {
-//             let f = footer.as_mut();
-//             self.head_by_size[step].set(footer.as_ref().prev.get());
-//             f.pos.set(f.start);
-//             f.prev.set(None);
-//             Ok(footer)
-//         } else {
-//             let size = Self::START_SIZE << step;
-//             let layout = Layout::from_size_align(size, size).map_err(|_| AllocError)?;
-//             let ptr = unsafe { NonNull::new_unchecked(alloc::alloc::alloc(layout)) };
-//             let end = ptr.add(size);
-//             let footer = ptr.sub(FOOTER_SIZE).cast::<Footer>();
-//             footer.write(Footer {
-//                 start: ptr,
-//                 pos: Cell::new(ptr),
-//                 prev: Cell::new(None),
-//                 size: size,
-//             });
-//             Ok(footer)
-//         }
-//     }
-//
-//     unsafe fn dealloc_chunk(&self, footer: NonNull<Footer>) -> Result<(), ()> {
-//         // find step size
-//         // put at head of list of that size
-//         todo!()
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::alloc::Layout;
+    use alloc::collections::BTreeSet;
+    use core::cell::RefCell;
+    use proptest::collection::vec;
+    use proptest::prelude::*;
+    use rangemap::RangeSet;
+
+    fn layout() -> impl Strategy<Value = Layout> {
+        (1usize..=4194304).prop_flat_map(|size| {
+            (0u32..16).prop_map(move |align_exp| {
+                Layout::from_size_align(size, 2usize.pow(align_exp)).unwrap()
+            })
+        })
+    }
+    proptest! {
+         #[test]
+         fn test_alloc(layouts in vec(layout(), 1..100)) {
+            test_proper_allocations(Global, layouts);
+         }
+    }
+
+    proptest! {
+        #[test]
+        fn test_dealloc(layouts in vec(layout(), 1..100)) {
+            #[derive(Default)]
+            struct TrackingAllocator {allocations: RefCell<BTreeSet<NonNull<[u8]>>>}
+            unsafe impl Allocator for &TrackingAllocator {
+                fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+                    let allocation = Global.allocate(layout)?;
+                    self.allocations.borrow_mut().insert(allocation);
+                    Ok(allocation)
+                }
+
+                unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+                    self.allocations.borrow_mut().remove(&NonNull::slice_from_raw_parts(ptr, layout.size()));
+                    Global.deallocate(ptr, layout)
+                }
+            }
+
+            let base_allocator = TrackingAllocator::default();
+            test_proper_allocations(&base_allocator, layouts);
+            assert_eq!(base_allocator.allocations.borrow().len(), 0);
+        }
+    }
+
+    fn test_proper_allocations<A: Allocator>(base_allocator: A, layouts: alloc::vec::Vec<Layout>) {
+        let bump = BumpAllocator::new(base_allocator);
+        let mut alloc_ranges: RangeSet<NonNull<u8>> = RangeSet::new();
+        for l in layouts {
+            let ptr = bump.allocate_zeroed(l).unwrap();
+            // check expected size
+            let len = l.size();
+            assert_eq!(ptr.len(), len);
+            // check expected alignment
+            assert_eq!((ptr.as_ptr() as *const u8 as usize) % l.align(), 0);
+            // check that the pointer doesn't overlap with any other pointer
+            let start = ptr.cast::<u8>();
+            let end = unsafe { start.add(len) };
+            let range = start..end;
+            assert!(!alloc_ranges.overlaps(&range));
+            alloc_ranges.insert(range);
+            // check that the memory is zeroed
+            let all_zero = alloc::vec![0u8; len];
+            let bz = unsafe { &*ptr.as_ptr() };
+            assert_eq!(bz, &all_zero);
+        }
+    }
+}
