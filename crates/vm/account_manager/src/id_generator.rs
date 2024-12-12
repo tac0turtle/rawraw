@@ -26,7 +26,7 @@ pub struct IncrementingIDGenerator {}
 
 impl IDGenerator for IncrementingIDGenerator {
     fn new_account_id<S: Store>(&self, store: &mut S) -> Result<AccountID, ErrorCode> {
-        self.new_unique_id(store).map(|id| AccountID::new(id))
+        self.new_unique_id(store).map(AccountID::new)
     }
 
     fn new_unique_id<S: Store>(&self, store: &mut S) -> Result<u128, ErrorCode> {

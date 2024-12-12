@@ -44,7 +44,7 @@ impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STAC
     }
 }
 
-impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STACK_LIMIT> {
+impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LIMIT> {
     /// Invokes a message packet in the context of the provided state handler.
     pub fn invoke_msg<'b, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
         &'b self,
@@ -72,9 +72,9 @@ impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STAC
     }
 
     /// Invokes a message packet in the context of the provided state handler.
-    pub fn invoke_query<'b, ST: StateHandler>(
+    pub fn invoke_query<ST: StateHandler>(
         &self,
-        state_handler: &'b ST,
+        state_handler: &ST,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
@@ -125,13 +125,12 @@ const STATE_ACCOUNT: AccountID = AccountID::new(2);
 
 /// Invoke a message packet in the context of the provided state handler.
 impl<
-        'a,
         CM: VM,
         ST: StateHandler,
         IDG: IDGenerator,
         AUTHZ: AuthorizationMiddleware,
         const CALL_STACK_LIMIT: usize,
-    > HostBackend for ExecContext<'a, CM, ST, IDG, AUTHZ, CALL_STACK_LIMIT>
+    > HostBackend for ExecContext<'_, CM, ST, IDG, AUTHZ, CALL_STACK_LIMIT>
 {
     fn invoke_msg(
         &mut self,
@@ -309,13 +308,12 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
 }
 
 impl<
-        'a,
         CM: VM,
         ST: StateHandler,
         IDG: IDGenerator,
         AUTHZ: AuthorizationMiddleware,
         const CALL_STACK_LIMIT: usize,
-    > ExecContext<'a, CM, ST, IDG, AUTHZ, CALL_STACK_LIMIT>
+    > ExecContext<'_, CM, ST, IDG, AUTHZ, CALL_STACK_LIMIT>
 {
     fn handle_system_message(
         &mut self,
@@ -440,7 +438,7 @@ impl<'a, S: StateHandler> ReadOnlyStoreWrapper<'a, S> {
     }
 }
 
-impl<'a, S: StateHandler> ReadonlyStore for ReadOnlyStoreWrapper<'a, S> {
+impl<S: StateHandler> ReadonlyStore for ReadOnlyStoreWrapper<'_, S> {
     fn get<'b>(
         &self,
         account_id: AccountID,

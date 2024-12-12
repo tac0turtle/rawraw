@@ -134,7 +134,7 @@ impl<'a, S: StateHandler> StoreWrapper<'a, S> {
     }
 }
 
-impl<'a, S: StateHandler> id_generator::Store for StoreWrapper<'a, S> {
+impl<S: StateHandler> id_generator::Store for StoreWrapper<'_, S> {
     fn get(&self, key: &[u8]) -> Result<Option<&[u8]>, ErrorCode> {
         let mut gas = self
             .gas

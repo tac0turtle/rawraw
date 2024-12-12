@@ -24,6 +24,8 @@ impl<'a> EnumValueDefinition<'a> {
     }
 }
 
+/// # Safety
+/// the function is marked as unsafe to detour users from calling it directly
 pub unsafe trait EnumSchema:
     ReferenceableType + TryFrom<Self::NumericType> + Into<Self::NumericType> + Clone
 {

@@ -35,7 +35,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         L: Borrow<K::In<'b>>,
     {
         let key_bz =
-            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
+            encode_object_key::<K>(self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
 
         let value_bz = KVStoreClient.get(ctx, key_bz)?;
         let value_bz = match value_bz {
@@ -54,7 +54,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         U: Borrow<V::In<'a>>,
     {
         let key_bz =
-            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
+            encode_object_key::<K>(self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
         let value_bz = encode_object_value::<V>(value.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.set(ctx, key_bz, value_bz) }
     }
@@ -65,7 +65,7 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
         L: Borrow<K::In<'a>>,
     {
         let key_bz =
-            encode_object_key::<K>(&self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
+            encode_object_key::<K>(self.prefix.as_slice(), key.borrow(), ctx.memory_manager())?;
         unsafe { KVStoreClient.delete(ctx, key_bz) }
     }
 }

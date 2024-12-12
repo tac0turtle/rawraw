@@ -51,7 +51,10 @@ impl MemoryManager {
                     // Rust doesn't know what the lifetime of this data is, but we do because
                     // we allocated it and own the allocator,
                     // so we transmute it to have the appropriate lifetime
-                    dropper: transmute(dropper as NonNull<dyn DeferDrop>),
+                    dropper: transmute::<
+                        core::ptr::NonNull<dyn DeferDrop>,
+                        core::ptr::NonNull<dyn DeferDrop>,
+                    >(dropper as NonNull<dyn DeferDrop>),
                     next: self.drop_cells.get(),
                 },
                 &self.bump,

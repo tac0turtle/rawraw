@@ -24,16 +24,12 @@ pub fn create_account<H: Handler>(
 }
 
 /// Creates a new account for the named handler with opaque initialization data.
-pub fn create_account_raw<'a>(
-    ctx: &mut Context,
-    name: &str,
-    init: &[u8],
-) -> ClientResult<AccountID> {
+pub fn create_account_raw(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
     do_create_account(ctx, name, init)
 }
 
 /// Creates a new account for the named handler with opaque initialization data.
-fn do_create_account<'a>(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
+fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
     let mut packet = create_packet(
         ctx.account,
         ctx.memory_manager(),
@@ -61,7 +57,8 @@ fn do_create_account<'a>(ctx: &mut Context, name: &str, init: &[u8]) -> ClientRe
 
 /// Self-destructs the account.
 ///
-/// SAFETY: This function is unsafe because it can be used to destroy the account and all its state.
+/// # Safety
+/// This function is unsafe because it can be used to destroy the account and all its state.
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
     let mut packet = create_packet(
         ctx.self_account_id(),

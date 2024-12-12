@@ -173,11 +173,9 @@ impl crate::encoder::Encoder for EncodeSizer {
         visitor: &dyn StructEncodeVisitor,
         struct_type: &StructType,
     ) -> Result<(), EncodeError> {
-        let mut i = 0;
         let mut sub = InnerEncodeSizer { outer: self };
-        for f in struct_type.fields {
+        for (i, f) in struct_type.fields.iter().enumerate() {
             visitor.encode_field(i, &mut sub)?;
-            i += 1;
         }
         Ok(())
     }

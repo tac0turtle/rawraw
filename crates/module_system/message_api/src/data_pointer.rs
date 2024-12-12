@@ -69,6 +69,8 @@ pub struct LocalPointer {
 
 impl DataPointer {
     /// Gets the data that the pointer points to as a slice of bytes.
+    /// # Safety
+    /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn get<'a>(&self, message_packet: &MessagePacket<'a>) -> &'a [u8] {
         if self.local_pointer.zero == 0 {
             if self.local_pointer.offset < MESSAGE_HEADER_SIZE as u32 {
@@ -94,6 +96,8 @@ impl DataPointer {
     }
 
     /// Sets a slice of bytes as the data that lives outside the message packet.
+    /// # Safety
+    /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn set_slice(&mut self, data: *const [u8]) {
         unsafe {
             let len = (*data).len() as u32;
@@ -107,12 +111,16 @@ impl DataPointer {
     }
 
     /// Pack a u64 value into the pointer.
+    /// # Safety
+    /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn set_u64(&mut self, data: u64) {
         self.u64_wrapper.zero = 0;
         self.u64_wrapper.value = data;
     }
 
     /// Unpack a u64 value from the pointer.
+    /// # Safety
+    /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn get_u64(&self) -> u64 {
         unsafe { self.u64_wrapper.value }
     }

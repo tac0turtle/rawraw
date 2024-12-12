@@ -36,7 +36,7 @@ impl<'a> ValueCodec<'a> for u8 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u8 {
+impl SchemaValue<'_> for u8 {
     type Type = u8;
 }
 
@@ -51,7 +51,7 @@ impl<'a> ValueCodec<'a> for u16 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u16 {
+impl SchemaValue<'_> for u16 {
     type Type = u16;
 }
 
@@ -66,7 +66,7 @@ impl<'a> ValueCodec<'a> for u32 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u32 {
+impl SchemaValue<'_> for u32 {
     type Type = u32;
 }
 
@@ -81,7 +81,7 @@ impl<'a> ValueCodec<'a> for u64 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u64 {
+impl SchemaValue<'_> for u64 {
     type Type = u64;
 }
 
@@ -96,7 +96,7 @@ impl<'a> ValueCodec<'a> for u128 {
     }
 }
 
-impl<'a> SchemaValue<'a> for u128 {
+impl SchemaValue<'_> for u128 {
     type Type = UIntNT<16>;
 }
 
@@ -111,7 +111,7 @@ impl<'a> ValueCodec<'a> for i8 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i8 {
+impl SchemaValue<'_> for i8 {
     type Type = i8;
 }
 
@@ -126,7 +126,7 @@ impl<'a> ValueCodec<'a> for i16 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i16 {
+impl SchemaValue<'_> for i16 {
     type Type = i16;
 }
 
@@ -141,7 +141,7 @@ impl<'a> ValueCodec<'a> for i32 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i32 {
+impl SchemaValue<'_> for i32 {
     type Type = i32;
 }
 
@@ -156,7 +156,7 @@ impl<'a> ValueCodec<'a> for i64 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i64 {
+impl SchemaValue<'_> for i64 {
     type Type = i64;
 }
 
@@ -171,7 +171,7 @@ impl<'a> ValueCodec<'a> for i128 {
     }
 }
 
-impl<'a> SchemaValue<'a> for i128 {
+impl SchemaValue<'_> for i128 {
     type Type = IntNT<16>;
 }
 
@@ -186,7 +186,7 @@ impl<'a> ValueCodec<'a> for bool {
     }
 }
 
-impl<'a> SchemaValue<'a> for bool {
+impl SchemaValue<'_> for bool {
     type Type = bool;
 }
 
@@ -218,7 +218,7 @@ impl<'a> ValueCodec<'a> for alloc::string::String {
 }
 
 #[cfg(feature = "std")]
-impl<'a> SchemaValue<'a> for alloc::string::String {
+impl SchemaValue<'_> for alloc::string::String {
     type Type = StrT;
 }
 
@@ -233,7 +233,7 @@ impl<'a> ValueCodec<'a> for simple_time::Time {
     }
 }
 
-impl<'a> SchemaValue<'a> for simple_time::Time {
+impl SchemaValue<'_> for simple_time::Time {
     type Type = TimeT;
 }
 
@@ -248,7 +248,7 @@ impl<'a> ValueCodec<'a> for simple_time::Duration {
     }
 }
 
-impl<'a> SchemaValue<'a> for simple_time::Duration {
+impl SchemaValue<'_> for simple_time::Duration {
     type Type = DurationT;
 }
 
@@ -301,7 +301,7 @@ impl<'a> ValueCodec<'a> for alloc::vec::Vec<u8> {
     }
 }
 
-impl<'a> SchemaValue<'a> for alloc::vec::Vec<u8> {
+impl SchemaValue<'_> for alloc::vec::Vec<u8> {
     type Type = BytesT;
 }
 /// A trait that must be implemented by value types that can be used as list elements.
@@ -371,7 +371,7 @@ impl<'a> ValueCodec<'a> for ixc_message_api::AccountID {
     }
 }
 
-impl<'a> SchemaValue<'a> for ixc_message_api::AccountID {
+impl SchemaValue<'_> for ixc_message_api::AccountID {
     type Type = AccountIdT;
 }
 
