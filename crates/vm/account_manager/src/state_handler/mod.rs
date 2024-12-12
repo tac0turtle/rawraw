@@ -107,6 +107,21 @@ pub(crate) fn init_next_account<ST: StateHandler, IDG: IDGenerator>(
     Ok(AccountID::new(id))
 }
 
+pub(crate) fn update_handler_id<ST: StateHandler>(
+    state_handler: &mut ST,
+    account_id: AccountID,
+    new_handler_id: &[u8],
+    gas: &mut GasMeter,
+) -> Result<(), ErrorCode> {
+    let id: u128 = account_id.into();
+    state_handler.kv_set(
+        ROOT_ACCOUNT,
+        format!("h:{}", id).as_bytes(),
+        new_handler_id,
+        gas,
+    )
+}
+
 pub(crate) fn destroy_account_data<ST: StateHandler>(
     state_handler: &mut ST,
     account: AccountID,
