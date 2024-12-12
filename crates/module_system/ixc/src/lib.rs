@@ -24,7 +24,7 @@ pub use ixc_schema as schema;
 #[macro_use]
 extern crate ixc_core_macros;
 #[doc(inline)]
-pub use ixc_core_macros::{handler, handler_api, on_create, publish, Resources, on_migrate, from};
+pub use ixc_core_macros::{from, handler, handler_api, on_create, on_migrate, publish, Resources};
 
 #[allow(unused_imports)]
 #[macro_use]

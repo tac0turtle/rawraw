@@ -32,9 +32,9 @@ mod handler1 {
 
 #[ixc::handler(Handler2)]
 mod handler2 {
+    use crate::handler1::Handler1;
     use ixc::*;
     use ixc_core::account_api;
-    use crate::handler1::Handler1;
 
     #[derive(Resources)]
     pub(crate) struct Handler2 {
@@ -69,10 +69,10 @@ mod handler2 {
 
 #[ixc::handler(Handler3)]
 mod handler3 {
-    use ixc::*;
-    use ixc_core::account_api;
     use crate::handler1::Handler1;
     use crate::handler2::Handler2;
+    use ixc::*;
+    use ixc_core::account_api;
 
     #[derive(Resources)]
     struct Handler3 {
@@ -102,7 +102,6 @@ mod handler3 {
         pub fn get(&self, ctx: &Context) -> Result<u128> {
             Ok(self.value.get(ctx)?)
         }
-
     }
 }
 

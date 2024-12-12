@@ -64,7 +64,10 @@ pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
         MIGRATE_SELECTOR,
     )?;
     unsafe {
-        packet.header_mut().in_pointer1.set_slice(new_handler_id.as_bytes());
+        packet
+            .header_mut()
+            .in_pointer1
+            .set_slice(new_handler_id.as_bytes());
         ctx.dynamic_invoke_msg(&mut packet)?;
     }
     Ok(())
