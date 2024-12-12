@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+#![allow(clippy::needless_lifetimes)]
 #[ixc::handler(FixedVesting)]
 mod vesting {
     use ixc::*;
