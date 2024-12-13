@@ -16,7 +16,7 @@ mod handler1 {
         #[on_create]
         pub fn create(&self, ctx: &mut Context) -> Result<()> {
             self.value.set(ctx, 1)?;
-            Ok(self.owner.set(ctx, &ctx.self_account_id())?)
+            Ok(self.owner.set(ctx, &ctx.caller())?)
         }
 
         #[publish]
@@ -26,7 +26,7 @@ mod handler1 {
 
         #[publish]
         pub fn migrate(&self, ctx: &mut Context, new_handler_id: &str) -> Result<()> {
-            ensure!(ctx.caller() == self.owner(ctx)?, "unauthorized caller");
+            ensure!(ctx.caller() == self.owner.get(ctx)?, "unauthorized caller");
             Ok(account_api::migrate(ctx, new_handler_id)?)
         }
     }
@@ -49,7 +49,7 @@ mod handler2 {
     impl Handler2 {
         #[on_create]
         pub fn create(&self, ctx: &mut Context) -> Result<()> {
-            Ok(self.owner.set(ctx, &ctx.self_account_id())?)
+            Ok(self.owner.set(ctx, &ctx.caller())?)
         }
 
         #[on_migrate]
@@ -64,7 +64,7 @@ mod handler2 {
 
         #[publish]
         pub fn migrate(&self, ctx: &mut Context, new_handler_id: &str) -> Result<()> {
-            ensure!(ctx.caller() == self.owner(ctx)?, "unauthorized caller");
+            ensure!(ctx.caller() == self.owner.get(ctx)?, "unauthorized caller");
             Ok(account_api::migrate(ctx, new_handler_id)?)
         }
     }
@@ -87,7 +87,7 @@ mod handler3 {
     impl Handler3 {
         #[on_create]
         pub fn create(&self, ctx: &mut Context) -> Result<()> {
-            Ok(self.owner.set(ctx, &ctx.self_account_id())?)
+            Ok(self.owner.set(ctx, &ctx.caller())?)
         }
 
         #[on_migrate]
