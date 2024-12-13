@@ -7,7 +7,6 @@ use crate::AccountID;
 /// A handler for an account.
 pub trait RawHandler {
     /// Handle a message.
-    #[allow(unused_variables)]
     fn handle_msg<'a>(
         &self,
         _message: &Request,
@@ -33,7 +32,7 @@ pub trait RawHandler {
         _message_packet: &Request,
         _callbacks: &mut dyn HostBackend,
         _allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+    ) -> Result<Response<'a>, ErrorCode> {
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }
 }
@@ -58,14 +57,14 @@ pub trait HostBackend {
     fn update_state<'a>(
         &mut self,
         req: &Request,
-        invoke_params: &InvokeParams,
+        invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode>;
 
     /// Query the state of the account.
     fn query_state<'a>(
         &self,
         req: &Request,
-        invoke_params: &InvokeParams,
+        invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode>;
 
     /// Consume gas. Returns an out-of-gas error if there is not enough gas.

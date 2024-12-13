@@ -8,21 +8,19 @@ use alloc::format;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::SystemCode;
-use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_message_api::message::{QueryStateResponse, StateRequest, UpdateStateResponse};
+use ixc_message_api::message::{Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
 
 /// The state handler trait.
 pub trait StateHandler {
     /// Get the value of the key.
-    fn kv_get<A: Allocator>(
+    fn kv_get<'a>(
         &self,
         account_id: AccountID,
         key: &[u8],
         gas: &GasMeter,
-        allocator: A,
-    ) -> Result<Option<Vec<u8, A>>, ErrorCode>;
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, ErrorCode>;
     /// Set the value of the key.
     fn kv_set(
         &mut self,
@@ -49,19 +47,19 @@ pub trait StateHandler {
     fn handle_exec<'a>(
         &mut self,
         account_id: AccountID,
-        request: &StateRequest<'_>,
+        request: &Request,
         gas: &GasMeter,
-        allocator: &dyn Allocator,
-    ) -> Result<UpdateStateResponse<'a>, ErrorCode>;
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode>;
 
     /// Handle a query message packet.
     fn handle_query<'a>(
         &self,
         account_id: AccountID,
-        request: &StateRequest<'_>,
+        request: &Request,
         gas: &GasMeter,
         allocator: &'a dyn Allocator,
-    ) -> Result<QueryStateResponse<'a>, ErrorCode>;
+    ) -> Result<Response<'a>, ErrorCode>;
 
     /// Create storage for a new account.
     fn create_account_storage(
@@ -82,7 +80,7 @@ pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
     account_id: AccountID,
     gas: &GasMeter,
     allocator: &'a dyn Allocator,
-) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode> {
+) -> Result<Option<&'a [u8]>, ErrorCode> {
     let id: u128 = account_id.into();
     let key = format!("h:{}", id);
     state_handler.kv_get(ROOT_ACCOUNT, key.as_bytes(), gas, allocator)
@@ -153,18 +151,12 @@ impl<'a, S: StateHandler> StoreWrapper<'a, S> {
 
 impl<S: StateHandler> id_generator::Store for StoreWrapper<'_, S> {
     fn get(&self, key: &[u8]) -> Result<Option<&[u8]>, ErrorCode> {
-        if let Some(value) =
-            self.state_handler
-                .kv_get(ROOT_ACCOUNT, key, self.gas, self.allocator)?
-        {
-            let (ptr, len, _) = value.into_raw_parts();
-            Ok(Some(unsafe { core::slice::from_raw_parts(ptr, len) }))
-        } else {
-            Ok(None)
-        }
+        self.state_handler
+            .kv_get(ROOT_ACCOUNT, key, self.gas, self.allocator)
     }
 
     fn set(&mut self, key: &[u8], value: &[u8]) -> Result<(), ErrorCode> {
-        self.state_handler.kv_set(ROOT_ACCOUNT, key, value, self.gas)
+        self.state_handler
+            .kv_set(ROOT_ACCOUNT, key, value, self.gas)
     }
 }

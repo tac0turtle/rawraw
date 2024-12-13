@@ -9,13 +9,13 @@ pub trait StdStateManager {
     /// Get the value of a key in storage.
     /// Keys are scoped to an account and optionally to a scope which is another account
     /// under which this storage key would be scoped.
-    fn kv_get<A: Allocator>(
+    fn kv_get<'a>(
         &self,
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-        allocator: A,
-    ) -> Result<Option<Vec<u8, A>>, StdStateError>;
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, StdStateError>;
     /// Set the value of a key in storage.
     fn kv_set(
         &mut self,

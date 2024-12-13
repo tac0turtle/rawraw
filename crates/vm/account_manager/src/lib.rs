@@ -12,20 +12,18 @@ mod gas;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
+use crate::gas::GasMeter;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::StateHandler;
 use allocator_api2::vec::Vec;
-use core::cell::RefCell;
-use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_message_api::handler::{Allocator, HostBackend};
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::handler::{Allocator, HostBackend, InvokeParams};
+use ixc_message_api::message::{Message, Response};
 use ixc_message_api::AccountID;
 use ixc_vm_api::{ReadonlyStore, VM};
-use crate::gas::GasMeter;
 
 /// The default stack size for the account manager.
 pub const DEFAULT_STACK_SIZE: usize = 128;
@@ -43,26 +41,27 @@ impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STAC
 }
 
 impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LIMIT> {
-    /// Invokes a message packet in the context of the provided state handler.
+    /// Returns a new host backend for the provided state handler.
     pub fn invoke_msg<'b, ST: StateHandler, IDG: IDGenerator>(
         &'b self,
         state_handler: &'b mut ST,
         id_generator: &'b mut IDG,
-        message_packet: &mut MessagePacket,
-        allocator: &'b dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let mut exec_context = ExecContext::new(self, state_handler, id_generator, message_packet.header().account);
-        exec_context.invoke_msg(message_packet, allocator)
+        caller: AccountID,
+        message: &Message,
+        allocator: &InvokeParams<'b>,
+    ) -> Result<Response<'b>, ErrorCode> {
+        let mut exec_context = ExecContext::new(self, state_handler, id_generator, caller);
+        exec_context.invoke_msg(message, allocator)
     }
 
-    /// Invokes a message packet in the context of the provided state handler.
-    pub fn invoke_query<ST: StateHandler>(
+    /// Invokes the query in the context of the provided state handler.
+    pub fn invoke_query<'b, ST: StateHandler>(
         &self,
         state_handler: &ST,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let mut call_stack = CallStack::new(message_packet.header().caller);
+        message_packet: &Message,
+        allocator: &InvokeParams<'b>,
+    ) -> Result<Response<'b>, ErrorCode> {
+        let call_stack = CallStack::new(AccountID::EMPTY);
         let query_ctx = QueryContext::new(self, state_handler, &call_stack);
         query_ctx.invoke_query(message_packet, allocator)
     }
@@ -70,29 +69,26 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
 
 struct ReadOnlyStoreWrapper<'a, S: StateHandler> {
     state_handler: &'a S,
-    gas: RefCell<&'a mut GasMeter>,
+    allocator: &'a dyn Allocator,
+    gas: &'a GasMeter,
 }
 
 impl<'a, S: StateHandler> ReadOnlyStoreWrapper<'a, S> {
-    fn wrap(state_handler: &'a S, gas: &'a mut GasMeter) -> Self {
+    fn wrap(state_handler: &'a S, gas: &'a GasMeter, allocator: &'a dyn Allocator) -> Self {
         Self {
             state_handler,
-            gas: RefCell::new(gas),
+            gas,
+            allocator,
         }
     }
 }
 
 impl<S: StateHandler> ReadonlyStore for ReadOnlyStoreWrapper<'_, S> {
-    fn get<'b>(
+    fn get(
         &self,
         account_id: AccountID,
         key: &[u8],
-        allocator: &'b dyn Allocator,
-    ) -> Result<Option<Vec<u8, &'b dyn Allocator>>, ErrorCode> {
-        let mut gas = self
-            .gas
-            .try_borrow_mut()
-            .map_err(|_| SystemCode(FatalExecutionError))?;
-        self.state_handler.kv_get(account_id, key, *gas, allocator)
+    ) -> Result<Option<&[u8]>, ErrorCode> {
+        self.state_handler.kv_get(account_id, key, self.gas, self.allocator)
     }
 }

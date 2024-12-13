@@ -3,7 +3,7 @@
 mod store;
 
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
-use crate::store::VersionedMultiStore;
+use crate::store::{Tx, VersionedMultiStore};
 use allocator_api2::alloc::Allocator;
 use ixc_account_manager::id_generator::IncrementingIDGenerator;
 use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
@@ -135,23 +135,33 @@ struct Backend<V> {
     id_gen: IncrementingIDGenerator,
 }
 
+impl<V: ixc_vm_api::VM> Backend<V> {
+    fn init_operation(&self) -> (AccountManager<V>, Tx, StdStateHandler<Tx>) {
+        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
+        let mut tx = self.state.new_transaction();
+        let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
+        (account_manager, tx, state_handler)
+    }
+
+    fn exec_context(&mut self, caller: AccountID) -> (Tx, impl HostBackend) {
+        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
+        let mut tx = self.state.new_transaction();
+        let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
+        let exec_context = account_manager.exec_context(caller, &mut state_handler, &mut self.id_gen);
+        (tx, exec_context)
+    }
+}
+
+
 impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
     fn invoke_msg(
         &mut self,
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-        let mut tx = self.state.new_transaction();
+        let (tx, mut exec_context) = self.exec_context(message_packet.header().caller);
 
-        let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
-
-        account_manager.invoke_msg(
-            &mut state_handler,
-            &mut self.id_gen,
-            message_packet,
-            allocator,
-        )?;
+        exec_context.invoke_msg(message_packet, allocator)?;
 
         self.state
             .commit(tx)
@@ -163,16 +173,13 @@ impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-        let mut tx = self.state.new_transaction();
-
-        let state_handler = StdStateHandler::new(&mut tx, Default::default());
+        let (account_manager, mut tx, mut state_handler) = self.init_operation();
 
         account_manager.invoke_query(&state_handler, message_packet, allocator)
     }
 
     fn update_state<'a>(&mut self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<UpdateStateResponse<'a>, ErrorCode> {
-        todo!()
+        let (tx, mut exec_context) = self.exec_context(req.header().caller);
     }
 
     fn query_state<'a>(&self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<QueryStateResponse<'a>, ErrorCode> {

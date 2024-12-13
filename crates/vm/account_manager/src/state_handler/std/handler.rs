@@ -6,9 +6,8 @@ use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
-use ixc_message_api::header::MessageSelector;
-use ixc_message_api::message::{QueryStateResponse, StateRequest, UpdateStateResponse};
 use ixc_message_api::AccountID;
+use ixc_message_api::message::{MessageSelector, Request, Response};
 use crate::gas::GasMeter;
 
 /// The standard state handler.
@@ -43,13 +42,13 @@ impl<'a, S: StdStateManager> StdStateHandler<'a, S> {
 }
 
 impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
-    fn kv_get<A: Allocator>(
+    fn kv_get<'a>(
         &self,
         account_id: AccountID,
         key: &[u8],
-        _gas: &GasMeter,
-        allocator: A,
-    ) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
+        gas: &GasMeter,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, ErrorCode> {
         self.state
             .kv_get(account_id, None, key, allocator)
             .map_err(|_| SystemCode(FatalExecutionError))
@@ -99,19 +98,19 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
     fn handle_exec<'a>(
         &mut self,
         account_id: AccountID,
-        request: &StateRequest<'_>,
+        request: &Request,
         gas: &GasMeter,
-        _allocator: &dyn Allocator,
-    ) -> Result<UpdateStateResponse<'a>, ErrorCode> {
+        _allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         match request.message_selector {
             SET_SELECTOR => {
-                let key = request.in1;
-                let value = request.in2;
+                let key = request.inputs[0].expect_slice()?;
+                let value = request.inputs[1].expect_slice()?;
                 self.kv_set(account_id, key, value, gas)?;
                 Ok(Default::default())
             }
             DELETE_SELECTOR => {
-                let key = request.in1;
+                let key = request.inputs[0].expect_slice()?;
                 self.kv_delete(account_id, key, gas)?;
                 Ok(Default::default())
             }
@@ -122,23 +121,17 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
     fn handle_query<'a>(
         &self,
         account_id: AccountID,
-        request: &StateRequest<'_>,
+        request: &Request,
         gas: &GasMeter,
         allocator: &'a dyn Allocator,
-    ) -> Result<QueryStateResponse<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, ErrorCode> {
         unsafe {
             match request.message_selector {
                 GET_SELECTOR => {
-                    let key = request.in1;
+                    let key = request.inputs[0].expect_slice()?;
                     let value = self.kv_get(account_id, key, gas, allocator)?;
                     if let Some(value) = value {
-                        let out = allocator
-                            .allocate(Layout::from_size_align_unchecked(value.len(), 16))
-                            .map_err(|_| SystemCode(FatalExecutionError))?;
-                        let out_slice =
-                            core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
-                        out_slice.copy_from_slice(value.as_slice());
-                        Ok(QueryStateResponse::new1(out_slice))
+                        Ok(Response::new1(value.into()))
                     } else {
                         // KV-stores should use handler code 0 to indicate not found
                         const NOT_FOUND: ErrorCode = ErrorCode::HandlerCode(0);
