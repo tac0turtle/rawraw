@@ -39,6 +39,10 @@ impl<S: Store> StateHandler<S> {
         key: &[u8],
         accumulator: bool,
     ) -> Vec<u8> {
+        const KV_SEPARATOR: u8 = 0;
+        const KV_SCOPED_SEPARATOR: u8 = 1;
+        const ACC_SEPARATOR: u8 = 2;
+        const SCOPED_ACC_SEPARATOR: u8 = 3;
         match scope {
             // account / 0 / key
             // account / 1 / scope / key
@@ -50,9 +54,9 @@ impl<S: Store> StateHandler<S> {
                 let mut new_key = Vec::new_in(Global);
                 new_key.extend_from_slice(&ac);
                 if accumulator {
-                    new_key.push(3);
+                    new_key.push(SCOPED_ACC_SEPARATOR);
                 } else {
-                    new_key.push(1);
+                    new_key.push(KV_SCOPED_SEPARATOR);
                 }
                 new_key.extend_from_slice(&sc);
                 new_key.extend_from_slice(key);
@@ -62,9 +66,9 @@ impl<S: Store> StateHandler<S> {
                 let mut new_key = Vec::new_in(Global);
                 new_key.extend_from_slice(&account_id.to_le_bytes());
                 if accumulator {
-                    new_key.push(2);
+                    new_key.push(ACC_SEPARATOR);
                 } else {
-                    new_key.push(0);
+                    new_key.push(KV_SEPARATOR);
                 }
                 new_key.extend_from_slice(key);
                 new_key
