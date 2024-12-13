@@ -79,4 +79,6 @@ pub trait StdStateManager {
 pub enum StdStateError {
     /// A fatal error occurred.
     FatalExecutionError,
+    /// A revert error occurred.
+    RevertError,
 }
