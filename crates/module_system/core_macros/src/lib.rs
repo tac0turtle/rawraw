@@ -59,7 +59,7 @@ pub fn on_create(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<To
 /// It requires a #[from] parameter to specify the handler from
 /// which the account is being migrated.
 /// Parameters annotated with #[from] must be borrowed references
-/// to handler structs or any struct that implements [`ixc::core::handler::NamedHandlerResources`].
+/// to handler structs or any struct that implements [`ixc::core::handler::HandlerResources`].
 /// This makes it possible to migrate an account to a new handler
 /// while reading the state of the old handler,
 /// and only retaining the handler struct itself rather than all the old implementation code.
@@ -76,7 +76,7 @@ pub fn on_migrate(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<T
 /// annotated with #[on_migrate] to the handler from
 /// which the account is being migrated.
 /// The type of this parameter must be a reference to a handler struct
-/// which implements [ixc::core::handler::NamedHandlerResources].
+/// which implements [ixc::core::handler::HandlerResources].
 /// This struct is used to both extract the name of the handler from
 /// and can be used to read state from the old handler.
 /// This attribute must be attached to exactly one parameter in on #[on_migrate] function.

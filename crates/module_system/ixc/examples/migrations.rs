@@ -26,6 +26,7 @@ mod handler1 {
 
         #[publish]
         pub fn migrate(&self, ctx: &mut Context, new_handler_id: &str) -> Result<()> {
+            ensure!(ctx.caller() == self.owner(ctx)?, "unauthorized caller");
             Ok(account_api::migrate(ctx, new_handler_id)?)
         }
     }
@@ -63,6 +64,7 @@ mod handler2 {
 
         #[publish]
         pub fn migrate(&self, ctx: &mut Context, new_handler_id: &str) -> Result<()> {
+            ensure!(ctx.caller() == self.owner(ctx)?, "unauthorized caller");
             Ok(account_api::migrate(ctx, new_handler_id)?)
         }
     }
@@ -72,7 +74,7 @@ mod handler2 {
 mod handler3 {
     use crate::handler2::Handler2;
     use ixc::*;
-    use ixc_core::handler::NamedHandlerResources;
+    use ixc_core::handler::HandlerResources;
 
     #[derive(Resources)]
     pub struct Handler3 {
@@ -104,17 +106,15 @@ mod handler3 {
         }
     }
 
-    // here we show a simple way to implement the NamedHandlerResources trait
+    // here we show a simple way to implement the HandlerResources trait
     // so that we don't need all the old code from Handler1 to perform the migration
     // we just need this struct to read its state
     #[derive(Resources)]
     pub struct Handler1 {
         #[state(prefix = 0)]
         pub value: Item<u32>,
-        #[state(prefix = 1)]
-        owner: Item<AccountID>,
     }
-    impl NamedHandlerResources for Handler1 {
+    impl HandlerResources for Handler1 {
         const NAME: &'static str = "Handler1";
     }
 }
@@ -126,7 +126,7 @@ mod tests {
     use crate::handler3::Handler3;
     use ixc::*;
     use ixc_core::account_api::get_handler_id;
-    use ixc_core::handler::{Client, NamedHandlerResources};
+    use ixc_core::handler::{Client, HandlerResources};
     use ixc_testing::*;
 
     #[test]

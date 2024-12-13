@@ -233,7 +233,7 @@ pub fn migrate_from_old_handler(&self, ctx: &mut Context, #[from] old_handler: &
 The old handler struct reference can be used to read state from the old handler.
 It isn't necessary to retain all the state from the old handler, just the state that
 is needed for the migration.
-A valid struct to migrate from must implement the [`ixc_core::handler::NamedHandlerResources`] trait.
+A valid struct to migrate from must implement the [`ixc_core::handler::HandlerResources`] trait.
 Here's a simple way to do this without needing any other code from the old handler:
 ```rust
 #[derive(Resources)]
@@ -242,7 +242,7 @@ struct OldHandler {
     pub some_old_state: Item<u64>,
 }
 
-impl NamedResources for OldHandler {
+impl HandlerResources for OldHandler {
     const NAME: &'static str = "old_handler"; // this must match the name of the handler in the app
 }
 ```

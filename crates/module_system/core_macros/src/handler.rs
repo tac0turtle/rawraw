@@ -53,7 +53,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     push_item(
         items,
         quote! {
-            impl ::ixc::core::handler::NamedHandlerResources for #handler {
+            impl ::ixc::core::handler::HandlerResources for #handler {
                 const NAME: &'static str = stringify!(#handler);
             }
         },
