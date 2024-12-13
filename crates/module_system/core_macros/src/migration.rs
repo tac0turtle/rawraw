@@ -62,7 +62,7 @@ pub(crate) fn collect_on_migrate_info(
     let from = match &mut item_fn.sig.inputs[2] {
         FnArg::Typed(pat_type) => {
             let from_attr: Option<FromAttr> = maybe_extract_attribute(pat_type)?;
-            if let Some(_) = from_attr {
+            if from_attr.is_some() {
                 match pat_type.ty.as_ref() {
                     Type::Reference(tyref) => {
                         tyref.elem.clone()
