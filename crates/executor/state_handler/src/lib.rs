@@ -39,7 +39,6 @@ impl<S: Store> StateHandler<S> {
         key: &[u8],
         accumulator: bool,
     ) -> Vec<u8> {
-        let separator: [u8; 1] = [b'/'];
         match scope {
             // account / 0 / key
             // account / 1 / scope / key
@@ -50,28 +49,23 @@ impl<S: Store> StateHandler<S> {
                 let sc = scope.to_le_bytes();
                 let mut new_key = Vec::new_in(Global);
                 new_key.extend_from_slice(&ac);
-                new_key.extend_from_slice(&separator);
                 if accumulator {
                     new_key.push(3);
                 } else {
                     new_key.push(1);
                 }
-                new_key.extend_from_slice(&separator);
                 new_key.extend_from_slice(&sc);
-                new_key.extend_from_slice(&separator);
                 new_key.extend_from_slice(key);
                 new_key
             }
             None => {
                 let mut new_key = Vec::new_in(Global);
                 new_key.extend_from_slice(&account_id.to_le_bytes());
-                new_key.extend_from_slice(&separator);
                 if accumulator {
                     new_key.push(2);
                 } else {
                     new_key.push(0);
                 }
-                new_key.extend_from_slice(&separator);
                 new_key.extend_from_slice(key);
                 new_key
             }
