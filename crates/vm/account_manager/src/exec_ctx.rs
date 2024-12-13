@@ -2,7 +2,7 @@ use crate::call_stack::CallStack;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::{
-    destroy_account_data, get_account_handler_id, init_next_account, update_handler_id,
+    destroy_account_data, get_account_handler_id, init_next_account, set_handler_id,
     StateHandler,
 };
 use crate::{AccountManager, ReadOnlyStoreWrapper};
@@ -179,7 +179,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         // get the input data
-        let handler_id = req.inputs[0].expect_slice()?;
+        let handler_id = req.inputs[0].expect_string()?;
         let init_data = req.inputs[1].expect_slice()?;
 
         let gas =  &self.call_stack.gas;
@@ -232,7 +232,6 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
 
         if is_ok {
             // the result is ID of the newly created account, which is the first input
-            let id: u128 = id.into();
             Ok(Response::new1(id.into()))
         } else {
             res
@@ -246,7 +245,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     ) -> Result<Response<'a>, ErrorCode> {
         // get the input data
         let active_account = self.call_stack.active_account()?;
-        let new_handler_id = req.inputs[0].expect_slice()?;
+        let new_handler_id = req.inputs[0].expect_string()?;
 
         let gas = &self.call_stack.gas;
 
@@ -267,7 +266,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             .ok_or(SystemCode(HandlerNotFound))?;
 
         // update the handler ID
-        update_handler_id(self.state_handler, active_account, &new_handler_id, gas)
+        set_handler_id(self.state_handler, active_account, &new_handler_id, gas)
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create

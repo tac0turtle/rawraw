@@ -125,11 +125,11 @@ QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 
     unsafe fn handle_get_handler_id<'c>(
         &self,
-        message_packet: &Request,
+        req: &Request,
         allocator: &'c dyn Allocator,
     ) -> Result<Response<'c>, ErrorCode> {
         // get the account ID from the in pointer
-        let account_id = AccountID::new(message_packet.inputs[0].expect_u128()?);
+        let account_id = req.inputs[0].expect_account_id()?;
 
         // look up the handler ID
         let gas = &self.call_stack.gas;

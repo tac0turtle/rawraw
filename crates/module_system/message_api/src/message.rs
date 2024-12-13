@@ -31,7 +31,7 @@ pub struct Request<'a> {
 pub struct Response<'a> {
     /// The outputs of the message.
     /// There can be up to two outputs.
-    pub inputs: [Param<'a>; 2],
+    pub outputs: [Param<'a>; 2],
 }
 
 /// A message response.
@@ -41,10 +41,14 @@ pub enum Param<'a> {
     /// An empty response.
     #[default]
     Empty,
-    /// A slice output parameter.
+    /// A slice parameter.
     Slice(&'a [u8]),
-    /// A u128 output parameter.
+    /// A String parameter.
+    String(&'a str),
+    /// A u128 parameter.
     U128(u128),
+    /// An account ID parameter.
+    AccountID(AccountID),
 }
 
 impl<'a> Message<'a> {
@@ -105,14 +109,14 @@ impl<'a> Response<'a> {
     /// Create a new response with one output.
     pub fn new1(out1: Param<'a>) -> Self {
         Self {
-            inputs: [out1, Param::Empty],
+            outputs: [out1, Param::Empty],
         }
     }
 
     /// Create a new response with two outputs.
     pub fn new2(out1: Param<'a>, out2: Param<'a>) -> Self {
         Self {
-            inputs: [out1, out2],
+            outputs: [out1, out2],
         }
     }
 }
@@ -126,10 +130,26 @@ impl<'a> Param<'a> {
         }
     }
 
+    /// Expect the parameter to be a string or return an encoding error.
+    pub fn expect_string(&self) -> Result<&'a str, ErrorCode> {
+        match self {
+            Param::String(string) => Ok(string),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+        }
+    }
+
     /// Expect the parameter to be a u128 or return an encoding error.
     pub fn expect_u128(&self) -> Result<u128, ErrorCode> {
         match self {
             Param::U128(u128) => Ok(*u128),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+        }
+    }
+
+    /// Expect the parameter to be an account ID or return an encoding error.
+    pub fn expect_account_id(&self) -> Result<AccountID, ErrorCode> {
+        match self {
+            Param::AccountID(account_id) => Ok(*account_id),
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
@@ -141,8 +161,20 @@ impl<'a> From<&'a [u8]> for Param<'a> {
     }
 }
 
+impl<'a> From<&'a str> for Param<'a> {
+    fn from(string: &'a str) -> Self {
+        Param::String(string)
+    }
+}
+
 impl From<u128> for Param<'_> {
     fn from(u128: u128) -> Self {
         Param::U128(u128)
+    }
+}
+
+impl From<AccountID> for Param<'_> {
+    fn from(account_id: AccountID) -> Self {
+        Param::AccountID(account_id)
     }
 }

@@ -119,41 +119,28 @@ impl<E: Error, F: HandlerCode> From<E> for HandlerError<F> {
 
 /// The standard error type returned by client methods.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct ClientError<E: HandlerCode> {
     /// The error code.
     pub code: ErrorCode<E>,
-    /// The error message.
-    #[cfg(feature = "std")]
-    pub message: String,
-    // TODO no std version - fixed length 256 byte string probably
 }
 
 impl<E: HandlerCode> ClientError<E> {
     /// Creates a new client error.
-    pub fn new(code: ErrorCode<E>, msg: String) -> Self {
-        ClientError {
-            code,
-            #[cfg(feature = "std")]
-            message: msg,
-        }
+    pub fn new(code: ErrorCode<E>) -> Self {
+        ClientError { code }
     }
 }
 
 impl<E: HandlerCode> Debug for ClientError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        match self.code {
-            ErrorCode::SystemCode(SystemCode::Other) => write!(f, "{}", self.message),
-            _ => write!(f, "code: {:?}: {}", self.code, self.message),
-        }
+        write!(f, "code: {:?}", self.code)
     }
 }
 
 impl<E: HandlerCode> Display for ClientError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        match self.code {
-            ErrorCode::SystemCode(SystemCode::Other) => write!(f, "{}", self.message),
-            _ => write!(f, "code: {:?}: {}", self.code, self.message),
-        }
+        write!(f, "code: {:?}", self.code)
     }
 }
 
@@ -162,30 +149,22 @@ impl<E: HandlerCode> Error for ClientError<E> {}
 impl<E: HandlerCode> From<ErrorCode> for ClientError<E> {
     fn from(value: ErrorCode) -> Self {
         let code = convert_error_code(value);
-        ClientError {
-            code,
-            #[cfg(feature = "std")]
-            message: String::new(),
-        }
+        ClientError { code }
     }
 }
 
 impl<E: HandlerCode> From<EncodeError> for ClientError<E> {
-    fn from(value: EncodeError) -> Self {
+    fn from(_: EncodeError) -> Self {
         ClientError {
             code: ErrorCode::SystemCode(SystemCode::EncodingError),
-            #[cfg(feature = "std")]
-            message: format!("encoding error: {:?}", value),
         }
     }
 }
 
 impl<E: HandlerCode> From<DecodeError> for ClientError<E> {
-    fn from(value: DecodeError) -> Self {
+    fn from(_: DecodeError) -> Self {
         ClientError {
             code: ErrorCode::SystemCode(SystemCode::EncodingError),
-            #[cfg(feature = "std")]
-            message: format!("decoding error: {:?}", value),
         }
     }
 }
@@ -194,8 +173,6 @@ impl<E: HandlerCode> From<allocator_api2::alloc::AllocError> for ClientError<E> 
     fn from(_: allocator_api2::alloc::AllocError) -> Self {
         ClientError {
             code: ErrorCode::SystemCode(SystemCode::EncodingError),
-            #[cfg(feature = "std")]
-            message: "allocation error".into(),
         }
     }
 }
@@ -210,8 +187,6 @@ pub fn convert_error_code<E: HandlerCode, F: HandlerCode>(code: ErrorCode<E>) ->
 pub fn convert_client_error<E: HandlerCode, F: HandlerCode>(err: ClientError<E>) -> ClientError<F> {
     ClientError {
         code: convert_error_code(err.code),
-        #[cfg(feature = "std")]
-        message: err.message,
     }
 }
 

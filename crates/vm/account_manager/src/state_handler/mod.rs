@@ -10,6 +10,7 @@ use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
+use ixc_message_api::code::SystemCode::EncodingError;
 
 /// The state handler trait.
 pub trait StateHandler {
@@ -80,44 +81,47 @@ pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
     account_id: AccountID,
     gas: &GasMeter,
     allocator: &'a dyn Allocator,
-) -> Result<Option<&'a [u8]>, ErrorCode> {
+) -> Result<Option<&'a str>, ErrorCode> {
     let id: u128 = account_id.into();
     let key = format!("h:{}", id);
-    state_handler.kv_get(ROOT_ACCOUNT, key.as_bytes(), gas, allocator)
+    let value = state_handler.kv_get(ROOT_ACCOUNT, key.as_bytes(), gas, allocator)?;
+    if let Some(value) = value {
+        let handler_id = core::str::from_utf8(value)
+            .map_err(|_| ErrorCode::SystemCode(EncodingError))?;
+        Ok(Some(handler_id))
+    } else {
+        Ok(None)
+    }
 }
 
 pub(crate) fn init_next_account<ST: StateHandler, IDG: IDGenerator>(
     id_generator: &mut IDG,
     state_handler: &mut ST,
-    handler_id: &[u8],
+    handler_id: &str,
     allocator: &dyn Allocator,
     gas: &GasMeter,
 ) -> Result<AccountID, ErrorCode> {
     let id: u128 = id_generator
         .new_account_id(&mut StoreWrapper::wrap(state_handler, gas, allocator))?
         .into();
-    state_handler.create_account_storage(AccountID::new(id), gas)?;
-    state_handler.kv_set(
-        ROOT_ACCOUNT,
-        // TODO choose a different layout for the key
-        format!("h:{}", id).as_bytes(),
-        handler_id,
-        gas,
-    )?;
-    Ok(AccountID::new(id))
+    let id: AccountID = AccountID::new(id);
+    state_handler.create_account_storage(id, gas)?;
+    set_handler_id(state_handler, id, handler_id, gas)?;
+    Ok(id)
 }
 
-pub(crate) fn update_handler_id<ST: StateHandler>(
+pub(crate) fn set_handler_id<ST: StateHandler>(
     state_handler: &mut ST,
     account_id: AccountID,
-    new_handler_id: &[u8],
+    new_handler_id: &str,
     gas: &GasMeter,
 ) -> Result<(), ErrorCode> {
     let id: u128 = account_id.into();
     state_handler.kv_set(
         ROOT_ACCOUNT,
+        // TODO choose a different layout for the key
         format!("h:{}", id).as_bytes(),
-        new_handler_id,
+        new_handler_id.as_bytes(),
         gas,
     )
 }

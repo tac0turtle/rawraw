@@ -1,9 +1,8 @@
 use core::cell::{Cell, RefCell};
 use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::handler::HostBackend;
-use ixc_message_api::message::{QueryStateResponse, StateRequest, UpdateStateResponse};
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::AccountID;
+use ixc_message_api::message::{Message, Request, Response};
 use ixc_schema::mem::MemoryManager;
 
 /// Context wraps a single message request (and possibly response as well) along with
@@ -93,13 +92,14 @@ impl<'a> Context<'a> {
     /// the function is marked as unsafe to detour users from calling it directly
     pub unsafe fn dynamic_invoke_msg(
         &mut self,
-        packet: &mut MessagePacket,
-    ) -> Result<(), ErrorCode> {
+        msg: &Message,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let invoke_params = InvokeParams::new(self.mem, None);
         match self.backend {
-            BackendHandle::Mut(ref mut backend) => (*backend).invoke_msg(packet, &self.mem),
+            BackendHandle::Mut(ref mut backend) => (*backend).invoke_msg(msg, &invoke_params),
             BackendHandle::RefCell(ref mut backend) => {
                 if let Ok(mut backend) = backend.try_borrow_mut() {
-                    (*backend).invoke_msg(packet, &self.mem)
+                    (*backend).invoke_msg(msg, &invoke_params)
                 } else {
                     Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
                 }
@@ -113,15 +113,16 @@ impl<'a> Context<'a> {
     /// Dynamically invokes a query.
     /// # Safety
     /// This is marked unsafe because it should only be called by generated code or library functions.
-    pub unsafe fn dynamic_invoke_query(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
+    pub unsafe fn dynamic_invoke_query(&self, msg: &Message) -> Result<Response<'a>, ErrorCode> {
+        let invoke_params = InvokeParams::new(self.mem, None);
         let backend = match self.backend {
             BackendHandle::Mut(ref backend) => *backend,
             BackendHandle::Immutable(backend) => backend,
             BackendHandle::RefCell(backend) => {
-                return backend.borrow().invoke_query(packet, &self.mem)
+                return backend.borrow().invoke_query(msg, &invoke_params)
             }
         };
-        backend.invoke_query(packet, &self.mem)
+        backend.invoke_query(msg, &invoke_params)
     }
 
     /// Consume gas. Returns an out of gas error if there is not enough gas.
@@ -134,16 +135,17 @@ impl<'a> Context<'a> {
     /// This is marked unsafe because it should only be called by library functions.
     pub unsafe fn dynamic_update_state(
         &mut self,
-        req: &StateRequest<'_>,
-    ) -> Result<UpdateStateResponse<'_>, ErrorCode> {
+        req: &Request,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let invoke_params = InvokeParams::new(self.mem, None);
         match self.backend {
-            BackendHandle::Mut(ref mut backend) => (*backend).update_state(req, self.mem),
+            BackendHandle::Mut(ref mut backend) => (*backend).update_state(req, &invoke_params),
             BackendHandle::Immutable(_) => {
                 Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
             }
             BackendHandle::RefCell(ref mut backend) => {
                 if let Ok(mut backend) = backend.try_borrow_mut() {
-                    (*backend).update_state(req, self.mem)
+                    (*backend).update_state(req, &invoke_params)
                 } else {
                     Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
                 }
@@ -156,15 +158,16 @@ impl<'a> Context<'a> {
     /// This is marked unsafe because it should only be called by library functions.
     pub unsafe fn dynamic_query_state(
         &self,
-        req: &StateRequest<'_>,
-    ) -> Result<QueryStateResponse<'_>, ErrorCode> {
+        req: &Request,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let invoke_params = InvokeParams::new(self.mem, None);
         let backend = match self.backend {
             BackendHandle::Mut(ref backend) => *backend,
             BackendHandle::Immutable(backend) => backend,
             BackendHandle::RefCell(backend) => {
-                return backend.borrow().query_state(req, self.mem)
+                return backend.borrow().query_state(req, &invoke_params)
             }
         };
-        backend.query_state(req, self.mem)
+        backend.query_state(req, &invoke_params)
     }
 }

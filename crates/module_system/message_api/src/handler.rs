@@ -87,3 +87,13 @@ pub struct InvokeParams<'a> {
     /// If the gas limit is higher than the remaining gas, /// then the limit is set to the remaining gas.
     pub gas_limit: Option<u64>,
 }
+
+impl<'a> InvokeParams<'a> {
+    /// Create a new InvokeParams.
+    pub fn new(allocator: &'a dyn Allocator, gas_limit: Option<u64>) -> Self {
+        Self {
+            allocator,
+            gas_limit,
+        }
+    }
+}
