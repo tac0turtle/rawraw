@@ -1,21 +1,43 @@
 //! Message request and response types.
-use crate::header::MessageSelector;
 
-/// A message request.
+use crate::code::{ErrorCode, SystemCode};
+use crate::AccountID;
+
+/// A message.
 #[non_exhaustive]
-pub struct MessageRequest<'a> {
+pub struct Message<'a> {
+    /// The target account of the message.
+    pub target_account: AccountID,
+    /// The request.
+    pub request: Request<'a>,
+}
+
+/// A message selector code.
+pub type MessageSelector = u64;
+
+/// A request.
+#[non_exhaustive]
+pub struct Request<'a> {
     /// The message selector.
     pub message_selector: MessageSelector,
-    /// A u128 input parameter.
-    pub in0: u128,
-    /// A slice input parameter.
-    pub in1: &'a [u8],
+    /// The inputs to the message.
+    /// There can be up to three inputs.
+    pub inputs: [Param<'a>; 3],
 }
 
 /// A message response.
 #[non_exhaustive]
 #[derive(Default)]
-pub enum MessageResponse<'a> {
+pub struct Response<'a> {
+    /// The outputs of the message.
+    /// There can be up to two outputs.
+    pub inputs: [Param<'a>; 2],
+}
+
+/// A message response.
+#[derive(Default)]
+#[non_exhaustive]
+pub enum Param<'a> {
     /// An empty response.
     #[default]
     Empty,
@@ -25,56 +47,102 @@ pub enum MessageResponse<'a> {
     U128(u128),
 }
 
-/// A state request.
-#[non_exhaustive]
-pub struct StateRequest<'a> {
-    /// The message selector.
-    pub message_selector: MessageSelector,
-    /// A u128 input parameter.
-    pub in0: u128,
-    /// A slice input parameter.
-    pub in1: &'a [u8],
-    /// A slice output parameter.
-    pub in2: &'a [u8],
-}
-
-impl<'a> StateRequest<'a> {
-    /// Create a new state request with one input parameter.
-    pub fn new1(message_selector: MessageSelector, in1: &'a [u8]) -> Self {
-        Self { message_selector, in0: 0, in1, in2: &[] }
-    }
-
-    /// Create a new state request with two input parameters.
-    pub fn new2(message_selector: MessageSelector, in1: &'a [u8], in2: &'a [u8]) -> Self {
-        Self { message_selector, in0: 0, in1, in2 }
+impl<'a> Message<'a> {
+    /// Create a new message.
+    pub fn new(target_account: AccountID, request: Request<'a>) -> Self {
+        Self {
+            target_account,
+            request,
+        }
     }
 }
 
-/// A state update response.
-/// Currently, this is empty and is left as a placeholder for future use.
-#[non_exhaustive]
-#[derive(Default)]
-pub struct UpdateStateResponse<'a> {
-    _marker: core::marker::PhantomData<&'a ()>,
-}
-
-/// A query state response.
-#[non_exhaustive]
-pub struct QueryStateResponse<'a> {
-    /// The first slice output parameter.
-    pub out1: &'a [u8],
-    /// The second slice output parameter.
-    pub out2: &'a [u8],
-}
-
-impl <'a> QueryStateResponse<'a> {
-    /// Create a new query state response with one output parameter.
-    pub fn new1(out1: &'a [u8]) -> Self {
-        Self { out1, out2: &[] }
+impl<'a> Request<'a> {
+    /// Create a new request with no inputs.
+    pub fn new(message_selector: MessageSelector) -> Self {
+        Self {
+            message_selector,
+            inputs: Default::default(),
+        }
     }
 
-    /// Create a new query state response with two output parameters.
-    pub fn new2(out1: &'a [u8], out2: &'a [u8]) -> Self {
-        Self { out1, out2 }
+    /// Create a new request with one input.
+    pub fn new1(message_selector: MessageSelector, in1: Param<'a>) -> Self {
+        Self {
+            message_selector,
+            inputs: [in1, Param::Empty, Param::Empty],
+        }
+    }
+
+    /// Create a new request with two inputs.
+    pub fn new2(message_selector: MessageSelector, in1: Param<'a>, in2: Param<'a>) -> Self {
+        Self {
+            message_selector,
+            inputs: [in1, in2, Param::Empty],
+        }
+    }
+
+    /// Create a new request with three inputs.
+    pub fn new3(
+        message_selector: MessageSelector,
+        in1: Param<'a>,
+        in2: Param<'a>,
+        in3: Param<'a>,
+    ) -> Self {
+        Self {
+            message_selector,
+            inputs: [in1, in2, in3],
+        }
+    }
+}
+
+impl<'a> Response<'a> {
+    /// Create a new response with no outputs.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create a new response with one output.
+    pub fn new1(out1: Param<'a>) -> Self {
+        Self {
+            inputs: [out1, Param::Empty],
+        }
+    }
+
+    /// Create a new response with two outputs.
+    pub fn new2(out1: Param<'a>, out2: Param<'a>) -> Self {
+        Self {
+            inputs: [out1, out2],
+        }
+    }
+}
+
+impl<'a> Param<'a> {
+    /// Expect the parameter to be a slice or return an encoding error.
+    pub fn expect_slice(&self) -> Result<&'a [u8], ErrorCode> {
+        match self {
+            Param::Slice(slice) => Ok(slice),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+        }
+    }
+
+    /// Expect the parameter to be a u128 or return an encoding error.
+    pub fn expect_u128(&self) -> Result<u128, ErrorCode> {
+        match self {
+            Param::U128(u128) => Ok(*u128),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+        }
+    }
+}
+
+impl<'a> From<&'a [u8]> for Param<'a> {
+    fn from(slice: &'a [u8]) -> Self {
+        Param::Slice(slice)
+    }
+}
+
+impl From<u128> for Param<'_> {
+    fn from(u128: u128) -> Self {
+        Param::U128(u128)
     }
 }
