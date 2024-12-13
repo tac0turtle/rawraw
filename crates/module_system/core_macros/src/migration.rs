@@ -76,32 +76,27 @@ pub(crate) fn collect_on_migrate_info(
         _ => bail!("error with fn {}: the third argument of on_migrate function must be the old handler reference with the #[from] attribute", fn_name),
     };
 
-    let handler_code = quote! {
-        unsafe {
-            let scope: ::ixc::core::resource::ResourceScope<'_> = ::core::default::Default::default();
-            let old_handler = <#from as ::ixc::core::resource::Resources>::new(scope)?;
-            h.#fn_name(&mut ctx, &old_handler)?;
-            Ok(())
-       }
-    };
-
     Ok(OnMigrateInfo {
         from,
         attr,
-        handler_code,
     })
 }
 
 pub(crate) fn build_on_migrate_handler(
     builder: &mut APIBuilder,
     published_fn_info: &[PublishedFnInfo],
-) {
+)  -> manyhow::Result<()>
+{
     let mut cases = vec![];
     for fn_info in published_fn_info {
         if let PublishedFnType::OnMigrate(info) = &fn_info.ty {
+            let fn_name = &fn_info.signature.ident;
+            let OnMigrateInfo { from, .. } = info;
             cases.push(quote! {
-                <#info.from as ::ixc::core::handler::NamedResources>::NAME => {
-                    #info.handler_code
+                <#from as ::ixc::core::handler::NamedResources>::NAME => {
+                    let old_handler = <#from as ::ixc::core::resource::Resources>::new(&scope)
+                        .map_err(|_| ::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::InvalidHandler))?;
+                    h.#fn_name(&mut ctx, &old_handler)
                 },
             });
         }
@@ -116,19 +111,21 @@ pub(crate) fn build_on_migrate_handler(
                         let header = packet.header();
                         let mem =::ixc::schema::mem::MemoryManager::new();
                         let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, &mem);
-                        match old_handler_id {
+                        let scope: ::ixc::core::resource::ResourceScope<'_> = ::core::default::Default::default();
+                        let res = match old_handler_id {
                             #(#cases)*
-                            _ => Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled)),
-                        }
+                            _ => return Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled)),
+                        };
+                        ::ixc::core::low_level::encode_default_response(res, a, packet)
                     }
                 })
             });
     }
+    Ok(())
 }
 
 #[derive(Debug)]
 pub(crate) struct OnMigrateInfo {
     pub(crate) from: Box<Type>,
     pub(crate) attr: OnMigrateAttr,
-    pub(crate) handler_code: TokenStream,
 }

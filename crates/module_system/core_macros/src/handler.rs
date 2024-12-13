@@ -5,7 +5,7 @@ use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::{Attribute, FnArg, ImplItemFn, Item, ItemMod, Signature, Type};
-use crate::migration::{collect_on_migrate_info, OnMigrateInfo};
+use crate::migration::{build_on_migrate_handler, collect_on_migrate_info, OnMigrateInfo};
 
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
@@ -33,6 +33,9 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     for publish_target in publish_fns.iter() {
         builder.extract_method_data(&handler, &quote! {#handler}, publish_target)?;
     }
+
+    // handles for all on_migrate functions are generated here
+    build_on_migrate_handler(&mut builder, &publish_fns)?;
 
     // the client struct and its trait implementation are generated here
     let client_ident = format_ident!("{}Client", handler);

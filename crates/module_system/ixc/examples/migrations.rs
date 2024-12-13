@@ -15,6 +15,7 @@ mod handler1 {
     impl Handler1 {
         #[on_create]
         pub fn create(&self, ctx: &mut Context) -> Result<()> {
+            self.value.set(ctx, 1)?;
             Ok(self.owner.set(ctx, &ctx.self_account_id())?)
         }
 
@@ -101,6 +102,55 @@ mod handler3 {
         pub fn get(&self, ctx: &Context) -> Result<u128> {
             Ok(self.value.get(ctx)?)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::handler1::{Handler1, Handler1Create};
+    use crate::handler2::Handler2;
+    use crate::handler3::Handler3;
+    use ixc::*;
+    use ixc_core::account_api::get_handler_id;
+    use ixc_core::handler::{Client, NamedResources};
+    use ixc_testing::*;
+
+    #[test]
+    fn test_migration() {
+        let test_app = TestApp::default();
+        test_app.register_handler::<Handler1>().unwrap();
+        test_app.register_handler::<Handler2>().unwrap();
+        test_app.register_handler::<Handler3>().unwrap();
+
+        let mut bob = test_app.new_client_context().unwrap();
+        let foo = create_account::<Handler1>(&mut bob, Handler1Create {}).unwrap();
+        assert_eq!(get_handler_id(&bob, foo.account_id()).unwrap(), Handler1::NAME);
+        let cur = foo.get(&bob).unwrap();
+        assert_eq!(cur, 1);
+
+        foo.migrate(&mut bob, Handler2::NAME).unwrap();
+        assert_eq!(get_handler_id(&bob, foo.account_id()).unwrap(), Handler2::NAME);
+
+        let foo = Handler2::new_client(foo.account_id());
+        let cur = foo.get(&bob).unwrap();
+        assert_eq!(cur, 2);
+
+        foo.migrate(&mut bob, Handler3::NAME).unwrap();
+        assert_eq!(get_handler_id(&bob, foo.account_id()).unwrap(), Handler3::NAME);
+
+        let foo = Handler3::new_client(foo.account_id());
+        let cur = foo.get(&bob).unwrap();
+        assert_eq!(cur, 4);
+
+        let bar = create_account::<Handler1>(&mut bob, Handler1Create {}).unwrap();
+        assert_eq!(get_handler_id(&bob, bar.account_id()).unwrap(), Handler1::NAME);
+
+        bar.migrate(&mut bob, Handler3::NAME).unwrap();
+        assert_eq!(get_handler_id(&bob, bar.account_id()).unwrap(), Handler3::NAME);
+
+        let bar = Handler3::new_client(bar.account_id());
+        let cur = bar.get(&bob).unwrap();
+        assert_eq!(cur, 3);
     }
 }
 

@@ -5,6 +5,7 @@ use crate::error::ClientError;
 use crate::handler::{Handler, InitMessage, NamedResources, Service};
 use crate::low_level::create_packet;
 use crate::result::ClientResult;
+use core::str::from_utf8;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::SystemCode::EncodingError;
@@ -55,6 +56,31 @@ fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult
     }
 }
 
+/// Gets the handler ID of the account.
+pub fn get_handler_id<'a>(ctx: &Context<'a>, account_id: AccountID) -> ClientResult<&'a str> {
+    let mut packet = create_packet(
+        ctx.self_account_id(),
+        ctx.memory_manager(),
+        ROOT_ACCOUNT,
+        GET_HANDLER_ID_SELECTOR,
+    )?;
+    unsafe {
+        let id: u128 = account_id.into();
+        packet
+            .header_mut()
+            .in_pointer1
+            .set_slice(&id.to_le_bytes());
+        ctx.dynamic_invoke_query(&mut packet)?;
+        let res = packet.header().out_pointer1.get(&packet);
+        from_utf8(res).map_err(|_| {
+            ClientError::new(
+                ErrorCode::SystemCode(EncodingError),
+                "invalid handler ID".into(),
+            )
+        })
+    }
+}
+
 /// Migrates the account to the new handler with the specified ID.
 pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
     let mut packet = create_packet(
@@ -89,6 +115,8 @@ pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
 }
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
+
+const GET_HANDLER_ID_SELECTOR: u64 = message_selector!("ixc.account.v1.get_handler_id");
 
 const MIGRATE_SELECTOR: u64 = message_selector!("ixc.account.v1.migrate");
 
