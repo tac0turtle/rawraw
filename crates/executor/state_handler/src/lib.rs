@@ -207,7 +207,10 @@ impl<S: Store> StdStateManager for StateHandler<S> {
 
     /// Rolls back the current transaction.
     fn rollback_tx(&mut self) -> Result<(), StdStateError> {
-        let snapshot = self.checkpoints.pop().ok_or(StdStateError::RevertError)?;
+        let snapshot = self
+            .checkpoints
+            .pop()
+            .ok_or(StdStateError::FatalExecutionError)?;
         let _ = self.snapshot_state.revert_to_snapshot(snapshot);
         Ok(())
     }
