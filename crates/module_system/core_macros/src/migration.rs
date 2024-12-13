@@ -93,7 +93,7 @@ pub(crate) fn build_on_migrate_handler(
             let fn_name = &fn_info.signature.ident;
             let OnMigrateInfo { from, .. } = info;
             cases.push(quote! {
-                <#from as ::ixc::core::handler::NamedResources>::NAME => {
+                <#from as ::ixc::core::handler::NamedHandlerResources>::NAME => {
                     let old_handler = <#from as ::ixc::core::resource::Resources>::new(&scope)
                         .map_err(|_| ::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::InvalidHandler))?;
                     h.#fn_name(&mut ctx, &old_handler)

@@ -9,13 +9,13 @@ use ixc_schema::SchemaValue;
 
 /// The trait that must be implemented by Resources structs that have a name
 /// such as handlers or handler structs maintained strictly for migration purposes.
-pub trait NamedResources: Resources {
+pub trait NamedHandlerResources: Resources {
     /// The name of the handler.
     const NAME: &'static str;
 }
 
 /// Handler trait for account and module handlers.
-pub trait Handler: RawHandler + Router + NamedResources + Service {
+pub trait Handler: RawHandler + Router + NamedHandlerResources + Service {
     /// The parameter used for initializing the handler.
     type Init<'a>: InitMessage<'a>;
 }

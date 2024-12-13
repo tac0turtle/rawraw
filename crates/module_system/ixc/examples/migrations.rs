@@ -70,9 +70,9 @@ mod handler2 {
 
 #[ixc::handler(Handler3)]
 mod handler3 {
-    use crate::handler1::Handler1;
     use crate::handler2::Handler2;
     use ixc::*;
+    use ixc_core::handler::NamedHandlerResources;
 
     #[derive(Resources)]
     pub struct Handler3 {
@@ -103,6 +103,18 @@ mod handler3 {
             Ok(self.value.get(ctx)?)
         }
     }
+
+    // here we show a simple way to implement the NamedHandlerResources trait
+    // so that we don't need all the old code from Handler1 to perform the migration
+    // we just need this struct to read its state
+    #[derive(Resources)]
+    pub struct Handler1 {
+        #[state(prefix = 0)]
+        pub value: Item<u32>,
+        #[state(prefix = 1)]
+        owner: Item<AccountID>,
+    }
+    impl NamedHandlerResources for Handler1 { const NAME: &'static str = "Handler1"; }
 }
 
 #[cfg(test)]
@@ -112,7 +124,7 @@ mod tests {
     use crate::handler3::Handler3;
     use ixc::*;
     use ixc_core::account_api::get_handler_id;
-    use ixc_core::handler::{Client, NamedResources};
+    use ixc_core::handler::{Client, NamedHandlerResources};
     use ixc_testing::*;
 
     #[test]
