@@ -1,19 +1,17 @@
 //! State handler traits.
-pub mod gas;
 pub mod std;
 
+use crate::gas::GasMeter;
+use crate::id_generator;
 use crate::id_generator::IDGenerator;
-use crate::state_handler::gas::GasMeter;
-use crate::{id_generator, ROOT_ACCOUNT};
 use alloc::format;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
-use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_message_api::packet::MessagePacket;
-use ixc_message_api::AccountID;
+use ixc_message_api::message::{QueryStateResponse, StateRequest, UpdateStateResponse};
+use ixc_message_api::{AccountID, ROOT_ACCOUNT};
 
 /// The state handler trait.
 pub trait StateHandler {
@@ -22,7 +20,7 @@ pub trait StateHandler {
         &self,
         account_id: AccountID,
         key: &[u8],
-        gas: &mut GasMeter,
+        gas: &GasMeter,
         allocator: A,
     ) -> Result<Option<Vec<u8, A>>, ErrorCode>;
     /// Set the value of the key.
@@ -31,54 +29,58 @@ pub trait StateHandler {
         account_id: AccountID,
         key: &[u8],
         value: &[u8],
-        gas: &mut GasMeter,
+        gas: &GasMeter,
     ) -> Result<(), ErrorCode>;
     /// Delete the value of the key.
     fn kv_delete(
         &mut self,
         account_id: AccountID,
         key: &[u8],
-        gas: &mut GasMeter,
+        gas: &GasMeter,
     ) -> Result<(), ErrorCode>;
     /// Begin a transaction.
-    fn begin_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode>;
+    fn begin_tx(&mut self, gas: &GasMeter) -> Result<(), ErrorCode>;
     /// Commit a transaction.
-    fn commit_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode>;
+    fn commit_tx(&mut self, gas: &GasMeter) -> Result<(), ErrorCode>;
     /// Rollback a transaction.
-    fn rollback_tx(&mut self, gas: &mut GasMeter) -> Result<(), ErrorCode>;
+    fn rollback_tx(&mut self, gas: &GasMeter) -> Result<(), ErrorCode>;
 
     /// Handle a message packet.
-    fn handle_exec(
+    fn handle_exec<'a>(
         &mut self,
-        message_packet: &mut MessagePacket,
+        account_id: AccountID,
+        request: &StateRequest<'_>,
+        gas: &GasMeter,
         allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+    ) -> Result<UpdateStateResponse<'a>, ErrorCode>;
 
     /// Handle a query message packet.
-    fn handle_query(
+    fn handle_query<'a>(
         &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>;
+        account_id: AccountID,
+        request: &StateRequest<'_>,
+        gas: &GasMeter,
+        allocator: &'a dyn Allocator,
+    ) -> Result<QueryStateResponse<'a>, ErrorCode>;
 
     /// Create storage for a new account.
     fn create_account_storage(
         &mut self,
         account: AccountID,
-        gas: &mut GasMeter,
+        gas: &GasMeter,
     ) -> Result<(), ErrorCode>;
 
     /// Delete all of an account's storage.
     fn delete_account_storage(
         &mut self,
         account: AccountID,
-        gas: &mut GasMeter,
+        gas: &GasMeter,
     ) -> Result<(), ErrorCode>;
 }
 pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
     state_handler: &ST,
     account_id: AccountID,
-    gas: &mut GasMeter,
+    gas: &GasMeter,
     allocator: &'a dyn Allocator,
 ) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode> {
     let id: u128 = account_id.into();
@@ -91,7 +93,7 @@ pub(crate) fn init_next_account<ST: StateHandler, IDG: IDGenerator>(
     state_handler: &mut ST,
     handler_id: &[u8],
     allocator: &dyn Allocator,
-    gas: &mut GasMeter,
+    gas: &GasMeter,
 ) -> Result<AccountID, ErrorCode> {
     let id: u128 = id_generator
         .new_account_id(&mut StoreWrapper::wrap(state_handler, gas, allocator))?
@@ -111,7 +113,7 @@ pub(crate) fn update_handler_id<ST: StateHandler>(
     state_handler: &mut ST,
     account_id: AccountID,
     new_handler_id: &[u8],
-    gas: &mut GasMeter,
+    gas: &GasMeter,
 ) -> Result<(), ErrorCode> {
     let id: u128 = account_id.into();
     state_handler.kv_set(
@@ -125,7 +127,7 @@ pub(crate) fn update_handler_id<ST: StateHandler>(
 pub(crate) fn destroy_account_data<ST: StateHandler>(
     state_handler: &mut ST,
     account: AccountID,
-    gas: &mut GasMeter,
+    gas: &GasMeter,
 ) -> Result<(), ErrorCode> {
     let id: u128 = account.into();
     let key = format!("h:{}", id);
@@ -135,15 +137,15 @@ pub(crate) fn destroy_account_data<ST: StateHandler>(
 
 struct StoreWrapper<'a, S: StateHandler> {
     state_handler: &'a mut S,
-    gas: RefCell<&'a mut GasMeter>,
+    gas: &'a GasMeter,
     allocator: &'a dyn Allocator,
 }
 
 impl<'a, S: StateHandler> StoreWrapper<'a, S> {
-    fn wrap(state_handler: &'a mut S, gas: &'a mut GasMeter, allocator: &'a dyn Allocator) -> Self {
+    fn wrap(state_handler: &'a mut S, gas: &'a GasMeter, allocator: &'a dyn Allocator) -> Self {
         Self {
             state_handler,
-            gas: RefCell::new(gas),
+            gas,
             allocator,
         }
     }
@@ -151,13 +153,9 @@ impl<'a, S: StateHandler> StoreWrapper<'a, S> {
 
 impl<S: StateHandler> id_generator::Store for StoreWrapper<'_, S> {
     fn get(&self, key: &[u8]) -> Result<Option<&[u8]>, ErrorCode> {
-        let mut gas = self
-            .gas
-            .try_borrow_mut()
-            .map_err(|_| SystemCode(FatalExecutionError))?;
-        if let Some(value) = self
-            .state_handler
-            .kv_get(ROOT_ACCOUNT, key, *gas, self.allocator)?
+        if let Some(value) =
+            self.state_handler
+                .kv_get(ROOT_ACCOUNT, key, self.gas, self.allocator)?
         {
             let (ptr, len, _) = value.into_raw_parts();
             Ok(Some(unsafe { core::slice::from_raw_parts(ptr, len) }))
@@ -167,10 +165,6 @@ impl<S: StateHandler> id_generator::Store for StoreWrapper<'_, S> {
     }
 
     fn set(&mut self, key: &[u8], value: &[u8]) -> Result<(), ErrorCode> {
-        let mut gas = self
-            .gas
-            .try_borrow_mut()
-            .map_err(|_| SystemCode(FatalExecutionError))?;
-        self.state_handler.kv_set(ROOT_ACCOUNT, key, value, *gas)
+        self.state_handler.kv_set(ROOT_ACCOUNT, key, value, self.gas)
     }
 }

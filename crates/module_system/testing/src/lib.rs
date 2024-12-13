@@ -24,6 +24,7 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
+use ixc_message_api::message::{QueryStateResponse, StateRequest, UpdateStateResponse};
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -148,7 +149,6 @@ impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
         account_manager.invoke_msg(
             &mut state_handler,
             &mut self.id_gen,
-            &(),
             message_packet,
             allocator,
         )?;
@@ -169,6 +169,18 @@ impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
         let state_handler = StdStateHandler::new(&mut tx, Default::default());
 
         account_manager.invoke_query(&state_handler, message_packet, allocator)
+    }
+
+    fn update_state<'a>(&mut self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<UpdateStateResponse<'a>, ErrorCode> {
+        todo!()
+    }
+
+    fn query_state<'a>(&self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<QueryStateResponse<'a>, ErrorCode> {
+        todo!()
+    }
+
+    fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
+        todo!()
     }
 }
 

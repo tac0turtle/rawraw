@@ -1,6 +1,7 @@
 use core::cell::{Cell, RefCell};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
+use ixc_message_api::message::{QueryStateResponse, StateRequest, UpdateStateResponse};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
@@ -12,7 +13,6 @@ pub struct Context<'a> {
     pub(crate) mem: &'a MemoryManager,
     pub(crate) account: AccountID, // 16 bytes
     pub(crate) caller: AccountID,  // 16 bytes
-    gas_left: Cell<u64>,
 }
 
 enum BackendHandle<'a> {
@@ -26,7 +26,7 @@ impl<'a> Context<'a> {
     pub fn new(
         account: AccountID,
         caller: AccountID,
-        gas_left: u64,
+        _gas_left: u64, // TODO remove
         host_callbacks: &'a dyn HostBackend,
         mem: &'a MemoryManager,
     ) -> Self {
@@ -35,7 +35,6 @@ impl<'a> Context<'a> {
             backend: BackendHandle::Immutable(host_callbacks),
             account,
             caller,
-            gas_left: Cell::new(gas_left),
         }
     }
 
@@ -52,7 +51,6 @@ impl<'a> Context<'a> {
             backend: BackendHandle::Mut(host_callbacks),
             account,
             caller,
-            gas_left: Cell::new(gas_left),
         }
     }
 
@@ -70,7 +68,6 @@ impl<'a> Context<'a> {
             backend: BackendHandle::RefCell(host_callbacks),
             account,
             caller,
-            gas_left: Cell::new(gas_left),
         }
     }
 
@@ -97,7 +94,7 @@ impl<'a> Context<'a> {
     pub unsafe fn dynamic_invoke_msg(
         &mut self,
         packet: &mut MessagePacket,
-    ) -> core::result::Result<(), ErrorCode> {
+    ) -> Result<(), ErrorCode> {
         match self.backend {
             BackendHandle::Mut(ref mut backend) => (*backend).invoke_msg(packet, &self.mem),
             BackendHandle::RefCell(ref mut backend) => {
@@ -116,10 +113,7 @@ impl<'a> Context<'a> {
     /// Dynamically invokes a query.
     /// # Safety
     /// This is marked unsafe because it should only be called by generated code or library functions.
-    pub unsafe fn dynamic_invoke_query(
-        &self,
-        packet: &mut MessagePacket,
-    ) -> core::result::Result<(), ErrorCode> {
+    pub unsafe fn dynamic_invoke_query(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
         let backend = match self.backend {
             BackendHandle::Mut(ref backend) => *backend,
             BackendHandle::Immutable(backend) => backend,
@@ -132,11 +126,45 @@ impl<'a> Context<'a> {
 
     /// Consume gas. Returns an out of gas error if there is not enough gas.
     pub fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        if self.gas_left.get() < gas {
-            self.gas_left.set(0);
-            return Err(ErrorCode::SystemCode(SystemCode::OutOfGas));
+        todo!()
+    }
+
+    /// Update the state of the account.
+    /// # Safety
+    /// This is marked unsafe because it should only be called by library functions.
+    pub unsafe fn dynamic_update_state(
+        &mut self,
+        req: &StateRequest<'_>,
+    ) -> Result<UpdateStateResponse<'_>, ErrorCode> {
+        match self.backend {
+            BackendHandle::Mut(ref mut backend) => (*backend).update_state(req, self.mem),
+            BackendHandle::Immutable(_) => {
+                Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
+            }
+            BackendHandle::RefCell(ref mut backend) => {
+                if let Ok(mut backend) = backend.try_borrow_mut() {
+                    (*backend).update_state(req, self.mem)
+                } else {
+                    Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
+                }
+            }
         }
-        self.gas_left.set(self.gas_left.get() - gas);
-        Ok(())
+    }
+
+    /// Query the state of the account.
+    /// # Safety
+    /// This is marked unsafe because it should only be called by library functions.
+    pub unsafe fn dynamic_query_state(
+        &self,
+        req: &StateRequest<'_>,
+    ) -> Result<QueryStateResponse<'_>, ErrorCode> {
+        let backend = match self.backend {
+            BackendHandle::Mut(ref backend) => *backend,
+            BackendHandle::Immutable(backend) => backend,
+            BackendHandle::RefCell(backend) => {
+                return backend.borrow().query_state(req, self.mem)
+            }
+        };
+        backend.query_state(req, self.mem)
     }
 }

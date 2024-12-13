@@ -9,5 +9,10 @@ pub mod data_pointer;
 pub mod handler;
 pub mod header;
 pub mod packet;
+pub mod message;
 
 pub use account_id::AccountID;
+
+/// The root system account ID.
+pub const ROOT_ACCOUNT: AccountID = AccountID::new(1);
+
