@@ -1,11 +1,11 @@
+use crate::api_builder::APIBuilder;
 use crate::handler::{FromAttr, OnMigrateAttr, PublishedFnInfo, PublishedFnType};
 use crate::util::maybe_extract_attribute;
+use core::borrow::Borrow;
 use manyhow::bail;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{FnArg, ImplItemFn, Type};
-use core::borrow::Borrow;
-use crate::api_builder::APIBuilder;
 
 pub(crate) fn collect_on_migrate_info(
     item_fn: &mut ImplItemFn,
@@ -76,17 +76,13 @@ pub(crate) fn collect_on_migrate_info(
         _ => bail!("error with fn {}: the third argument of on_migrate function must be the old handler reference with the #[from] attribute", fn_name),
     };
 
-    Ok(OnMigrateInfo {
-        from,
-        attr,
-    })
+    Ok(OnMigrateInfo { from, attr })
 }
 
 pub(crate) fn build_on_migrate_handler(
     builder: &mut APIBuilder,
     published_fn_info: &[PublishedFnInfo],
-)  -> manyhow::Result<()>
-{
+) -> manyhow::Result<()> {
     let mut cases = vec![];
     for fn_info in published_fn_info {
         if let PublishedFnType::OnMigrate(info) = &fn_info.ty {

@@ -66,10 +66,7 @@ pub fn get_handler_id<'a>(ctx: &Context<'a>, account_id: AccountID) -> ClientRes
     )?;
     unsafe {
         let id: u128 = account_id.into();
-        packet
-            .header_mut()
-            .in_pointer1
-            .set_slice(&id.to_le_bytes());
+        packet.header_mut().in_pointer1.set_slice(&id.to_le_bytes());
         ctx.dynamic_invoke_query(&mut packet)?;
         let res = packet.header().out_pointer1.get(&packet);
         from_utf8(res).map_err(|_| {

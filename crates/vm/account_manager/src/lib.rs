@@ -21,7 +21,10 @@ use core::cell::RefCell;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
-use ixc_message_api::code::SystemCode::{AccountNotFound, CallStackOverflow, EncodingError, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled, UnauthorizedCallerAccess};
+use ixc_message_api::code::SystemCode::{
+    AccountNotFound, CallStackOverflow, EncodingError, FatalExecutionError, HandlerNotFound,
+    InvalidHandler, MessageNotHandled, UnauthorizedCallerAccess,
+};
 use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
 use ixc_message_api::AccountID;
@@ -277,7 +280,6 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
             return self.state_handler.handle_query(message_packet, allocator);
         }
 
-
         // for all other accounts, we just set the caller to the empty account
         // because queries should depend on the caller
         message_packet.header_mut().caller = AccountID::EMPTY;
@@ -484,7 +486,9 @@ impl<
     }
 }
 
-impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT> {
+impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
+    QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
+{
     fn handle_system_query(
         &self,
         message_packet: &mut MessagePacket,
@@ -503,7 +507,6 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> QueryC
         message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-
         // get the account ID from the in pointer
         let account_id = message_packet.header().in_pointer1.get(message_packet);
         if account_id.len() != 16 {
@@ -513,18 +516,25 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> QueryC
 
         // look up the handler ID
         let mut gas = GasMeter::new(message_packet.header().gas_left);
-        let handler_id = get_account_handler_id(self.state_handler, AccountID::from(account_id), &mut gas, allocator)?
-            .ok_or(SystemCode(AccountNotFound))?;
+        let handler_id = get_account_handler_id(
+            self.state_handler,
+            AccountID::from(account_id),
+            &mut gas,
+            allocator,
+        )?
+        .ok_or(SystemCode(AccountNotFound))?;
 
         // copy the handler ID to the out pointer
         let mut vec = Vec::new_in(allocator);
         vec.extend_from_slice(handler_id.as_slice());
-        message_packet.header_mut().out_pointer1.set_slice(vec.as_slice());
+        message_packet
+            .header_mut()
+            .out_pointer1
+            .set_slice(vec.as_slice());
 
         Ok(())
     }
 }
-
 
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
 const ON_CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_create");

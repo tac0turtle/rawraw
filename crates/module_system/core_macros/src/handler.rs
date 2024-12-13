@@ -1,11 +1,11 @@
-use crate::api_builder::{APIBuilder};
+use crate::api_builder::APIBuilder;
+use crate::migration::{build_on_migrate_handler, collect_on_migrate_info, OnMigrateInfo};
 use crate::util::{maybe_extract_attribute, push_item};
 use core::borrow::Borrow;
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::{Attribute, FnArg, ImplItemFn, Item, ItemMod, Signature, Type};
-use crate::migration::{build_on_migrate_handler, collect_on_migrate_info, OnMigrateInfo};
 
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
@@ -212,13 +212,17 @@ fn collect_publish_targets(
                     // we define a publish attribute for the fn if it is annotated directly with #[publish] or if the impl block has #[publish]
                     let publish = publish_all.clone().or(publish);
                     // if it's either a publish fn or an on_create fn
-                    if  publish.is_some() || on_create.is_some() || on_migrate.is_some() {
+                    if publish.is_some() || on_create.is_some() || on_migrate.is_some() {
                         let ty = if let Some(on_create) = on_create {
                             PublishedFnType::OnCreate { attr: on_create }
                         } else if let Some(publish) = publish {
-                            PublishedFnType::Publish { attr: Some(publish) }
+                            PublishedFnType::Publish {
+                                attr: Some(publish),
+                            }
                         } else if let Some(on_migrate) = on_migrate {
-                            PublishedFnType::OnMigrate(collect_on_migrate_info(impl_fn, on_migrate)?)
+                            PublishedFnType::OnMigrate(collect_on_migrate_info(
+                                impl_fn, on_migrate,
+                            )?)
                         } else {
                             unreachable!()
                         };
@@ -274,8 +278,8 @@ pub(crate) struct PublishedFnInfo {
 
 #[derive(Debug)]
 pub(crate) enum PublishedFnType {
-    Publish{attr: Option<PublishAttr>},
-    OnCreate{attr: OnCreateAttr},
+    Publish { attr: Option<PublishAttr> },
+    OnCreate { attr: OnCreateAttr },
     OnMigrate(OnMigrateInfo),
 }
 

@@ -6,9 +6,9 @@ mod api_builder;
 mod handler;
 mod handler_api;
 mod message_selector;
+mod migration;
 mod resources;
 mod util;
-mod migration;
 
 //TODO remove
 use blake2::{Blake2b512, Digest};

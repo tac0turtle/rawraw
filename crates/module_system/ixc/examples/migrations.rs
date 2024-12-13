@@ -114,7 +114,9 @@ mod handler3 {
         #[state(prefix = 1)]
         owner: Item<AccountID>,
     }
-    impl NamedHandlerResources for Handler1 { const NAME: &'static str = "Handler1"; }
+    impl NamedHandlerResources for Handler1 {
+        const NAME: &'static str = "Handler1";
+    }
 }
 
 #[cfg(test)]
@@ -136,29 +138,44 @@ mod tests {
 
         let mut bob = test_app.new_client_context().unwrap();
         let foo = create_account::<Handler1>(&mut bob, Handler1Create {}).unwrap();
-        assert_eq!(get_handler_id(&bob, foo.account_id()).unwrap(), Handler1::NAME);
+        assert_eq!(
+            get_handler_id(&bob, foo.account_id()).unwrap(),
+            Handler1::NAME
+        );
         let cur = foo.get(&bob).unwrap();
         assert_eq!(cur, 1);
 
         foo.migrate(&mut bob, Handler2::NAME).unwrap();
-        assert_eq!(get_handler_id(&bob, foo.account_id()).unwrap(), Handler2::NAME);
+        assert_eq!(
+            get_handler_id(&bob, foo.account_id()).unwrap(),
+            Handler2::NAME
+        );
 
         let foo = Handler2::new_client(foo.account_id());
         let cur = foo.get(&bob).unwrap();
         assert_eq!(cur, 2);
 
         foo.migrate(&mut bob, Handler3::NAME).unwrap();
-        assert_eq!(get_handler_id(&bob, foo.account_id()).unwrap(), Handler3::NAME);
+        assert_eq!(
+            get_handler_id(&bob, foo.account_id()).unwrap(),
+            Handler3::NAME
+        );
 
         let foo = Handler3::new_client(foo.account_id());
         let cur = foo.get(&bob).unwrap();
         assert_eq!(cur, 4);
 
         let bar = create_account::<Handler1>(&mut bob, Handler1Create {}).unwrap();
-        assert_eq!(get_handler_id(&bob, bar.account_id()).unwrap(), Handler1::NAME);
+        assert_eq!(
+            get_handler_id(&bob, bar.account_id()).unwrap(),
+            Handler1::NAME
+        );
 
         bar.migrate(&mut bob, Handler3::NAME).unwrap();
-        assert_eq!(get_handler_id(&bob, bar.account_id()).unwrap(), Handler3::NAME);
+        assert_eq!(
+            get_handler_id(&bob, bar.account_id()).unwrap(),
+            Handler3::NAME
+        );
 
         let bar = Handler3::new_client(bar.account_id());
         let cur = bar.get(&bob).unwrap();
