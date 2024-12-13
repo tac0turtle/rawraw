@@ -6,6 +6,7 @@ mod api_builder;
 mod handler;
 mod handler_api;
 mod message_selector;
+mod migration;
 mod resources;
 mod util;
 
@@ -42,14 +43,47 @@ pub fn handler_api(attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Result
 #[manyhow]
 #[proc_macro_attribute]
 pub fn publish(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenStream2> {
-    bail!("the #[publish] attribute is being used in the wrong context, possibly #[module_handler] or #[account_handler] has not been applied to the enclosing module")
+    bail!("the #[publish] attribute is being used in the wrong context, possibly #[handler] has not been applied to the enclosing module")
 }
 
 /// This attribute macro should be attached to the fn which is called when an account is created.
 #[manyhow]
 #[proc_macro_attribute]
 pub fn on_create(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenStream2> {
-    bail!("the #[on_create] attribute is being used in the wrong context, possibly #[module_handler] or #[account_handler] has not been applied to the enclosing module")
+    bail!("the #[on_create] attribute is being used in the wrong context, possibly #[handler] has not been applied to the enclosing module")
+}
+
+/// This attribute macro should be attached functions are called when an
+/// account has been migrated to new handler.
+///
+/// It requires a #[from] parameter to specify the handler from
+/// which the account is being migrated.
+/// Parameters annotated with #[from] must be borrowed references
+/// to handler structs or any struct that implements [`ixc::core::handler::HandlerResources`].
+/// This makes it possible to migrate an account to a new handler
+/// while reading the state of the old handler,
+/// and only retaining the handler struct itself rather than all the old implementation code.
+///
+/// A unique migration function should be defined for each handler
+/// from which the account can be migrated.
+#[manyhow]
+#[proc_macro_attribute]
+pub fn on_migrate(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenStream2> {
+    bail!("the #[on_migrate] attribute is being used in the wrong context, possibly #[handler] has not been applied to the enclosing module")
+}
+
+/// This attribute macro should be used on the parameter of functions
+/// annotated with #[on_migrate] to the handler from
+/// which the account is being migrated.
+/// The type of this parameter must be a reference to a handler struct
+/// which implements [ixc::core::handler::HandlerResources].
+/// This struct is used to both extract the name of the handler from
+/// and can be used to read state from the old handler.
+/// This attribute must be attached to exactly one parameter in on #[on_migrate] function.
+#[manyhow]
+#[proc_macro_attribute]
+pub fn from(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenStream2> {
+    bail!("the #[from] attribute is being used in the wrong context, possibly #[handler] has not been applied to the enclosing module")
 }
 
 /// Derive the `Resources` trait for a struct.

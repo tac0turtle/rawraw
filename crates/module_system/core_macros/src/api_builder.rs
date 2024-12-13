@@ -1,13 +1,13 @@
-use crate::handler::PublishedFnInfo;
+use crate::handler::{FromAttr, PublishedFnInfo, PublishedFnType};
 use crate::message_selector::message_selector_from_str;
-use crate::util::push_item;
+use crate::util::{maybe_extract_attribute, push_item};
 use core::borrow::Borrow;
 use heck::ToUpperCamelCase;
 use manyhow::{bail, ensure};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::punctuated::Punctuated;
-use syn::{parse_quote, Item, ReturnType, Signature, Type};
+use syn::{parse_quote, Item, Pat, PatType, ReturnType, Signature, Type};
 
 #[derive(Default)]
 pub(crate) struct APIBuilder {
@@ -90,6 +90,11 @@ impl APIBuilder {
         _handler_ty: &TokenStream2,
         publish_target: &PublishedFnInfo,
     ) -> manyhow::Result<()> {
+        if let PublishedFnType::OnMigrate { .. } = &publish_target.ty {
+            // we don't handle on_migrate functions here
+            return Ok(());
+        }
+
         let signature = &publish_target.signature;
         let fn_name = &signature.ident;
         // we generate the message struct name by appending the camel case version of the function name to the handler name
@@ -112,7 +117,7 @@ impl APIBuilder {
         let mut context_name: Option<Ident> = None;
         // whether or not the function is a query, meaning it has &Context rather than &mut Context
         let mut is_query = false;
-        for field in &signature.inputs {
+        for field in &mut signature.inputs {
             match field {
                 // check that we have a &self receiver
                 syn::FnArg::Receiver(r) => {
@@ -123,10 +128,11 @@ impl APIBuilder {
                         );
                     }
                 }
+
                 // other function inputs should end up here
                 syn::FnArg::Typed(pat_type) => {
                     match pat_type.pat.as_ref() {
-                        syn::Pat::Ident(ident) => {
+                        Pat::Ident(pat_ident) => {
                             let mut ty = pat_type.ty.clone();
                             match ty.as_mut() {
                                 // reference types end up in this case
@@ -134,7 +140,7 @@ impl APIBuilder {
                                     // here the main check is whether we have Context or an EventBus
                                     if let Type::Path(path) = tyref.elem.borrow() {
                                         if path.path.segments.first().unwrap().ident == "Context" {
-                                            context_name = Some(ident.ident.clone());
+                                            context_name = Some(pat_ident.ident.clone());
                                             client_inputs.push(field.clone()); // we add the input parameter to the client function because we're going to call continue
                                             if tyref.mutability.is_none() {
                                                 is_query = true;
@@ -179,19 +185,19 @@ impl APIBuilder {
                             }
                             // push this input parameter to the message struct
                             msg_fields.push(quote! {
-                                pub #ident: #ty,
+                                pub #pat_ident: #ty,
                             });
                             // push this input parameter to the message struct deconstructor
                             msg_deconstruct.push(quote! {
-                                #ident,
+                                #pat_ident,
                             });
                             // push this input parameter to the function call
                             fn_call_args.push(quote! {
-                                #ident,
+                                #pat_ident,
                             });
                             // push this input parameter to the message struct initializer
                             msg_fields_init.push(quote! {
-                                #ident,
+                                #pat_ident,
                             });
                         }
                         _ => bail!("expected identifier"),
@@ -238,24 +244,24 @@ impl APIBuilder {
                 bail!("expected return type")
             }
         };
-        if publish_target.on_create.is_none() {
+        if let PublishedFnType::Publish { .. } = &publish_target.ty {
             push_item(
                 &mut self.items,
                 quote! {
-                    impl <'a> ::ixc::core::message::MessageBase<'a> for #msg_struct_name #opt_lifetime {
-                        const SELECTOR: ::ixc::message_api::header::MessageSelector = #selector;
-                        type Response<'b> = <#return_type as ::ixc::core::message::ExtractResponseTypes>::Response;
-                        type Error = <#return_type as ::ixc::core::message::ExtractResponseTypes>::Error;
-                        type Codec = ::ixc::schema::binary::NativeBinaryCodec;
-                    }
+                    impl < 'a >::ixc::core::message::MessageBase < 'a > for # msg_struct_name # opt_lifetime {
+                        const SELECTOR: ::ixc::message_api::header::MessageSelector = # selector;
+                        type Response < 'b > = < # return_type as::ixc::core::message::ExtractResponseTypes >::Response;
+                        type Error = < # return_type as::ixc::core::message::ExtractResponseTypes >::Error;
+                        type Codec =::ixc::schema::binary::NativeBinaryCodec;
+                   }
                 },
             )?;
             push_item(
                 &mut self.items,
                 if is_query {
-                    quote! { impl <'a> ::ixc::core::message::QueryMessage<'a> for #msg_struct_name #opt_lifetime {} }
+                    quote! { impl < 'a >::ixc::core::message::QueryMessage < 'a > for # msg_struct_name # opt_lifetime {} }
                 } else {
-                    quote! { impl <'a> ::ixc::core::message::Message<'a> for #msg_struct_name #opt_lifetime {} }
+                    quote! { impl < 'a >::ixc::core::message::Message < 'a > for # msg_struct_name # opt_lifetime {} }
                 },
             )?;
             ensure!(context_name.is_some(), "no context parameter found");
@@ -266,18 +272,18 @@ impl APIBuilder {
                 (quote! { mut }, quote! { new_mut })
             };
             let route = quote! {
-                        (< #msg_struct_name #opt_underscore_lifetime as ::ixc::core::message::MessageBase >::SELECTOR, |h: &Self, packet, cb, a| {
-                            unsafe {
-                                let cdc = < #msg_struct_name as ::ixc::core::message::MessageBase<'_> >::Codec::default();
-                                let header = packet.header();
-                                let in1 = header.in_pointer1.get(packet);
-                                let mem = ::ixc::schema::mem::MemoryManager::new();
-                                let #msg_struct_name { #(#msg_deconstruct)* } = ::ixc::schema::codec::decode_value::< #msg_struct_name >(&cdc, in1, &mem)?;
-                                let #maybe_mut ctx = ::ixc::core::Context::#new_ctx(header.account, header.caller, header.gas_left, cb, &mem);
-                                let res = h.#fn_name(& #maybe_mut ctx, #(#fn_call_args)*);
-                                ::ixc::core::low_level::encode_response::< #msg_struct_name >(&cdc, res, a, packet)
-                            }
-                        }),
+            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, a| {
+                unsafe {
+                    let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
+                    let header = packet.header();
+                    let in1 = header.in_pointer1.get(packet);
+                    let mem = ::ixc::schema::mem::MemoryManager::new();
+                    let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
+                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(header.account, header.caller, header.gas_left, cb, & mem);
+                    let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
+                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( & cdc, res, a, packet)
+                }
+            }),
             };
             if is_query {
                 self.query_routes.push(route);
@@ -285,7 +291,7 @@ impl APIBuilder {
                 self.routes.push(route);
             }
             signature.output = parse_quote! {
-                -> <#return_type as ::ixc::core::message::ExtractResponseTypes>::ClientResult
+            -> < # return_type as::ixc::core::message::ExtractResponseTypes >::ClientResult
             };
             self.client_signatures.push(signature.clone());
             let dynamic_invoke = if is_query {
@@ -294,31 +300,27 @@ impl APIBuilder {
                 quote! { ::ixc::core::low_level::dynamic_invoke_msg(ctx, _acct_id, _msg) }
             };
             self.client_methods.push(quote! {
-                    #signature {
-                        let _msg = #msg_struct_name {
-                            #(#msg_fields_init)*
-                        };
-                        let _acct_id = ::ixc::core::handler::Client::account_id(self);
-                        unsafe {
-                            #dynamic_invoke
-                        }
-                    }
+                # signature {
+                    let _msg = # msg_struct_name { # ( # msg_fields_init) * };
+                    let _acct_id =::ixc::core::handler::Client::account_id( self );
+                    unsafe { # dynamic_invoke }
+                }
             });
-        } else {
-            self.system_routes.push(quote! {
-                (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: &Self, packet, cb, a| {
+        } else if let PublishedFnType::OnCreate { .. } = &publish_target.ty {
+            self.system_routes.push(quote ! {
+                (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, packet, cb, a | {
                     unsafe {
-                        let cdc = < #msg_struct_name #opt_underscore_lifetime as::ixc::core::handler::InitMessage<'_> >::Codec::default();
+                        let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::handler::InitMessage < '_ > >::Codec::default();
                         let header = packet.header();
                         let in1 = header.in_pointer1.get(packet);
-                        let mem = ::ixc::schema::mem::MemoryManager::new();
-                        let #msg_struct_name { #(#msg_deconstruct)* } = ::ixc::schema::codec::decode_value::< #msg_struct_name > ( & cdc, in1, &mem)?;
-                        let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, &mem);
-                        let res = h.#fn_name(&mut ctx, #(#fn_call_args)*);
+                        let mem =::ixc::schema::mem::MemoryManager::new();
+                        let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
+                        let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, & mem);
+                        let res = h.# fn_name( & mut ctx, # (# fn_call_args) * );
                         ::ixc::core::low_level::encode_default_response(res, a, packet)
                     }
-                }),}
-            );
+                    }),}
+                );
             self.create_msg_name = Some(msg_struct_name);
             self.create_msg_lifetime = opt_lifetime;
         }

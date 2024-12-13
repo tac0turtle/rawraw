@@ -11,7 +11,8 @@ use crate::authz::AuthorizationMiddleware;
 use crate::id_generator::IDGenerator;
 use crate::state_handler::gas::GasMeter;
 use crate::state_handler::{
-    destroy_account_data, get_account_handler_id, init_next_account, StateHandler,
+    destroy_account_data, get_account_handler_id, init_next_account, update_handler_id,
+    StateHandler,
 };
 use allocator_api2::vec::Vec;
 use arrayvec::ArrayVec;
@@ -21,8 +22,8 @@ use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{
-    AccountNotFound, CallStackOverflow, FatalExecutionError, HandlerNotFound, InvalidHandler,
-    MessageNotHandled, UnauthorizedCallerAccess,
+    AccountNotFound, CallStackOverflow, EncodingError, FatalExecutionError, HandlerNotFound,
+    InvalidHandler, MessageNotHandled, UnauthorizedCallerAccess,
 };
 use ixc_message_api::handler::{Allocator, HostBackend};
 use ixc_message_api::packet::MessagePacket;
@@ -169,19 +170,20 @@ impl<
             .begin_tx(&mut gas)
             .map_err(|_| SystemCode(InvalidHandler))?;
         // push the current caller onto the call stack
-        self.call_stack
-            .borrow_mut()
-            .try_push(Frame {
-                active_account: target_account,
-            })
-            .map_err(|_| SystemCode(CallStackOverflow))?;
-
         message_packet.header_mut().gas_left = gas.get();
 
         let res = if target_account == ROOT_ACCOUNT {
             // if the target account is the root account, we can just run the system message
             self.handle_system_message(message_packet, allocator)
         } else {
+            // push onto the call stack when we're calling a non-system account
+            self.call_stack
+                .borrow_mut()
+                .try_push(Frame {
+                    active_account: target_account,
+                })
+                .map_err(|_| SystemCode(CallStackOverflow))?;
+
             // find the account's handler ID
             let handler_id =
                 get_account_handler_id(self.state_handler, target_account, &mut gas, allocator)?
@@ -193,7 +195,12 @@ impl<
                 &handler_id,
                 allocator,
             )?;
-            handler.handle_msg(message_packet, self, allocator)
+            let res = handler.handle_msg(message_packet, self, allocator);
+
+            // pop the call stack
+            self.call_stack.borrow_mut().pop();
+
+            res
         };
 
         // commit or rollback the transaction
@@ -206,9 +213,6 @@ impl<
                 .rollback_tx(&mut gas)
                 .map_err(|_| SystemCode(InvalidHandler))?;
         }
-
-        // pop the call stack
-        self.call_stack.borrow_mut().pop();
 
         res
     }
@@ -270,12 +274,19 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     ) -> Result<(), ErrorCode> {
         let target_account = message_packet.header().account;
         if target_account == STATE_ACCOUNT {
+            // the state account receives packets with the actual caller set
             message_packet.header_mut().caller =
                 self.call_stack.borrow().last().unwrap().active_account;
             return self.state_handler.handle_query(message_packet, allocator);
         }
 
+        // for all other accounts, we just set the caller to the empty account
+        // because queries should depend on the caller
         message_packet.header_mut().caller = AccountID::EMPTY;
+
+        if target_account == ROOT_ACCOUNT {
+            return self.handle_system_query(message_packet, allocator);
+        }
 
         let mut gas = GasMeter::new(message_packet.header().gas_left);
 
@@ -323,6 +334,7 @@ impl<
         unsafe {
             match message_packet.header().message_selector {
                 CREATE_SELECTOR => self.handle_create(message_packet, allocator),
+                MIGRATE_SELECTOR => self.handle_migrate(message_packet, allocator),
                 SELF_DESTRUCT_SELECTOR => self.handle_self_destruct(message_packet),
                 _ => Err(SystemCode(MessageNotHandled)),
             }
@@ -410,6 +422,60 @@ impl<
         }
     }
 
+    unsafe fn handle_migrate(
+        &mut self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        // get the input data
+        let migrate_header = message_packet.header_mut();
+        let caller = migrate_header.caller;
+        let new_handler_id = migrate_header.in_pointer1.get(message_packet);
+
+        let mut gas = GasMeter::new(message_packet.header().gas_left);
+
+        // get the old handler id
+        let old_handler_id =
+            get_account_handler_id(self.state_handler, caller, &mut gas, allocator)?
+                .ok_or(SystemCode(AccountNotFound))?;
+
+        // resolve the handler ID and retrieve the VM
+        let new_handler_id = self
+            .account_manager
+            .code_manager
+            .resolve_handler_id(
+                &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
+                new_handler_id,
+                allocator,
+            )?
+            .ok_or(SystemCode(HandlerNotFound))?;
+
+        // update the handler ID
+        update_handler_id(self.state_handler, caller, &new_handler_id, &mut gas)
+            .map_err(|_| SystemCode(InvalidHandler))?;
+
+        // create a packet for calling on_create
+        let mut on_migrate_packet =
+            MessagePacket::allocate(allocator, 0).map_err(|_| SystemCode(FatalExecutionError))?;
+        let on_migrate_header = on_migrate_packet.header_mut();
+        on_migrate_header.account = caller;
+        on_migrate_header.caller = caller;
+        on_migrate_header.message_selector = ON_MIGRATE_SELECTOR;
+        on_migrate_header
+            .in_pointer1
+            .set_slice(old_handler_id.as_slice());
+
+        // retrieve the handler
+        let handler = self.account_manager.code_manager.resolve_handler(
+            &ReadOnlyStoreWrapper::wrap(self.state_handler, &mut gas),
+            &new_handler_id,
+            allocator,
+        )?;
+
+        // execute the on-migrate packet with the system message handler
+        handler.handle_system(&mut on_migrate_packet, self, allocator)
+    }
+
     unsafe fn handle_self_destruct(
         &mut self,
         message_packet: &mut MessagePacket,
@@ -420,9 +486,62 @@ impl<
     }
 }
 
+impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
+    QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
+{
+    fn handle_system_query(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        unsafe {
+            match message_packet.header().message_selector {
+                GET_HANDLER_ID_SELECTOR => self.handle_get_handler_id(message_packet, allocator),
+                _ => Err(SystemCode(MessageNotHandled)),
+            }
+        }
+    }
+
+    unsafe fn handle_get_handler_id(
+        &self,
+        message_packet: &mut MessagePacket,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode> {
+        // get the account ID from the in pointer
+        let account_id = message_packet.header().in_pointer1.get(message_packet);
+        if account_id.len() != 16 {
+            return Err(SystemCode(EncodingError));
+        }
+        let account_id = u128::from_le_bytes(account_id.try_into().unwrap());
+
+        // look up the handler ID
+        let mut gas = GasMeter::new(message_packet.header().gas_left);
+        let handler_id = get_account_handler_id(
+            self.state_handler,
+            AccountID::from(account_id),
+            &mut gas,
+            allocator,
+        )?
+        .ok_or(SystemCode(AccountNotFound))?;
+
+        // copy the handler ID to the out pointer
+        let mut vec = Vec::new_in(allocator);
+        vec.extend_from_slice(handler_id.as_slice());
+        message_packet
+            .header_mut()
+            .out_pointer1
+            .set_slice(vec.as_slice());
+
+        Ok(())
+    }
+}
+
 const CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.create");
 const ON_CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_create");
+const MIGRATE_SELECTOR: u64 = message_selector!("ixc.account.v1.migrate");
+const ON_MIGRATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_migrate");
 const SELF_DESTRUCT_SELECTOR: u64 = message_selector!("ixc.account.v1.self_destruct");
+const GET_HANDLER_ID_SELECTOR: u64 = message_selector!("ixc.account.v1.get_handler_id");
 
 struct ReadOnlyStoreWrapper<'a, S: StateHandler> {
     state_handler: &'a S,

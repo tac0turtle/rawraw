@@ -8,11 +8,15 @@ use ixc_schema::structs::StructSchema;
 use ixc_schema::SchemaValue;
 
 /// Handler trait for account and module handlers.
-pub trait Handler: RawHandler + Router + Resources + Service {
-    /// The name of the handler.
-    const NAME: &'static str;
+pub trait Handler: RawHandler + Router + HandlerResources + Service {
     /// The parameter used for initializing the handler.
     type Init<'a>: InitMessage<'a>;
+}
+
+/// The resources associated with a handler. This specifies the name of the handler.
+pub trait HandlerResources: Resources {
+    /// The name of the handler.
+    const NAME: &'static str;
 }
 
 /// A message which initializes a new account for a handler.

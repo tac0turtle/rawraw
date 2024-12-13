@@ -215,6 +215,38 @@ or the `bail!` or `ensure!` macros (similar to as in the `anyhow` crate).
 [`Result`] can also be parameterized with custom error codes.
 See the `examples/` directory for more examples on usage.
 
+## Migrations
+
+An account can be migrated to a new handler by calling the [`ixc_core::account_api::migrate`] function.
+This function takes a single argument which is the ID of the new handler to migrate to.
+Handlers that can be migrated to must define a function annotated with the `#[on_migrate]` attribute
+with a reference to the old handler struct annotated with `#[from]`.
+The function must look like this:
+
+```rust
+#[on_migrate]
+pub fn migrate_from_old_handler(&self, ctx: &mut Context, #[from] old_handler: &OldHandler) -> Result<()> {
+    // perform some migration logic
+}
+```
+
+The old handler struct reference can be used to read state from the old handler.
+It isn't necessary to retain all the state from the old handler, just the state that
+is needed for the migration.
+A valid struct to migrate from must implement the [`ixc_core::handler::HandlerResources`] trait.
+Here's a simple way to do this without needing any other code from the old handler:
+```rust
+#[derive(Resources)]
+struct OldHandler {
+    #[state(prefix = 0)]
+    pub some_old_state: Item<u64>,
+}
+
+impl HandlerResources for OldHandler {
+    const NAME: &'static str = "old_handler"; // this must match the name of the handler in the app
+}
+```
+
 ## Testing
 
 The [`ixc_testing`](https://docs.rs/ixc_testing) framework can be used for writing unit
