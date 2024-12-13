@@ -2,7 +2,7 @@
 
 use crate::context::Context;
 use crate::error::ClientError;
-use crate::handler::{Handler, InitMessage, HandlerResources, Service};
+use crate::handler::{Handler, HandlerResources, InitMessage, Service};
 use crate::low_level::create_packet;
 use crate::result::ClientResult;
 use core::str::from_utf8;
