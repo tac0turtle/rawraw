@@ -185,6 +185,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
             None => 0,
         };
 
+        #[allow(clippy::manual_saturating_arithmetic)]
         let new_value = old_value.checked_sub(value).unwrap_or(0);
 
         if new_value == 0 {
