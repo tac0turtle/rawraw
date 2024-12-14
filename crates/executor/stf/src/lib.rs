@@ -62,7 +62,7 @@ impl<A: AccountManager + 'static> STF<A> {
 
     /// execute_txs executes a list of transactions and updates the state.
     pub unsafe fn execute_txs<S: Store, T: Transation>(
-        mut self,
+        &mut self,
         store: &S,
         block: &BlockReq<T>,
         allocator: &dyn Allocator,
@@ -102,7 +102,7 @@ impl<A: AccountManager + 'static> STF<A> {
 
     /// exec_tx executes a transaction and updates the state.
     pub unsafe fn exec_tx<S: StateHandler, T: Transation>(
-        mut self,
+        &mut self,
         state_handler: &S,
         tx: &T,
         allocator: &dyn Allocator,

@@ -1,6 +1,7 @@
 //! Error and success codes returned by the message API.
 
 use core::fmt::Debug;
+use allocator_api2::alloc::AllocError;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 /// Error and success codes returned by the message API.
@@ -98,5 +99,11 @@ impl SystemCode {
     pub fn valid_handler_code(&self) -> bool {
         let code: u8 = (*self).into();
         code >= 128
+    }
+}
+
+impl<H: HandlerCode> From<AllocError> for ErrorCode<H> {
+    fn from(value: AllocError) -> Self {
+        ErrorCode::SystemCode(SystemCode::FatalExecutionError)
     }
 }
