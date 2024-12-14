@@ -5,7 +5,7 @@ use crate::snapshot_state::{Snapshot, SnapshotState};
 use allocator_api2::alloc::{Allocator, Global};
 use allocator_api2::vec::Vec;
 use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
-use ixc_message_api::AccountID;
+use ixc_message_api::{code::ErrorCode, AccountID};
 
 /// A store that can be used to store and retrieve state.
 pub trait Store {
@@ -154,7 +154,9 @@ impl<S: Store> StdStateManager for StateHandler<S> {
             None => 0,
         };
 
-        let new_value = old_value.saturating_add(value);
+        let new_value = old_value
+            .checked_add(value)
+            .ok_or(StdStateError::from(ErrorCode::HandlerCode(0)))?;
 
         let mut vec = Vec::new();
         vec.extend_from_slice(&new_value.to_le_bytes());
@@ -182,7 +184,9 @@ impl<S: Store> StdStateManager for StateHandler<S> {
             None => 0,
         };
 
-        let new_value = old_value.saturating_sub(value);
+        let new_value = old_value
+            .checked_sub(value)
+            .ok_or(StdStateError::from(ErrorCode::HandlerCode(0)))?;
 
         let mut vec = Vec::new();
         vec.extend_from_slice(&new_value.to_le_bytes());
