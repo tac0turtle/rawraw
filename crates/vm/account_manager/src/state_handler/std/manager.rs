@@ -80,7 +80,7 @@ pub trait StdStateManager {
 pub enum StdStateError {
     /// A fatal error occurred.
     FatalExecutionError,
-    ///
+    /// An error occurred while executing
     ExecutionErrorCode(ErrorCode),
 }
 
