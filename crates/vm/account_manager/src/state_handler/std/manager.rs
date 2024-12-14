@@ -76,6 +76,7 @@ pub trait StdStateManager {
 
 /// An error that can occur when interacting with the storage layer.
 /// Currently, the only error that can occur is a fatal error.
+#[derive(Debug, PartialEq)]
 pub enum StdStateError {
     /// A fatal error occurred.
     FatalExecutionError,

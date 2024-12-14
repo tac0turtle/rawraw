@@ -1,8 +1,6 @@
 //! A state handler that can be used to store and retrieve state.
 mod snapshot_state;
 
-use std::ops::Add;
-
 use crate::snapshot_state::{Snapshot, SnapshotState};
 use allocator_api2::alloc::{Allocator, Global};
 use allocator_api2::vec::Vec;
@@ -130,7 +128,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
             Some(value) => {
                 let mut data = [0u8; 16];
                 data.copy_from_slice(&value);
-                Ok(u128::from_be_bytes(data))
+                Ok(u128::from_le_bytes(data))
             }
             None => Ok(0),
         }
@@ -145,19 +143,18 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     ) -> Result<(), StdStateError> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
 
-        let bz = self.kv_get(account_id, scope, key, Global)?;
-
+        let bz = self.snapshot_state.get(&constructed_key, Global);
         let old_value: u128 = match bz {
             Some(value) => {
                 let mut data = [0u8; 16];
                 data.copy_from_slice(&value);
-                let ov: u128 = u128::from_be_bytes(data);
+                let ov: u128 = u128::from_le_bytes(data);
                 ov
             }
             None => 0,
         };
 
-        let new_value = old_value.add(value);
+        let new_value = old_value.saturating_add(value);
 
         let mut vec = Vec::new();
         vec.extend_from_slice(&new_value.to_le_bytes());
@@ -173,29 +170,24 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         value: u128,
     ) -> Result<bool, StdStateError> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
-        let bz = self.kv_get(account_id, scope, key, Global)?;
+        let bz = self.snapshot_state.get(&constructed_key, Global);
 
         let old_value: u128 = match bz {
             Some(value) => {
                 let mut data = [0u8; 16];
                 data.copy_from_slice(&value);
-                let ov: u128 = u128::from_be_bytes(data);
+                let ov: u128 = u128::from_le_bytes(data);
                 ov
             }
             None => 0,
         };
 
-        #[allow(clippy::manual_saturating_arithmetic)]
-        let new_value = old_value.checked_sub(value).unwrap_or(0);
+        let new_value = old_value.saturating_sub(value);
 
-        if new_value == 0 {
-            Ok(false)
-        } else {
-            let mut vec = Vec::new();
-            vec.extend_from_slice(&new_value.to_le_bytes());
-            self.snapshot_state.set(constructed_key, &vec);
-            Ok(true)
-        }
+        let mut vec = Vec::new();
+        vec.extend_from_slice(&new_value.to_le_bytes());
+        self.snapshot_state.set(constructed_key, &vec);
+        Ok(true)
     }
 
     /// Begins a new transaction.
@@ -233,5 +225,122 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     /// Emit an event.
     fn emit_event(&mut self, _sender: AccountID, _data: &[u8]) -> Result<(), StdStateError> {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_kv() {
+        let store = HashMap::<Vec<u8>, Vec<u8>>::new();
+        let mut state_handler = StateHandler::new(store);
+
+        state_handler
+            .kv_set(AccountID::new(1), None, b"key1", b"value1")
+            .unwrap();
+        state_handler
+            .kv_set(AccountID::new(1), None, b"key2", b"value2")
+            .unwrap();
+        state_handler
+            .kv_set(
+                AccountID::new(1),
+                Some(AccountID::new(2)),
+                b"key3",
+                b"value3",
+            )
+            .unwrap();
+        state_handler
+            .kv_set(
+                AccountID::new(1),
+                Some(AccountID::new(2)),
+                b"key4",
+                b"value4",
+            )
+            .unwrap();
+        state_handler.commit_tx().unwrap();
+        assert_eq!(
+            state_handler
+                .kv_get(AccountID::new(1), None, b"key1", Global)
+                .unwrap()
+                .unwrap(),
+            b"value1"
+        );
+        assert_eq!(
+            state_handler
+                .kv_get(AccountID::new(1), None, b"key2", Global)
+                .unwrap()
+                .unwrap(),
+            b"value2"
+        );
+    }
+
+    #[test]
+    fn test_accumulator() {
+        let store = HashMap::<Vec<u8>, Vec<u8>>::new();
+        let mut state_handler = StateHandler::new(store);
+
+        assert_eq!(
+            state_handler
+                .accumulator_get(AccountID::new(1), None, b"key1")
+                .unwrap(),
+            0
+        );
+        // accumulator add
+        state_handler
+            .accumulator_add(AccountID::new(1), None, b"key1", 10)
+            .unwrap();
+        assert_eq!(
+            state_handler
+                .accumulator_get(AccountID::new(1), None, b"key1")
+                .unwrap(),
+            10
+        );
+        state_handler
+            .accumulator_add(AccountID::new(1), None, b"key1", 20)
+            .unwrap();
+        assert_eq!(
+            state_handler
+                .accumulator_get(AccountID::new(1), None, b"key1")
+                .unwrap(),
+            30
+        );
+        state_handler
+            .accumulator_add(AccountID::new(1), None, b"key1", 30)
+            .unwrap();
+        assert_eq!(
+            state_handler
+                .accumulator_get(AccountID::new(1), None, b"key1")
+                .unwrap(),
+            60
+        );
+
+        // accumulator safe sub
+        assert_eq!(
+            state_handler
+                .accumulator_safe_sub(AccountID::new(1), None, b"key1", 10)
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            state_handler
+                .accumulator_get(AccountID::new(1), None, b"key1")
+                .unwrap(),
+            50
+        );
+        assert_eq!(
+            state_handler
+                .accumulator_safe_sub(AccountID::new(1), None, b"key1", 10)
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            state_handler
+                .accumulator_get(AccountID::new(1), None, b"key1")
+                .unwrap(),
+            40
+        );
     }
 }

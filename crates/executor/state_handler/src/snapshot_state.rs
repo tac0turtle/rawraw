@@ -72,6 +72,9 @@ impl<S: Store> SnapshotState<S> {
     }
 
     pub fn snapshot(&mut self) -> Snapshot {
+        if self.changes.is_empty() {
+            return Snapshot { index: 0 };
+        }
         Snapshot {
             index: self.changelog.len() - 1,
         }
@@ -147,10 +150,15 @@ mod tests {
     // implement in memory disk db
     impl Store for HashMap<Vec<u8>, Vec<u8>> {
         fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
-            let value = self.get(key).unwrap();
-            let mut vec = Vec::new_in(allocator);
-            vec.extend_from_slice(value.as_slice());
-            Some(vec)
+            let value = self.get(key);
+            match value {
+                Some(value) => {
+                    let mut vec = Vec::new_in(allocator);
+                    vec.extend_from_slice(value.as_slice());
+                    Some(vec)
+                }
+                None => None,
+            }
         }
     }
     #[test]
