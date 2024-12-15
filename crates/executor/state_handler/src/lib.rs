@@ -322,24 +322,18 @@ mod tests {
         );
 
         // accumulator safe sub
-        assert_eq!(
-            state_handler
-                .accumulator_safe_sub(AccountID::new(1), None, b"key1", 10)
-                .unwrap(),
-            true
-        );
+        assert!(state_handler
+            .accumulator_safe_sub(AccountID::new(1), None, b"key1", 10)
+            .unwrap());
         assert_eq!(
             state_handler
                 .accumulator_get(AccountID::new(1), None, b"key1")
                 .unwrap(),
             50
         );
-        assert_eq!(
-            state_handler
-                .accumulator_safe_sub(AccountID::new(1), None, b"key1", 10)
-                .unwrap(),
-            true
-        );
+        assert!(state_handler
+            .accumulator_safe_sub(AccountID::new(1), None, b"key1", 10)
+            .unwrap());
         assert_eq!(
             state_handler
                 .accumulator_get(AccountID::new(1), None, b"key1")
