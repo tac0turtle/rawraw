@@ -5,12 +5,16 @@ use crate::field::Field;
 use crate::types::ReferenceableType;
 
 /// StructSchema describes the schema of a struct.
+/// # Safety
+/// the trait is marked as unsafe to detour users from using it
 pub unsafe trait StructSchema: ReferenceableType {
     /// The schema of the struct.
     const STRUCT_TYPE: StructType<'static>;
 }
 
 /// StructDecodeVisitor is the trait that should be derived to decode a struct.
+/// # Safety
+/// the trait is marked as unsafe to detour users from using it
 pub unsafe trait StructDecodeVisitor<'a> {
     /// Decode a field from the input data.
     fn decode_field(
@@ -21,12 +25,16 @@ pub unsafe trait StructDecodeVisitor<'a> {
 }
 
 /// StructEncodeVisitor is the trait that should be derived to encode a struct.
+/// # Safety
+/// the trait is marked as unsafe to detour users from using it
 pub unsafe trait StructEncodeVisitor {
     /// Encode a field to the output data.
     fn encode_field(&self, index: usize, encoder: &mut dyn Encoder) -> Result<(), EncodeError>;
 }
 
 /// StructType contains the schema of a struct.
+/// # Safety
+/// the trait is marked as unsafe to detour users from using it
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StructType<'a> {
     /// The name of the struct.

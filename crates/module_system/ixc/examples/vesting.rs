@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+#![allow(clippy::needless_lifetimes)]
 #[ixc::handler(FixedVesting)]
 mod vesting {
     use ixc::*;
@@ -156,16 +157,15 @@ mod tests {
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_core::handler::{Client, Service};
     use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
-    use ixc_message_api::code::SystemCode::{AccountNotFound, HandlerNotFound};
+    use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;
     use simple_time::{Duration, Time};
-    use std::collections::HashMap;
     use std::ops::{AddAssign, SubAssign};
     use std::sync::{Arc, RwLock};
 
     #[test]
     fn test_unlock() {
-        let mut app = TestApp::default();
+        let app = TestApp::default();
         let mut root = app.client_context_for(ROOT_ACCOUNT);
 
         // initialize bank mock

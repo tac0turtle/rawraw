@@ -7,23 +7,35 @@ use ixc_message_api::header::MessageSelector;
 use ixc_message_api::packet::MessagePacket;
 
 /// A router for message packets.
+/// # Safety
+/// the trait is marked as unsafe to detour users from creating it
 pub unsafe trait Router
 where
     Self: 'static,
 {
-    /// The routes sorted by message selector.
-    const SORTED_ROUTES: &'static [Route<Self>];
-}
+    /// The message routes sorted by message selector.
+    const SORTED_MSG_ROUTES: &'static [Route<Self>];
 
-/// A router for dynamic trait objects.
-// pub unsafe trait DynRouter> where Self: 'static
-// {
-//     /// The routes by message selector.
-//     const ROUTES: &'static [Route<Self>];
-// }
+    /// The query routes sorted by message selector.
+    const SORTED_QUERY_ROUTES: &'static [QueryRoute<Self>];
+
+    /// The system routes sorted by message selector.
+    const SORTED_SYSTEM_ROUTES: &'static [Route<Self>];
+}
 
 /// A route for a message packet.
 pub type Route<T> = (
+    u64,
+    fn(
+        &T,
+        &mut MessagePacket,
+        callbacks: &mut dyn HostBackend,
+        allocator: &dyn Allocator,
+    ) -> Result<(), ErrorCode>,
+);
+
+/// A route for a message packet.
+pub type QueryRoute<T> = (
     u64,
     fn(
         &T,
@@ -37,32 +49,55 @@ pub type Route<T> = (
 pub fn exec_route<R: Router + ?Sized>(
     rtr: &R,
     packet: &mut MessagePacket,
+    callbacks: &mut dyn HostBackend,
+    allocator: &dyn Allocator,
+) -> Result<(), ErrorCode> {
+    match find_route(R::SORTED_MSG_ROUTES, packet.header().message_selector) {
+        Some(rt) => rt(rtr, packet, callbacks, allocator),
+        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+    }
+}
+
+/// Execute a query message packet on a router.
+pub fn exec_query_route<R: Router + ?Sized>(
+    rtr: &R,
+    packet: &mut MessagePacket,
     callbacks: &dyn HostBackend,
     allocator: &dyn Allocator,
 ) -> Result<(), ErrorCode> {
-    match find_route(packet.header().message_selector) {
-        Some(rt) => rt.1(rtr, packet, callbacks, allocator),
+    match find_route(R::SORTED_QUERY_ROUTES, packet.header().message_selector) {
+        Some(rt) => rt(rtr, packet, callbacks, allocator),
         None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
     }
 }
 
 /// Find a route for a message selector.
-pub fn find_route<R: Router + ?Sized>(sel: MessageSelector) -> Option<&'static Route<R>> {
-    let res = R::SORTED_ROUTES.binary_search_by_key(&sel, |(selector, _)| *selector);
+pub fn find_route<R>(sorted_routes: &[(u64, R)], sel: MessageSelector) -> Option<&R> {
+    let res = sorted_routes.binary_search_by_key(&sel, |(selector, _)| *selector);
     match res {
-        Ok(idx) => Some(&R::SORTED_ROUTES[idx]),
+        Ok(idx) => Some(&sorted_routes[idx].1),
         Err(_) => None,
     }
 }
 
 /// Sorts the routes by message selector.
-pub const fn sort_routes<const N: usize, T: ?Sized>(mut arr: [Route<T>; N]) -> [Route<T>; N] {
+pub const fn sort_routes<const N: usize, T: ?Sized>(arr: [Route<T>; N]) -> [Route<T>; N] {
+    sort_routes_base(arr)
+}
+
+/// Sorts the query routes by message selector.
+pub const fn sort_query_routes<const N: usize, T: ?Sized>(
+    arr: [QueryRoute<T>; N],
+) -> [QueryRoute<T>; N] {
+    sort_routes_base(arr)
+}
+
+const fn sort_routes_base<const N: usize, R: Copy>(mut arr: [(u64, R); N]) -> [(u64, R); N] {
     // const bubble sort
-    let n = arr.len();
     loop {
         let mut swapped = false;
         let mut i = 1;
-        while i < n {
+        while i < N {
             if arr[i - 1].0 > arr[i].0 {
                 let left = arr[i - 1];
                 let right = arr[i];
