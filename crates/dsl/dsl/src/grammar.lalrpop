@@ -1,10 +1,28 @@
+use crate::lex::{Token, LexicalError};
+use crate::ast;
 use std::str::FromStr;
 
 grammar;
 
-pub Term: i32 = {
-    <n:Num> => n,
-    "(" <t:Term> ")" => t,
-};
+extern {
+  type Location = usize;
+  type Error = LexicalError;
 
-Num: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+  enum Token {
+    "ident" => Token::Ident(String),
+    "interface" => Token::Interface,
+    "handler" => Token::Handler,
+    "{" => Token::LBrace,
+    "}" => Token::RBrace,
+  }
+}
+
+pub File: ast::File = {
+  <items:Item*> => ast::File { items }
+}
+
+pub Item: ast::Item = {
+  "interface" <name:"ident"> "{"  "}" => {
+    ast::Item::Interface(ast::ItemInterface { name: name.into(), items: vec![] })
+  },
+}

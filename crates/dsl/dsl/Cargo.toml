@@ -1,5 +1,5 @@
 [package]
-name = "dsl"
+name = "ixc_lang"
 version = "0.1.0"
 edition = "2021"
 repository.workspace = true
@@ -11,8 +11,11 @@ syn = "2.0.89"
 quote = "1.0.37"
 prettyplease = "0.2.25"
 anyhow = "1.0.93"
+pest = "2.7.15"
 logos = "0.14.2"
 lalrpop-util = { version = "0.22.0", features = ["lexer", "unicode"] }
+chumsky = "1.0.0-alpha.7"
+ariadne = "0.5.0"
 
 [build-dependencies]
 lalrpop = "0.22.0"
