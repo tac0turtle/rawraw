@@ -234,7 +234,6 @@ impl<S: Store> StdStateManager for StateHandler<S> {
 
 #[cfg(test)]
 mod tests {
-    use ixc_message_api::code::HandlerCode;
 
     use super::*;
     use std::collections::HashMap;
