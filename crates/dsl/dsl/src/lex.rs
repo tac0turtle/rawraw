@@ -1,13 +1,15 @@
 use std::fmt;
+use chumsky::input::{Input, Stream, ValueInput};
+use chumsky::prelude::SimpleSpan;
 use logos::{Logos, SpannedIter};
 
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
 pub enum Token<'a> {
     Error,
-    #[regex(r#"[ \t\n\r\f\v]+"#)]
-    Whitespace(&'a str),
-    #[regex(r#"//[^\n\r\f\v]*"#, |lex| lex.slice())]
-    LineComment(&'a str),
+    #[regex(r#"[ \t\n\r\f\v]+"#, logos::skip)]
+    Whitespace,
+    #[regex(r#"//[^\n\r\f\v]*"#, logos::skip)]
+    LineComment,
     // TODO block comments
     // #[token(r#"\/\*(\*(?!\/)|[^*])*\*\/"#, |lex| lex.slice())]
     // BlockComment(&'a str),
@@ -15,6 +17,18 @@ pub enum Token<'a> {
     Interface,
     #[token("handler")]
     Handler,
+    #[token("struct")]
+    Struct,
+    #[token("event")]
+    Event,
+    #[token("tx")]
+    Tx,
+    #[token("query")]
+    Query,
+    #[token("key")]
+    Key,
+    #[token("map")]
+    Map,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice())]
     Ident(&'a str),
     #[regex(r#""([^"\\]|\\.)*""#, |lex| lex.slice())]
@@ -22,7 +36,7 @@ pub enum Token<'a> {
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice())]
     Numeric(&'a str),
     #[token(";")]
-    Semi,
+    Semicolon,
     #[token(",")]
     Comma,
     #[token(":")]
@@ -89,18 +103,24 @@ pub enum Token<'a> {
 //     InvalidToken
 // }
 
-impl <'a> fmt::Display for Token<'a> {
+impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Token::Whitespace(s) => write!(f, "{}", s),
-            Token::LineComment(s) => write!(f, "{}", s),
+            Token::Whitespace => write!(f, "<whitespace>"),
+            Token::LineComment => write!(f, "<line_comment>"),
             // Token::BlockComment(s) => write!(f, "{}", s),
             Token::Interface => write!(f, "interface"),
+            Token::Struct => write!(f, "struct"),
             Token::Handler => write!(f, "handler"),
+            Token::Event => write!(f, "event"),
+            Token::Tx => write!(f, "tx"),
+            Token::Query => write!(f, "query"),
+            Token::Key => write!(f, "key"),
+            Token::Map => write!(f, "map"),
             Token::Ident(s) => write!(f, "{}", s),
             Token::String(s) => write!(f, "{}", s),
             Token::Numeric(s) => write!(f, "{}", s),
-            Token::Semi => write!(f, ";"),
+            Token::Semicolon => write!(f, ";"),
             Token::Comma => write!(f, ","),
             Token::Colon => write!(f, ":"),
             Token::Dot => write!(f, "."),
@@ -134,25 +154,19 @@ impl <'a> fmt::Display for Token<'a> {
         }
     }
 }
-//
-// pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
-//
-// pub struct Lexer<'a> {
-//     token_stream: SpannedIter<'a, Token>,
-// }
-//
-// impl<'input> Lexer<'input> {
-//     pub fn new(input: &'input str) -> Self {
-//         Self { token_stream: Token::lexer(input).spanned() }
-//     }
-// }
-//
-// impl<'input> Iterator for Lexer<'input> {
-//     type Item = Spanned<Token, usize, LexicalError>;
-//
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.token_stream
-//             .next()
-//             .map(|(token, span)| Ok((span.start, token?, span.end)))
-//     }
-// }
+
+pub fn lex(input: &str) -> impl ValueInput<Token=Token, Span=SimpleSpan> {
+    // this code was copied from the example in https://github.com/zesterer/chumsky/blob/f0a86946172023b1d48f8f85bd91e433c9dbd746/examples/logos.rs#L130
+    let token_iter = Token::lexer(&input)
+        .spanned()
+        // Convert logos errors into tokens. We want parsing to be recoverable and not fail at the lexing stage, so
+        // we have a dedicated `Token::Error` variant that represents a token error that was previously encountered
+        .map(|(tok, span)| match tok {
+            // Turn the `Range<usize>` spans logos gives us into chumsky's `SimpleSpan` via `Into`, because it's easier
+            // to work with
+            Ok(tok) => (tok, span.into()),
+            Err(_) => (Token::Error, span.into()),
+        });
+    Stream::from_iter(token_iter)
+        .spanned(SimpleSpan::from(input.len()..input.len()))
+}

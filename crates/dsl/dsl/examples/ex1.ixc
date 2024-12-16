@@ -1,4 +1,9 @@
 interface BankAPI {
+   struct Coin {
+       denom: Str,
+       amount: u128,
+   }
+
    event EventTransfer {
        from: AccountID,
        to: AccountID,
@@ -6,22 +11,18 @@ interface BankAPI {
        amount: u128,
    }
 
-   struct Coin {
-       denom: Str,
-       amount: u128,
-   }
-
-   tx send(key to: AccountID, coins: Coin[]) events(EventTransfer);
+   tx send(key to: AccountID, coins: Coin[]) event(EventTransfer);
    query get_balance(account: AccountID, denom: Str) u128;
 }
 
 handler Bank {
-   denom_admins: denom: Str => admin: AccountID;
-   balances: account: AccountID, denom: Str => amount: U128Accumulator;
-   supply: denom: Str => amount: U128Accumulator;
+   map denom_admins[denom: Str] => admin: AccountID;
+   map balances[account: AccountID, denom: Str] => amount: U128Accumulator;
+   map supply[denom: Str] => amount: U128Accumulator;
    client block_info: BlockInfoAPI;
 }
 
+// an implementation of the Bank API for the Bank handler
 impl BankAPI for Bank {
    tx send(to: AccountID, coins: Coin[]) {
        from = msg.sender;
