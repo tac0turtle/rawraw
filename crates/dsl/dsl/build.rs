@@ -28,6 +28,8 @@ fn generate_syntax_kinds(grammar: &Grammar) {
         })
         .collect::<Vec<_>>();
     let syntax_kinds_src = quote! {
+        #[derive(Clone, Debug, Copy, PartialEq, Eq, num_enum::TryFromPrimitive, num_enum::IntoPrimitive)]
+        #[repr(u16)]
         pub enum SyntaxKind {
             ROOT,
             ERROR,
