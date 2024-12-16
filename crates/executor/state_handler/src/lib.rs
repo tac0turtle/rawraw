@@ -234,6 +234,8 @@ impl<S: Store> StdStateManager for StateHandler<S> {
 
 #[cfg(test)]
 mod tests {
+    use ixc_message_api::code::HandlerCode;
+
     use super::*;
     use std::collections::HashMap;
 
@@ -339,6 +341,10 @@ mod tests {
                 .accumulator_get(AccountID::new(1), None, b"key1")
                 .unwrap(),
             40
+        );
+        assert_eq!(
+            state_handler.accumulator_safe_sub(AccountID::new(1), None, b"key1", 50),
+            Err(StdStateError::ExecutionErrorCode(ErrorCode::HandlerCode(0)))
         );
     }
 }
