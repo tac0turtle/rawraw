@@ -1,0 +1,23 @@
+File = Item*
+
+Item = Interface | Handler
+
+Interface = 'interface' name:'#ident' '{'
+    items:InterfaceItem*
+'}'
+
+InterfaceItem = InterfaceFn
+
+Handler = 'handler' name:'#ident' '{'
+    // items:HandlerItem*
+'}'
+
+// HandlerItem = HandlerFn
+
+InterfaceFn = 'fn' name:'#ident' '(' args:FnArg* ')' ret:'#ident'
+
+FnArg = name:'#ident' ':' type:Type
+
+Type = 
+    '#ident' |
+    '#ident' '[' ']'

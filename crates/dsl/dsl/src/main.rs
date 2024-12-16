@@ -4,6 +4,12 @@ mod ast;
 mod codegen;
 mod lex;
 mod parser;
+mod syntax;
+mod parser2;
+
+mod tokens {
+    include!(concat!(env!("OUT_DIR"), "/tokens.rs"));
+}
 
 use crate::ast::File;
 use crate::lex::lex;
