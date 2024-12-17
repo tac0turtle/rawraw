@@ -1,23 +1,13 @@
 use logos::Span;
+use rowan::GreenNodeBuilder;
 use crate::lexer::Token;
-use crate::parser::state::State;
+use crate::syntax::{SyntaxKind, SyntaxNode};
 
+mod parse;
 mod state;
 
-struct Parser<'source, 'cache, I: Iterator<Item = (Span, Token<'source>)>> {
-    state: State<'source, 'cache, I>,
-}
-
-impl<'source, 'cache, I: Iterator<Item = (Span, Token<'source>)>> Parser<'source, 'cache, I> {
-    fn at(&mut self, token: Token<'source>) -> bool {
-        self.state.peek() == Some(&token)
-    }
-
-    fn expect(&mut self, token: Token<'source>) -> bool {
-        self.state.next_if_eq(&token).is_some()
-    }
-
-    fn fn_arg(&mut self) {
-
-    }
+pub fn parse<'source, I: Iterator<Item=(Token<'source>, Span)>>(tokens: I) -> SyntaxNode {
+    let mut parser = parse::Parser::new(tokens, Default::default());
+    let _ = parser.parse();
+    parser.finish()
 }

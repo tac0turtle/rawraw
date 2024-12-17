@@ -20,7 +20,7 @@ pub enum SyntaxKind {
     #[num_enum(catch_all)]
     UNKNOWN(u16),
     WHITESPACE,
-    COMMENT,
+    LINE_COMMENT,
     INTERFACE_KW,
     IDENT,
     L_BRACKET,
@@ -29,6 +29,7 @@ pub enum SyntaxKind {
     FN_KW,
     L_PAREN,
     R_PAREN,
+    KEY_KW,
     COLON,
     L_BRACE,
     R_BRACE,

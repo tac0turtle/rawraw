@@ -45,7 +45,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
             #[num_enum(catch_all)]
             UNKNOWN(u16),
             WHITESPACE,
-            COMMENT,
+            LINE_COMMENT,
             #(#idents),*
         }
     };
@@ -107,7 +107,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
             #[regex(r#"[ \t\n\r\f\v]+"#)]
             Whitespace(&'a str),
             #[regex(r#"//[^\n\r\f\v]*"#)]
-            Comment(&'a str),
+            LineComment(&'a str),
             #(#enum_cases),*
         }
 
@@ -116,7 +116,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
                 match self {
                     Token::Error(_) => SyntaxKind::ERROR,
                     Token::Whitespace(_) => SyntaxKind::WHITESPACE,
-                    Token::Comment(_) => SyntaxKind::COMMENT,
+                    Token::LineComment(_) => SyntaxKind::LINE_COMMENT,
                     #(#to_syntax_kind),*
                 }
             }
@@ -125,7 +125,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
                 match self {
                     Token::Error(x) => x,
                     Token::Whitespace(x) => x,
-                    Token::Comment(x) => x,
+                    Token::LineComment(x) => x,
                     #(#to_str),*
                 }
             }

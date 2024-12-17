@@ -16,7 +16,7 @@ Handler = 'handler' name:'#ident' '{'
 
 InterfaceFn = 'fn' name:'#ident' '(' args:FnArg* ')' ret:'#ident'
 
-FnArg = name:'#ident' ':' typ:Type
+FnArg = key:'key'? name:'#ident' ':' typ:Type
 
 Type = TypeIdent | TypeArray
 

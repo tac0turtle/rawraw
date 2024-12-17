@@ -8,7 +8,7 @@ pub enum Token<'a> {
     #[regex(r#"[ \t\n\r\f\v]+"#)]
     Whitespace(&'a str),
     #[regex(r#"//[^\n\r\f\v]*"#)]
-    Comment(&'a str),
+    LineComment(&'a str),
     #[token("interface")]
     InterfaceKw,
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*", |lex|lex.slice())]
@@ -25,6 +25,8 @@ pub enum Token<'a> {
     LParen,
     #[token(")")]
     RParen,
+    #[token("key")]
+    KeyKw,
     #[token(":")]
     Colon,
     #[token("[")]
@@ -39,7 +41,7 @@ impl<'a> Token<'a> {
         match self {
             Token::Error(_) => SyntaxKind::ERROR,
             Token::Whitespace(_) => SyntaxKind::WHITESPACE,
-            Token::Comment(_) => SyntaxKind::COMMENT,
+            Token::LineComment(_) => SyntaxKind::LINE_COMMENT,
             Token::InterfaceKw => SyntaxKind::INTERFACE_KW,
             Token::Ident(_) => SyntaxKind::IDENT,
             Token::LBracket => SyntaxKind::L_BRACKET,
@@ -48,6 +50,7 @@ impl<'a> Token<'a> {
             Token::FnKw => SyntaxKind::FN_KW,
             Token::LParen => SyntaxKind::L_PAREN,
             Token::RParen => SyntaxKind::R_PAREN,
+            Token::KeyKw => SyntaxKind::KEY_KW,
             Token::Colon => SyntaxKind::COLON,
             Token::LBrace => SyntaxKind::L_BRACE,
             Token::RBrace => SyntaxKind::R_BRACE,
@@ -58,7 +61,7 @@ impl<'a> Token<'a> {
         match self {
             Token::Error(x) => x,
             Token::Whitespace(x) => x,
-            Token::Comment(x) => x,
+            Token::LineComment(x) => x,
             Token::InterfaceKw => "interface",
             Token::Ident(x) => x,
             Token::LBracket => "{",
@@ -67,6 +70,7 @@ impl<'a> Token<'a> {
             Token::FnKw => "fn",
             Token::LParen => "(",
             Token::RParen => ")",
+            Token::KeyKw => "key",
             Token::Colon => ":",
             Token::LBrace => "[",
             Token::RBrace => "]",

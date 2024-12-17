@@ -159,6 +159,10 @@ impl rowan::ast::AstNode for FnArg {
 }
 impl FnArg {
     #[inline]
+    pub fn key(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::KEY_KW)
+    }
+    #[inline]
     pub fn name(&self) -> Option<SyntaxToken> {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }

@@ -6,7 +6,7 @@ mod parser;
 mod syntax;
 mod lexer;
 
-use crate::lexer::lex;
+use crate::lexer::{lex, lex_spanned};
 use crate::syntax::{SyntaxKind, SyntaxNode};
 use chumsky::input::ValueInput;
 use chumsky::prelude::*;
@@ -29,6 +29,8 @@ fn compile() -> anyhow::Result<()> {
     let green_node = GreenNode::new(SyntaxKind::ROOT.into(), green_tokens);
     let root = SyntaxNode::new_root(green_node);
     println!("{:#?}", root);
+    let root2 = parser::parse(lex_spanned(&input));
+    println!("{:#?}", root2);
 
     Ok(())
 }

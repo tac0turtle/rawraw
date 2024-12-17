@@ -2,6 +2,8 @@ use crate::syntax::{SyntaxKind, SyntaxNode};
 
 mod nodes;
 
+pub use nodes::*;
+
 pub trait AstStruct {
     const KIND: SyntaxKind;
 }
