@@ -77,7 +77,7 @@ unsafe fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
             Ok(res)
         }
         Err(e) => {
-            let c: u16 = e.into();
+            let c: u16 = (*e).into();
             let code = ErrorCode::<M::Error>::from(c);
             Err(ClientError { code })
         }
@@ -99,7 +99,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
                 <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
                     cdc,
                     &value,
-                    &allocator as &dyn WriterFactory,
+                    allocator as &dyn Allocator,
                 )? {
                 Ok(Response::new1(out1.into()))
             } else {
