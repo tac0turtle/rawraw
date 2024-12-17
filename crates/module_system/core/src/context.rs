@@ -94,7 +94,7 @@ impl<'a> Context<'a> {
         &mut self,
         msg: &Message,
     ) -> Result<Response<'a>, ErrorCode> {
-        let invoke_params = InvokeParams::new(self.mem, None);
+        let invoke_params = InvokeParams::new(self.mem);
         match self.backend {
             BackendHandle::Mut(ref mut backend) => (*backend).invoke_msg(msg, &invoke_params),
             BackendHandle::RefCell(ref mut backend) => {
@@ -114,7 +114,7 @@ impl<'a> Context<'a> {
     /// # Safety
     /// This is marked unsafe because it should only be called by generated code or library functions.
     pub unsafe fn dynamic_invoke_query(&self, msg: &Message) -> Result<Response<'a>, ErrorCode> {
-        let invoke_params = InvokeParams::new(self.mem, None);
+        let invoke_params = InvokeParams::new(self.mem);
         let backend = match self.backend {
             BackendHandle::Mut(ref backend) => *backend,
             BackendHandle::Immutable(backend) => backend,
@@ -137,7 +137,7 @@ impl<'a> Context<'a> {
         &mut self,
         req: &Request,
     ) -> Result<Response<'a>, ErrorCode> {
-        let invoke_params = InvokeParams::new(self.mem, None);
+        let invoke_params = InvokeParams::new(self.mem);
         match self.backend {
             BackendHandle::Mut(ref mut backend) => (*backend).update_state(req, &invoke_params),
             BackendHandle::Immutable(_) => {
@@ -160,7 +160,7 @@ impl<'a> Context<'a> {
         &self,
         req: &Request,
     ) -> Result<Response<'a>, ErrorCode> {
-        let invoke_params = InvokeParams::new(self.mem, None);
+        let invoke_params = InvokeParams::new(self.mem);
         let backend = match self.backend {
             BackendHandle::Mut(ref backend) => *backend,
             BackendHandle::Immutable(backend) => backend,

@@ -31,7 +31,7 @@ pub trait RawHandler {
         &self,
         _message_packet: &Request,
         _callbacks: &mut dyn HostBackend,
-        _allocator: &dyn Allocator,
+        _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }
@@ -83,17 +83,13 @@ pub trait HostBackend {
 pub struct InvokeParams<'a> {
     /// The allocator used to allocate responses.
     pub allocator: &'a dyn Allocator,
-    /// An optional gas limit for the invocation.
-    /// If the gas limit is higher than the remaining gas, /// then the limit is set to the remaining gas.
-    pub gas_limit: Option<u64>,
 }
 
 impl<'a> InvokeParams<'a> {
     /// Create a new InvokeParams.
-    pub fn new(allocator: &'a dyn Allocator, gas_limit: Option<u64>) -> Self {
+    pub fn new(allocator: &'a dyn Allocator) -> Self {
         Self {
             allocator,
-            gas_limit,
         }
     }
 }

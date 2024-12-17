@@ -241,7 +241,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     unsafe fn handle_migrate<'a>(
         &mut self,
         req: &Request,
-        allocator: &dyn Allocator,
+        allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         // get the input data
         let active_account = self.call_stack.active_account()?;
@@ -270,7 +270,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create
-        let mut on_migrate = Request::new1(ON_MIGRATE_SELECTOR, old_handler_id.into());
+        let on_migrate = Request::new1(ON_MIGRATE_SELECTOR, old_handler_id.into());
 
         // retrieve the handler
         let handler = self.account_manager.code_manager.resolve_handler(

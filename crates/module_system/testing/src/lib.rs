@@ -16,14 +16,13 @@ use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
-use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
+use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use ixc_message_api::message::{Message, Request, Response};
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -295,7 +294,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
 
     fn handle_msg<'a>(
         &self,
-        message_packet: &mut Request,
+        message_packet: &Request,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -304,7 +303,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
 
     fn handle_system<'a>(
         &self,
-        message_packet: &mut Request,
+        message_packet: &Request,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
