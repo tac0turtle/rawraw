@@ -1,24 +1,81 @@
 use crate::ast;
-use crate::ast::ErrorNode;
 use crate::lexer::Token;
 use crate::parser::state::Parser;
-use crate::syntax::{SyntaxKind, SyntaxNode};
-use rowan::Checkpoint;
 
-pub fn parse(parser: &mut Parser) {
-    match parser.cur() {
-        Token::InterfaceKw => interface(parser),
-        _ => {}
+pub fn file(p: &mut Parser) {
+    while !p.eof() {
+        match p.cur() {
+            Token::InterfaceKw => interface(p),
+            _ => p.advance_with_error("expected interface, handler or impl"),
+        }
     }
 }
 
 fn interface(parser: &mut Parser) {
-    let checkpoint = parser.open();
+    let m = parser.open();
     parser.expect(Token::InterfaceKw);
     expect_ident(parser);
     parser.expect(Token::LBracket);
-    parser.close::<ast::Interface>(checkpoint)
+    while !parser.at(Token::RBracket) && !parser.eof() {
+        interface_item(parser);
+    }
+    parser.expect(Token::RBracket);
 }
+
+fn interface_item(p: &mut Parser) {
+    if p.at_any(FN_TYPES) {
+        fn_sig(p);
+    } else {
+        p.advance_with_error("expected interface item");
+    }
+}
+
+fn fn_sig(p: &mut Parser) {
+    let m = p.open();
+    p.expect_any(FN_TYPES);
+    expect_ident(p);
+    if !p.at(Token::LParen) {
+        fn_param_list(p);
+    }
+    p.close::<ast::FnSignature>(m)
+}
+
+ const FN_TYPES: &[Token] = &[Token::TxKw, Token::QueryKw, Token::PureKw];
+
+fn fn_param_list(p: &mut Parser) {
+    let m = p.open();
+    p.expect(Token::LParen);
+    while !p.at(Token::RParen) && !p.eof(){
+        if at_ident(p) {
+            fn_param(p);
+        } else {
+            break;
+        }
+    }
+    p.expect(Token::RParen);
+    p.close::<ast::FnArgList>(m)
+}
+
+fn fn_param(p: &mut Parser) {
+    let m = p.open();
+    p.eat(Token::KeyKw);
+    expect_ident(p);
+    p.expect(Token::Colon);
+    typ(p);
+    if !p.at(Token::RParen) {
+        p.expect(Token::Comma);
+    }
+    p.close::<ast::FnArg>(m)
+}
+
+fn typ(p: &mut Parser) {
+    let m= p.open();
+    expect_ident(p);
+    p.close::<ast::TypeIdent>(m)
+}
+
+// fn typ_array(p: &mut Parser) -> bool {
+// }
 //
 // fn fn_arg(&mut self) -> Result<(), ()> {
 //     let checkpoint = self.state.open();
@@ -29,26 +86,15 @@ fn interface(parser: &mut Parser) {
 //     self.state.close::<ast::FnArg>(checkpoint)
 // }
 //
-// fn typ(&mut self) -> Result<(), ()> {
-//     if self.at(Token::LBracket) {
-//         self.typ_array()?;
-//     }
-//     let checkpoint = self.state.open();
-//     self.expect_kind(SyntaxKind::IDENT, &checkpoint);
-//     self.state.close::<ast::TypeIdent>(checkpoint)
-// }
+
+fn at_ident(parser: &mut Parser) -> bool {
+    parser.at_f(|it| matches!(it, Token::Ident(_)))
+}
 
 fn expect_ident(parser: &mut Parser) {
     parser.expect_f(|it| matches!(it, Token::Ident(_)), "expected identifier")
 }
 //
-// fn typ_array(&mut self) -> Result<(), ()> {
-//     let checkpoint = self.state.open();
-//     self.expect(Token::LBracket, &checkpoint)?;
-//     self.expect(Token::RBracket, &checkpoint)?;
-//     self.typ()?;
-//     self.state.close::<ast::TypeArray>(checkpoint)
-// }
 //
 // pub fn at(&mut self, token: Token<'source>) -> bool {
 //     self.state.peek() == Some(&token)

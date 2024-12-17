@@ -8,6 +8,6 @@ mod state;
 
 pub fn parse<'source, I: Iterator<Item=(Token<'source>, Span)>>(tokens: I) -> SyntaxNode {
     let mut parser = state::Parser::new(tokens.collect());
-    parse::parse(&mut parser);
+    parse::file(&mut parser);
     parser.finish(Default::default())
 }

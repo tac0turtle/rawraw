@@ -20,22 +20,26 @@ pub enum Token<'a> {
     RBracket,
     #[token("handler")]
     HandlerKw,
-    #[token("fn")]
-    FnKw,
     #[token("(")]
     LParen,
     #[token(")")]
     RParen,
+    #[token("tx")]
+    TxKw,
+    #[token("query")]
+    QueryKw,
+    #[token("pure")]
+    PureKw,
     #[token("key")]
     KeyKw,
     #[token(":")]
     Colon,
+    #[token(",")]
+    Comma,
     #[token("[")]
     LBrace,
     #[token("]")]
     RBrace,
-    #[token(",")]
-    Comma,
 }
 impl<'a> Token<'a> {
     pub fn kind(&'a self) -> SyntaxKind {
@@ -49,14 +53,16 @@ impl<'a> Token<'a> {
             Token::LBracket => SyntaxKind::L_BRACKET,
             Token::RBracket => SyntaxKind::R_BRACKET,
             Token::HandlerKw => SyntaxKind::HANDLER_KW,
-            Token::FnKw => SyntaxKind::FN_KW,
             Token::LParen => SyntaxKind::L_PAREN,
             Token::RParen => SyntaxKind::R_PAREN,
+            Token::TxKw => SyntaxKind::TX_KW,
+            Token::QueryKw => SyntaxKind::QUERY_KW,
+            Token::PureKw => SyntaxKind::PURE_KW,
             Token::KeyKw => SyntaxKind::KEY_KW,
             Token::Colon => SyntaxKind::COLON,
+            Token::Comma => SyntaxKind::COMMA,
             Token::LBrace => SyntaxKind::L_BRACE,
             Token::RBrace => SyntaxKind::R_BRACE,
-            Token::Comma => SyntaxKind::COMMA,
         }
     }
     pub fn text(&'a self) -> &'a str {
@@ -70,14 +76,16 @@ impl<'a> Token<'a> {
             Token::LBracket => "{",
             Token::RBracket => "}",
             Token::HandlerKw => "handler",
-            Token::FnKw => "fn",
             Token::LParen => "(",
             Token::RParen => ")",
+            Token::TxKw => "tx",
+            Token::QueryKw => "query",
+            Token::PureKw => "pure",
             Token::KeyKw => "key",
             Token::Colon => ":",
+            Token::Comma => ",",
             Token::LBrace => "[",
             Token::RBrace => "]",
-            Token::Comma => ",",
         }
     }
 }

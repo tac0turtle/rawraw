@@ -56,7 +56,7 @@ impl<'source> Parser<'source> {
         self.skip_ws()
     }
 
-    fn eof(&self) -> bool {
+    pub fn eof(&self) -> bool {
         self.pos == self.tokens.len()
     }
 
@@ -74,15 +74,19 @@ impl<'source> Parser<'source> {
             .map_or(Token::Eof, |(token, _)| token.clone())
     }
 
-    fn at(&self, token: Token) -> bool {
+    pub fn at(&self, token: Token) -> bool {
         self.nth(0) == token
     }
 
-    fn at_f(&self, f: impl FnOnce(Token) -> bool) -> bool {
+    pub fn at_any(&self, tokens: &[Token]) -> bool {
+        self.at_f(|it| tokens.contains(&it))
+    }
+
+    pub fn at_f(&self, f: impl FnOnce(Token) -> bool) -> bool {
         f(self.nth(0))
     }
 
-    fn eat_f(&mut self, f: impl FnOnce(Token) -> bool) -> bool {
+    pub fn eat_f(&mut self, f: impl FnOnce(Token) -> bool) -> bool {
         if self.at_f(f) {
             self.advance();
             true
@@ -91,13 +95,12 @@ impl<'source> Parser<'source> {
         }
     }
 
+    pub fn eat_any(&mut self, tokens: &[Token]) -> bool {
+        self.eat_f(|it| tokens.contains(&it))
+    }
+
     pub fn eat(&mut self, f: Token) -> bool {
-        if self.at(f) {
-            self.advance();
-            true
-        } else {
-            false
-        }
+        self.eat_f(|it| it == f)
     }
 
     pub fn expect(&mut self, token: Token) {
@@ -116,7 +119,15 @@ impl<'source> Parser<'source> {
         eprintln!("error: {error}");
     }
 
-    fn advance_with_error(&mut self, error: &str) {
+    pub fn expect_any(&mut self, tokens: &[Token]) {
+        if self.eat_any(tokens) {
+            return;
+        }
+        // TODO: Error reporting.
+        eprintln!("expected one of: {tokens:?}");
+    }
+
+    pub fn advance_with_error(&mut self, error: &str) {
         let m = self.open();
         // TODO: Error reporting.
         eprintln!("{error}");

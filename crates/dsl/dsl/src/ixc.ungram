@@ -14,9 +14,15 @@ Handler = 'handler' name:'#ident' '{'
 
 // HandlerItem = HandlerFn
 
-InterfaceFn = 'fn' name:'#ident' '(' args:FnArg* ')' ret:'#ident'
+InterfaceFn = sig:FnSignature
 
-FnArg = key:'key'? name:'#ident' ':' typ:Type
+FnSignature = typ:FnType name:'#ident' '(' args:FnArgList ')' ret:'#ident'
+
+FnArgList = args:FnArg*
+
+FnType = 'tx' | 'query' | 'pure'
+
+FnArg = key:'key'? name:'#ident' ':' typ:Type ','
 
 Type = TypeIdent | TypeArray
 

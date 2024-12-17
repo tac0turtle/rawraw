@@ -126,20 +126,88 @@ impl rowan::ast::AstNode for InterfaceFn {
 }
 impl InterfaceFn {
     #[inline]
+    pub fn sig(&self) -> Option<FnSignature> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::ast::AstStruct for InterfaceFn {
+    const KIND: SyntaxKind = SyntaxKind::INTERFACE_FN;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FnSignature {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for FnSignature {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::FN_SIGNATURE
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl FnSignature {
+    #[inline]
+    pub fn typ(&self) -> Option<FnType> {
+        rowan::ast::support::child(&self.syntax)
+    }
+    #[inline]
     pub fn name(&self) -> Option<SyntaxToken> {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
     #[inline]
-    pub fn args(&self) -> rowan::ast::AstChildren<FnArg> {
-        rowan::ast::support::children(&self.syntax)
+    pub fn args(&self) -> Option<FnArgList> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn ret(&self) -> Option<SyntaxToken> {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::ast::AstStruct for InterfaceFn {
-    const KIND: SyntaxKind = SyntaxKind::INTERFACE_FN;
+impl crate::ast::AstStruct for FnSignature {
+    const KIND: SyntaxKind = SyntaxKind::FN_SIGNATURE;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FnType {}
+impl rowan::ast::AstNode for FnType {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        todo!()
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        todo!()
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        todo!()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FnArgList {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for FnArgList {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::FN_ARG_LIST
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl FnArgList {
+    #[inline]
+    pub fn args(&self) -> rowan::ast::AstChildren<FnArg> {
+        rowan::ast::support::children(&self.syntax)
+    }
+}
+impl crate::ast::AstStruct for FnArgList {
+    const KIND: SyntaxKind = SyntaxKind::FN_ARG_LIST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnArg {
