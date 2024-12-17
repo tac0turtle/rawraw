@@ -40,6 +40,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
         #[repr(u16)]
         pub enum SyntaxKind {
             ROOT,
+            EOF,
             ERROR, // this is for errors represented as a single token
             ERROR_NODE, // this is for errors represented as a node of possible multiple tokens
             #[num_enum(catch_all)]
@@ -104,6 +105,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
         #[derive(Logos, Debug, PartialEq, Eq, Clone)]
         pub enum Token<'a> {
             Error(&'a str),
+            Eof,
             #[regex(r#"[ \t\n\r\f\v]+"#)]
             Whitespace(&'a str),
             #[regex(r#"//[^\n\r\f\v]*"#)]
@@ -115,6 +117,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
             pub fn kind(&'a self) -> SyntaxKind {
                 match self {
                     Token::Error(_) => SyntaxKind::ERROR,
+                    Token::Eof => SyntaxKind::EOF,
                     Token::Whitespace(_) => SyntaxKind::WHITESPACE,
                     Token::LineComment(_) => SyntaxKind::LINE_COMMENT,
                     #(#to_syntax_kind),*
@@ -124,6 +127,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
             pub fn text(&'a self) -> &'a str {
                 match self {
                     Token::Error(x) => x,
+                    Token::Eof => "",
                     Token::Whitespace(x) => x,
                     Token::LineComment(x) => x,
                     #(#to_str),*

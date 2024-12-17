@@ -5,6 +5,7 @@ use logos::Logos;
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
 pub enum Token<'a> {
     Error(&'a str),
+    Eof,
     #[regex(r#"[ \t\n\r\f\v]+"#)]
     Whitespace(&'a str),
     #[regex(r#"//[^\n\r\f\v]*"#)]
@@ -40,6 +41,7 @@ impl<'a> Token<'a> {
     pub fn kind(&'a self) -> SyntaxKind {
         match self {
             Token::Error(_) => SyntaxKind::ERROR,
+            Token::Eof => SyntaxKind::EOF,
             Token::Whitespace(_) => SyntaxKind::WHITESPACE,
             Token::LineComment(_) => SyntaxKind::LINE_COMMENT,
             Token::InterfaceKw => SyntaxKind::INTERFACE_KW,
@@ -60,6 +62,7 @@ impl<'a> Token<'a> {
     pub fn text(&'a self) -> &'a str {
         match self {
             Token::Error(x) => x,
+            Token::Eof => "",
             Token::Whitespace(x) => x,
             Token::LineComment(x) => x,
             Token::InterfaceKw => "interface",
