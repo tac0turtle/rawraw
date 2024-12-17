@@ -4,6 +4,7 @@ use crate::syntax::SyntaxKind;
 use logos::Logos;
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
 pub enum LexicalToken<'a> {
+    Error(&'a str),
     #[regex(r#"[ \t\n\r\f\v]+"#)]
     Whitespace(&'a str),
     #[regex(r#"//[^\n\r\f\v]*"#)]
@@ -31,9 +32,10 @@ pub enum LexicalToken<'a> {
     #[token("]")]
     RBrace,
 }
-impl<'a> From<LexicalToken<'a>> for crate::syntax::SyntaxKind {
-    fn from(value: LexicalToken<'a>) -> Self {
-        match value {
+impl<'a> LexicalToken<'a> {
+    pub fn kind(&'a self) -> SyntaxKind {
+        match self {
+            LexicalToken::Error(_) => SyntaxKind::ERROR,
             LexicalToken::Whitespace(_) => SyntaxKind::WHITESPACE,
             LexicalToken::Comment(_) => SyntaxKind::COMMENT,
             LexicalToken::Interface => SyntaxKind::INTERFACE,
@@ -49,23 +51,23 @@ impl<'a> From<LexicalToken<'a>> for crate::syntax::SyntaxKind {
             LexicalToken::RBrace => SyntaxKind::R_BRACE,
         }
     }
-}
-impl<'a> std::fmt::Display for LexicalToken<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+
+    pub fn text(&'a self) -> &'a str {
         match self {
-            LexicalToken::Whitespace(x) => write!(f, "{}", x),
-            LexicalToken::Comment(x) => write!(f, "{}", x),
-            LexicalToken::Interface => write!(f, "{}", "interface"),
-            LexicalToken::Ident(x) => write!(f, "{}", x),
-            LexicalToken::LBracket => write!(f, "{}", "{"),
-            LexicalToken::RBracket => write!(f, "{}", "}"),
-            LexicalToken::Handler => write!(f, "{}", "handler"),
-            LexicalToken::Fn => write!(f, "{}", "fn"),
-            LexicalToken::LParen => write!(f, "{}", "("),
-            LexicalToken::RParen => write!(f, "{}", ")"),
-            LexicalToken::Colon => write!(f, "{}", ":"),
-            LexicalToken::LBrace => write!(f, "{}", "["),
-            LexicalToken::RBrace => write!(f, "{}", "]"),
+            LexicalToken::Error(x) => x,
+            LexicalToken::Whitespace(x) => x,
+            LexicalToken::Comment(x) => x,
+            LexicalToken::Interface => "interface",
+            LexicalToken::Ident(x) => x,
+            LexicalToken::LBracket => "{",
+            LexicalToken::RBracket => "}",
+            LexicalToken::Handler => "handler",
+            LexicalToken::Fn => "fn",
+            LexicalToken::LParen => "(",
+            LexicalToken::RParen => ")",
+            LexicalToken::Colon => ":",
+            LexicalToken::LBrace => "[",
+            LexicalToken::RBrace => "]",
         }
     }
 }

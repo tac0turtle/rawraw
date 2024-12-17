@@ -9,7 +9,6 @@ mod parser2;
 mod lexer;
 
 use crate::ast::File;
-// use crate::lex::lex;
 use crate::parser::parser;
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use chumsky::input::{Stream, ValueInput};
@@ -17,8 +16,8 @@ use chumsky::prelude::*;
 use logos::Logos;
 use std::io::Read;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use crate::lexer::LexicalToken;
-use crate::syntax::SyntaxKind;
+use crate::lexer::{lex, LexicalToken};
+use crate::syntax::{SyntaxKind, SyntaxNode};
 
 fn parse(input: &str) -> Result<File, anyhow::Error> {
     Ok(File { items: vec![] })
@@ -33,10 +32,12 @@ fn read_example() -> anyhow::Result<String> {
 
 fn compile() -> anyhow::Result<()> {
     let input = read_example()?;
-    let tokens = LexicalToken::lexer(&input).collect::<Vec<_>>();
-    println!("{:?}", tokens);
-    let green_tokens: Vec<NodeOrToken<GreenNode, GreenToken>> = tokens.iter().map(|it| it.into()).collect::<Vec<_>>();
+    let green_tokens = lex(&input).map(|token| {
+        NodeOrToken::Token(token.into())
+    }).collect::<Vec<_>>();
     let green_node = GreenNode::new(SyntaxKind::ROOT.into(), green_tokens);
+    let root = SyntaxNode::new_root(green_node);
+    println!("{:#?}", root);
     // let tokens = lex(&input);
     // match parser().parse(tokens).into_result() {
     //     // If parsing was successful, attempt to evaluate the s-expression

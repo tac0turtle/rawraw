@@ -6,6 +6,8 @@ pub use syntax_kind::SyntaxKind;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum IXCLanguage {}
 
+pub type SyntaxNode = rowan::SyntaxNode<IXCLanguage>;
+
 impl Language for IXCLanguage {
     type Kind = SyntaxKind;
 

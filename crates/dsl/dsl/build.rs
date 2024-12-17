@@ -71,22 +71,23 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
         } else {
             quote! { LexicalToken::#case_name => SyntaxKind::#syntax_kind   }
         };
-        let display = if regex.is_some() {
-            quote! { LexicalToken::#case_name(x) => write!(f, "{}", x) }
+        let to_str = if regex.is_some() {
+            quote! { LexicalToken::#case_name(x) => x }
         } else {
-            quote! { LexicalToken::#case_name => write!(f, "{}", #token_lit) }
+            quote! { LexicalToken::#case_name => #token_lit }
         };
-        (enum_case, to_syntax_kind, display)
+        (enum_case, to_syntax_kind, to_str)
     }).collect::<Vec<_>>();
     let enum_cases = tokens.clone().into_iter().map(|(enum_case, _, _)| enum_case);
     let to_syntax_kind = tokens.clone().into_iter().map(|(_, to_syntax_kind, _)| to_syntax_kind);
-    let display = tokens.into_iter().map(|(_, _, display)| display);
+    let to_str = tokens.into_iter().map(|(_, _, display)| display);
     let file = parse_quote! {
         use crate::syntax::SyntaxKind;
         use logos::Logos;
 
         #[derive(Logos, Debug, PartialEq, Eq, Clone)]
         pub enum LexicalToken<'a> {
+            Error(&'a str),
             #[regex(r#"[ \t\n\r\f\v]+"#)]
             Whitespace(&'a str),
             #[regex(r#"//[^\n\r\f\v]*"#)]
@@ -94,22 +95,22 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
             #(#enum_cases),*
         }
 
-        impl<'a> From<LexicalToken<'a>> for crate::syntax::SyntaxKind {
-            fn from(value: LexicalToken<'a>) -> Self {
-                match value {
+        impl <'a> LexicalToken<'a> {
+            fn kind(&'a self) -> SyntaxKind {
+                match self {
+                    LexicalToken::Error(_) => SyntaxKind::ERROR,
                     LexicalToken::Whitespace(_) => SyntaxKind::WHITESPACE,
                     LexicalToken::Comment(_) => SyntaxKind::COMMENT,
                     #(#to_syntax_kind),*
                 }
             }
-        }
 
-        impl <'a> std::fmt::Display for LexicalToken<'a> {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn text(&'a self) -> &'a str {
                 match self {
-                    LexicalToken::Whitespace(x) => write!(f, "{}", x),
-                    LexicalToken::Comment(x) => write!(f, "{}", x),
-                    #(#display),*
+                    LexicalToken::Error(x) => x,
+                    LexicalToken::Whitespace(x) => x,
+                    LexicalToken::Comment(x) => x,
+                    #(#to_str),*
                 }
             }
         }
