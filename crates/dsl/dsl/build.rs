@@ -291,16 +291,38 @@ fn ast_node_struct(
     })
 }
 
-fn ast_node_node_enum(grammar: &Grammar, name: &Ident, ast: &[&Node]) -> anyhow::Result<TokenStream> {
-    Ok(quote! {})
+fn ast_node_node_enum(grammar: &Grammar, enum_name: &Ident, ast: &[&Node]) -> anyhow::Result<TokenStream> {
+    Ok(quote! {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub enum #enum_name {}
+        impl rowan::ast::AstNode for #enum_name {
+            type Language = IXCLanguage;
+            fn can_cast(kind: SyntaxKind) -> bool { todo!() }
+            fn cast(syntax: SyntaxNode) -> Option<Self> {
+                todo!()
+            }
+            fn syntax(&self) -> &SyntaxNode { todo!() }
+        }
+    })
 }
 
 fn ast_node_token_enum(
     grammar: &Grammar,
-    name: &Ident,
+    enum_name: &Ident,
     ast: &[&Token],
 ) -> anyhow::Result<TokenStream> {
-    Ok(quote! {})
+    Ok(quote! {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub enum #enum_name {}
+        impl rowan::ast::AstNode for #enum_name {
+            type Language = IXCLanguage;
+            fn can_cast(kind: SyntaxKind) -> bool { todo!() }
+            fn cast(syntax: SyntaxNode) -> Option<Self> {
+                todo!()
+            }
+            fn syntax(&self) -> &SyntaxNode { todo!() }
+        }
+    })
 }
 
 fn generate_ast(grammar: &Grammar) -> anyhow::Result<()> {
@@ -319,7 +341,7 @@ fn generate_ast(grammar: &Grammar) -> anyhow::Result<()> {
         )?);
     }
     let file = parse_quote! {
-        use crate::syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
+        use crate::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
         #(#nodes)*
     };
     write_file(&file, "src/ast/nodes.rs")

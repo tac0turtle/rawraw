@@ -9,10 +9,10 @@ pub struct State<'source, 'cache, I: Iterator<Item = (Span, Token<'source>)>> {
 }
 
 impl<'source, 'cache, I: Iterator<Item = (Span, Token<'source>)>> State<'source, 'cache, I> {
-    pub fn new(source: SpannedIter<'source, Token<'source>>, builder: GreenNodeBuilder<'cache>) -> Self {
-        Self { source: peek_nth(source), builder }
-    }
-
+    // pub fn new(source: SpannedIter<'source, Token<'source>>, builder: GreenNodeBuilder<'cache>) -> Self {
+    //     Self { source: peek_nth(source), builder }
+    // }
+    //
     pub fn peek(&mut self) -> Option<&Token<'source>> {
         self.source.peek().map(|(_, it)| it)
     }
@@ -33,7 +33,7 @@ impl<'source, 'cache, I: Iterator<Item = (Span, Token<'source>)>> State<'source,
         None
     }
 
-    pub fn next_if_eq<T>(&mut self, expected: &T) -> Option<Token<'source>> {
+    pub fn next_if_eq(&mut self, expected: &Token<'source>) -> Option<Token<'source>> {
         self.next_if(|next| next == expected)
     }
 }

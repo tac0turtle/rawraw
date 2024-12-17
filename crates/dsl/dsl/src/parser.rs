@@ -1,6 +1,6 @@
 use logos::Span;
 use crate::lexer::Token;
-use crate::parser2::state::State;
+use crate::parser::state::State;
 
 mod state;
 

@@ -1,6 +1,6 @@
 //! GENERATED CODE -- DO NOT EDIT!
 
-use crate::syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
+use crate::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct File {
     syntax: SyntaxNode,
@@ -25,6 +25,20 @@ impl File {
 }
 impl crate::ast::AstStruct for File {
     const KIND: SyntaxKind = SyntaxKind::FILE;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Item {}
+impl rowan::ast::AstNode for Item {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        todo!()
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        todo!()
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        todo!()
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Interface {
@@ -79,6 +93,20 @@ impl Handler {
 }
 impl crate::ast::AstStruct for Handler {
     const KIND: SyntaxKind = SyntaxKind::HANDLER;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InterfaceItem {}
+impl rowan::ast::AstNode for InterfaceItem {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        todo!()
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        todo!()
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        todo!()
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InterfaceFn {
@@ -141,6 +169,20 @@ impl FnArg {
 }
 impl crate::ast::AstStruct for FnArg {
     const KIND: SyntaxKind = SyntaxKind::FN_ARG;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Type {}
+impl rowan::ast::AstNode for Type {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        todo!()
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        todo!()
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        todo!()
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeIdent {
