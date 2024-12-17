@@ -91,7 +91,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
         <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::Value,
         M::Error,
     >,
-    allocator: &'b dyn Allocator,
+    allocator: &'b &'b dyn Allocator,
 ) -> Result<Response<'b>, ErrorCode> {
     match res {
         Ok(value) => {
@@ -99,7 +99,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
                 <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
                     cdc,
                     &value,
-                    allocator as &dyn Allocator,
+                    allocator as &dyn WriterFactory,
                 )? {
                 Ok(Response::new1(out1.into()))
             } else {
