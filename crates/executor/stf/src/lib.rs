@@ -42,8 +42,8 @@ pub trait BeforeTxApply {
 
 pub trait AfterTxApply {
     fn after_tx_apply<Vm: VM, SH: StateHandler, Tx: Transation>(
-        vm: Vm,
-        sh: SH,
+        vm: &Vm,
+        sh: &SH,
         tx: &Tx,
         msg_result: &[u8],
     ) -> Result<(), ErrorCode>;
@@ -79,9 +79,12 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
         Btx::before_tx_apply(vm, sh, tx, handler, allocator)?;
         sh.commit_tx(&mut gas_meter)?;
 
+        let mut host_backend = Self::new_host_backend();
+        let mut message_packet = Self::new_message_packet();
+
         // apply msg
         sh.begin_tx(&mut gas_meter)?;
-        let resp = handler.handle_msg(vm, sh, tx)?;
+        let resp = handler.handle_msg(&mut message_packet, &mut host_backend, allocator)?;
         sh.commit_tx(&mut gas_meter)?;
 
         // post tx handle
@@ -102,6 +105,10 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
     }
 
     fn new_host_backend() -> HostBackendImpl {
+        todo!()
+    }
+
+    fn new_message_packet<'a>() -> MessagePacket<'a> {
         todo!()
     }
 }
