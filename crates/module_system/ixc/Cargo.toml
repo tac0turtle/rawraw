@@ -19,7 +19,6 @@ ixc_core_macros = { path = "../core_macros", version = "0.0.4" }
 ixc_schema_macros = { path = "../schema_macros", version = "0.0.3", features = [
     "use_ixc_macro_path",
 ] }
-array-concat = "0.5.3"
 
 [dev-dependencies]
 ixc_testing = { path = "../testing" }
