@@ -16,7 +16,7 @@ use chumsky::prelude::*;
 use logos::Logos;
 use std::io::Read;
 use rowan::{GreenNode, GreenToken, NodeOrToken};
-use crate::lexer::{lex, LexicalToken};
+use crate::lexer::{lex, Token};
 use crate::syntax::{SyntaxKind, SyntaxNode};
 
 fn parse(input: &str) -> Result<File, anyhow::Error> {

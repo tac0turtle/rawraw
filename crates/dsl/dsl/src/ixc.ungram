@@ -1,4 +1,4 @@
-File = Item*
+File = items:Item*
 
 Item = Interface | Handler
 
@@ -16,15 +16,13 @@ Handler = 'handler' name:'#ident' '{'
 
 InterfaceFn = 'fn' name:'#ident' '(' args:FnArg* ')' ret:'#ident'
 
-FnArg = name:'#ident' ':' type:Type
+FnArg = name:'#ident' ':' typ:Type
 
 Type = TypeIdent | TypeArray
 
 TypeIdent = name:'#ident'
 
-TypeArray = type:Type '[' ']'
+TypeArray = typ:Type '[' ']'
 
-Struct = name:'#ident'
-    '{' (fields:StructField ',')* '}'
-
-StructField = name:'#ident' ':' type:Type
+Struct = name:'#ident' '{' fields:StructField* '}'
+StructField = name:'#ident' ':' typ:Type ','

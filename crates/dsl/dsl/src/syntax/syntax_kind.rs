@@ -16,6 +16,7 @@
 pub enum SyntaxKind {
     ROOT,
     ERROR,
+    ERROR_NODE,
     #[num_enum(catch_all)]
     UNKNOWN(u16),
     WHITESPACE,

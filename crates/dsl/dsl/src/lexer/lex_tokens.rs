@@ -3,7 +3,7 @@
 use crate::syntax::SyntaxKind;
 use logos::Logos;
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
-pub enum LexicalToken<'a> {
+pub enum Token<'a> {
     Error(&'a str),
     #[regex(r#"[ \t\n\r\f\v]+"#)]
     Whitespace(&'a str),
@@ -34,43 +34,43 @@ pub enum LexicalToken<'a> {
     #[token(",")]
     Comma,
 }
-impl<'a> LexicalToken<'a> {
+impl<'a> Token<'a> {
     pub fn kind(&'a self) -> SyntaxKind {
         match self {
-            LexicalToken::Error(_) => SyntaxKind::ERROR,
-            LexicalToken::Whitespace(_) => SyntaxKind::WHITESPACE,
-            LexicalToken::Comment(_) => SyntaxKind::COMMENT,
-            LexicalToken::InterfaceKw => SyntaxKind::INTERFACE_KW,
-            LexicalToken::Ident(_) => SyntaxKind::IDENT,
-            LexicalToken::LBracket => SyntaxKind::L_BRACKET,
-            LexicalToken::RBracket => SyntaxKind::R_BRACKET,
-            LexicalToken::HandlerKw => SyntaxKind::HANDLER_KW,
-            LexicalToken::FnKw => SyntaxKind::FN_KW,
-            LexicalToken::LParen => SyntaxKind::L_PAREN,
-            LexicalToken::RParen => SyntaxKind::R_PAREN,
-            LexicalToken::Colon => SyntaxKind::COLON,
-            LexicalToken::LBrace => SyntaxKind::L_BRACE,
-            LexicalToken::RBrace => SyntaxKind::R_BRACE,
-            LexicalToken::Comma => SyntaxKind::COMMA,
+            Token::Error(_) => SyntaxKind::ERROR,
+            Token::Whitespace(_) => SyntaxKind::WHITESPACE,
+            Token::Comment(_) => SyntaxKind::COMMENT,
+            Token::InterfaceKw => SyntaxKind::INTERFACE_KW,
+            Token::Ident(_) => SyntaxKind::IDENT,
+            Token::LBracket => SyntaxKind::L_BRACKET,
+            Token::RBracket => SyntaxKind::R_BRACKET,
+            Token::HandlerKw => SyntaxKind::HANDLER_KW,
+            Token::FnKw => SyntaxKind::FN_KW,
+            Token::LParen => SyntaxKind::L_PAREN,
+            Token::RParen => SyntaxKind::R_PAREN,
+            Token::Colon => SyntaxKind::COLON,
+            Token::LBrace => SyntaxKind::L_BRACE,
+            Token::RBrace => SyntaxKind::R_BRACE,
+            Token::Comma => SyntaxKind::COMMA,
         }
     }
     pub fn text(&'a self) -> &'a str {
         match self {
-            LexicalToken::Error(x) => x,
-            LexicalToken::Whitespace(x) => x,
-            LexicalToken::Comment(x) => x,
-            LexicalToken::InterfaceKw => "interface",
-            LexicalToken::Ident(x) => x,
-            LexicalToken::LBracket => "{",
-            LexicalToken::RBracket => "}",
-            LexicalToken::HandlerKw => "handler",
-            LexicalToken::FnKw => "fn",
-            LexicalToken::LParen => "(",
-            LexicalToken::RParen => ")",
-            LexicalToken::Colon => ":",
-            LexicalToken::LBrace => "[",
-            LexicalToken::RBrace => "]",
-            LexicalToken::Comma => ",",
+            Token::Error(x) => x,
+            Token::Whitespace(x) => x,
+            Token::Comment(x) => x,
+            Token::InterfaceKw => "interface",
+            Token::Ident(x) => x,
+            Token::LBracket => "{",
+            Token::RBracket => "}",
+            Token::HandlerKw => "handler",
+            Token::FnKw => "fn",
+            Token::LParen => "(",
+            Token::RParen => ")",
+            Token::Colon => ":",
+            Token::LBrace => "[",
+            Token::RBrace => "]",
+            Token::Comma => ",",
         }
     }
 }
