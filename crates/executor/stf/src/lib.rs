@@ -1,10 +1,16 @@
 //! A state transition function that can be used to execute transactions and query state.
 mod info;
+mod examples;
+
+use std::marker::PhantomData;
 use crate::info::Info;
 
 use allocator_api2::alloc::Allocator;
+use ixc_account_manager::state_handler::gas::GasMeter;
+use ixc_account_manager::state_handler::StateHandler;
+use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::{code::ErrorCode, header::MessageSelector, packet::MessagePacket, AccountID};
-use ixc_state_handler::{Handler, StateHandler, Store};
+use ixc_vm_api::VM;
 
 pub struct BlockReq<T: Transation> {
     pub height: u64,
@@ -23,126 +29,107 @@ pub trait Transation {
     /// Get the message selector of the transaction.
     fn selector(&self) -> &MessageSelector;
 }
-/// An account manager that can be used to invoke messages and queries. TODO: remove once https://github.com/tac0turtle/rawraw/pull/20 is merged
-pub trait AccountManager {
-    /// Invokes a message on the account manager.
-    fn invoke_msg(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
+
+pub trait BeforeTxApply {
+    fn before_tx_apply<Vm: VM, SH: StateHandler, Tx: Transation>(
+        vm: &Vm,
+        sh: &mut SH,
+        tx: &Tx,
+        handler: &dyn RawHandler,
+        alloc: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
-    /// Invokes a query on the account manager.
-    fn invoke_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
+}
+
+pub trait AfterTxApply {
+    fn after_tx_apply<Vm: VM, SH: StateHandler, Tx: Transation>(
+        vm: Vm,
+        sh: SH,
+        tx: &Tx,
+        msg_result: &[u8],
     ) -> Result<(), ErrorCode>;
 }
 
 /// A state transition function that can be used to execute transactions and query state.
-pub struct STF<A: AccountManager> {
-    account_manager: A,
-    preexecution: Vec<AccountID>,
-    postexecution: Vec<AccountID>,
+pub struct STF<BeforeTxApply, PostTxApply>(PhantomData<BeforeTxApply>, PhantomData<PostTxApply>);
+
+pub enum Failure {
+    BeforeTx(ErrorCode),
+    ApplyMsg(ErrorCode),
+    PostTx(ErrorCode),
 }
 
-impl<A: AccountManager + 'static> STF<A> {
-    /// new creates a new state transition function.
-    pub fn new(
-        account_manager: A,
-        preexecution: Vec<AccountID>,
-        postexecution: Vec<AccountID>,
-    ) -> Self {
-        Self {
-            account_manager,
-            preexecution,
-            postexecution,
-        }
+impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
+    pub const ACCOUNT_TO_HANDLER_PREFIX: u8 = 0;
+    pub const fn new() -> Self {
+        Self(PhantomData, PhantomData)
     }
 
-    /// execute_txs executes a list of transactions and updates the state.
-    pub unsafe fn execute_txs<S: Store, T: Transation>(
+    pub fn apply_tx<Vm: VM, SH: StateHandler, Tx: Transation>(
+        vm: &Vm,
+        sh: &mut SH,
+        tx: &Tx,
+        allocator: &dyn Allocator,
+    ) -> Result<Vec<u8>, ErrorCode> {
+        let handler = Self::get_handler_for_sender(tx.sender(), vm, sh, allocator)?;
+
+        let mut gas_meter = GasMeter::new(0);
+
+        // before tx handle
+        sh.begin_tx(&mut gas_meter)?;
+        Btx::before_tx_apply(vm, sh, tx, handler, allocator)?;
+        sh.commit_tx(&mut gas_meter)?;
+
+        // apply msg
+        sh.begin_tx(&mut gas_meter)?;
+        let resp = handler.handle_msg(vm, sh, tx)?;
+        sh.commit_tx(&mut gas_meter)?;
+
+        // post tx handle
+        sh.begin_tx(&mut gas_meter)?;
+        PTx::after_tx_apply(vm, sh, tx, &[])?;
+        sh.commit_tx(&mut gas_meter)?;
+
+        Ok(todo!("impl"))
+    }
+
+    fn get_handler_for_sender<'a, 'b, SH: StateHandler, Vm: VM>(
+        sender: &AccountID,
+        vm: &Vm,
+        sh: &SH,
+        alloc: &'b dyn Allocator,
+    ) -> Result<&'a dyn RawHandler, ErrorCode> {
+        todo!("impl")
+    }
+
+    fn new_host_backend() -> HostBackendImpl {
+        todo!()
+    }
+}
+
+struct HostBackendImpl;
+
+impl HostBackend for HostBackendImpl {
+    fn invoke_msg(
         &mut self,
-        store: &S,
-        block: &BlockReq<T>,
+        message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        // set height and time
-        let i = Info::new(block.height, block.time);
-
-        let mut state_handler = Handler::new(store);
-
-        // Begin block
-        for account in self.preexecution {
-            let mut packet = MessagePacket::allocate(allocator, 0)?;
-            let header = packet.header_mut();
-            header.account = account;
-            header.caller = account;
-            header.message_selector = 0;
-            self.account_manager.invoke_msg(&mut packet, allocator)?;
-        }
-
-        // execute transactions
-        for tx in block.transactions {
-            self.exec_tx(&state_handler, &tx, allocator)?;
-        }
-
-        for account in self.postexecution {
-            let mut packet = MessagePacket::allocate(allocator, 0)?;
-            let header = packet.header_mut();
-            header.account = account;
-            header.caller = account;
-            header.message_selector = 0;
-            self.account_manager.invoke_msg(&mut packet, allocator)?;
-        }
-
-        // End block
-        Ok(())
+        todo!()
     }
 
-    /// exec_tx executes a transaction and updates the state.
-    pub unsafe fn exec_tx<S: StateHandler, T: Transation>(
-        &mut self,
-        state_handler: &S,
-        tx: &T,
+    fn invoke_query(
+        &self,
+        message_packet: &mut MessagePacket,
         allocator: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        // Verify the transaction signature
-        let sender = tx.sender().to_owned();
-        let mut packet = MessagePacket::allocate(allocator, 0)?;
-        let header = packet.header_mut();
-        header.account = sender;
-        header.caller = sender;
-        header.message_selector = 0;
-        let res = self.account_manager.invoke_msg(&mut packet, allocator);
-        if res.is_err() {
-            return res;
-        }
-
-        // antehandler operations
-
-        // execute the transaction
-
-        Ok(())
+        todo!()
     }
+}
 
-    /// query queries the state.
-    pub fn query<S: Store, C: Allocator>(store: &S, allocator: &C) -> Result<(), ErrorCode> {
-        // set header
-        // query operations
-        Ok(())
-    }
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_stf() {
 
-    ///simulate_txs simulates a list of transactions and returns the state changes.
-    pub fn simulate_txs<S: Store, C: Allocator>(store: &S, allocator: &C) {
-        // set header
-
-        // verify the transaction signature
-
-        // antehandler operations
-
-        // execute transaction
-
-        // return gas used
     }
 }
