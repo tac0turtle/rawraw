@@ -29,7 +29,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
         })
         .collect::<Vec<_>>();
     let file: syn::File = parse_quote! {
-        #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, num_enum::TryFromPrimitive, num_enum::IntoPrimitive)]
+        #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, num_enum::FromPrimitive, num_enum::IntoPrimitive)]
         #[repr(u16)]
         pub enum SyntaxKind {
             ROOT,
@@ -41,7 +41,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
             #(#tokens),*
         }
     };
-    write_file(&file, "syntax_kind.rs")
+    write_file(&file, "src/syntax/syntax_kind.rs")
 }
 
 fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
@@ -114,7 +114,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
             }
         }
     };
-    write_file(&file, "lex_tokens.rs")
+    write_file(&file, "src/lexer/lex_tokens.rs")
 }
 
 fn token_name(name: &str) -> String {
@@ -161,7 +161,9 @@ fn read_ungrammar() -> Grammar {
 }
 
 fn write_file(file: &syn::File, file_name: &str) -> anyhow::Result<()> {
-    let out_dir = env::var_os("OUT_DIR").unwrap();
-    std::fs::write(Path::new(&out_dir).join(file_name), unparse(file))?;
+    let src = unparse(file);
+    const WARNING: &'static str = "//! GENERATED CODE -- DO NOT EDIT!\n\n";
+    let src = format!("{}{}", WARNING, src);
+    std::fs::write(Path::new(file_name), src)?;
     Ok(())
 }

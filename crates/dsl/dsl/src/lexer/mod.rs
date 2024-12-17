@@ -1,6 +1,8 @@
 use rowan::GreenToken;
 
-include!(concat!(env!("OUT_DIR"), "/lex_tokens.rs"));
+mod lex_tokens;
+
+pub use lex_tokens::LexicalToken;
 
 impl <'a> From<LexicalToken<'a>> for GreenToken {
     fn from(value: LexicalToken<'a>) -> Self {

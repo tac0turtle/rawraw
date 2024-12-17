@@ -1,19 +1,25 @@
 use rowan::Language;
 
+mod syntax_kind;
+pub use syntax_kind::SyntaxKind;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum IXCLanguage {}
-
-include!(concat!(env!("OUT_DIR"), "/syntax_kind.rs"));
 
 impl Language for IXCLanguage {
     type Kind = SyntaxKind;
 
     fn kind_from_raw(raw: rowan::SyntaxKind) -> SyntaxKind {
-        // TODO: add default case
-        SyntaxKind::try_from(raw.0).unwrap()
+        SyntaxKind::from(raw.0)
     }
 
     fn kind_to_raw(kind: SyntaxKind) -> rowan::SyntaxKind {
         rowan::SyntaxKind(kind.into())
+    }
+}
+
+impl Into<rowan::SyntaxKind> for SyntaxKind {
+    fn into(self) -> rowan::SyntaxKind {
+        rowan::SyntaxKind(self.into())
     }
 }
