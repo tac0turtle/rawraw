@@ -18,6 +18,13 @@ InterfaceFn = 'fn' name:'#ident' '(' args:FnArg* ')' ret:'#ident'
 
 FnArg = name:'#ident' ':' type:Type
 
-Type = 
-    '#ident' |
-    '#ident' '[' ']'
+Type = TypeIdent | TypeArray
+
+TypeIdent = name:'#ident'
+
+TypeArray = type:Type '[' ']'
+
+Struct = name:'#ident'
+    '{' (fields:StructField ',')* '}'
+
+StructField = name:'#ident' ':' type:Type

@@ -7,6 +7,7 @@ pub use syntax_kind::SyntaxKind;
 pub enum IXCLanguage {}
 
 pub type SyntaxNode = rowan::SyntaxNode<IXCLanguage>;
+pub type SyntaxToken = rowan::SyntaxToken<IXCLanguage>;
 
 impl Language for IXCLanguage {
     type Kind = SyntaxKind;

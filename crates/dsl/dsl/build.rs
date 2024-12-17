@@ -1,12 +1,11 @@
 use heck::{ToShoutySnakeCase, ToUpperCamelCase};
 use prettyplease::unparse;
 use quote::{format_ident, quote};
-use std::env;
 use std::ops::Index;
 use std::path::Path;
 use std::str::FromStr;
 use syn::parse::Parser;
-use syn::{parse_quote, Lit, LitStr};
+use syn::{parse_quote, LitStr};
 use ungrammar::Grammar;
 
 fn main() {
@@ -16,8 +15,8 @@ fn main() {
 }
 
 fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
-    let tokens = grammar.tokens();
-    let tokens = tokens
+    let tokens = grammar
+        .tokens()
         .map(|token| {
             let data = grammar.index(token);
             let name = data.name.clone();
@@ -28,6 +27,16 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
             format_ident!("{}", name.to_shouty_snake_case())
         })
         .collect::<Vec<_>>();
+    println!("cargo:warning={tokens:?}");
+    let nodes = grammar
+        .iter()
+        .map(|node| {
+            let data = grammar.index(node);
+            format_ident!("{}", data.name.to_shouty_snake_case())
+        })
+        .collect::<Vec<_>>();
+    let mut idents = tokens.clone();
+    idents.extend(nodes.clone());
     let file: syn::File = parse_quote! {
         #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, num_enum::FromPrimitive, num_enum::IntoPrimitive)]
         #[repr(u16)]
@@ -38,48 +47,56 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
             UNKNOWN(u16),
             WHITESPACE,
             COMMENT,
-            #(#tokens),*
+            #(#idents),*
         }
     };
     write_file(&file, "src/syntax/syntax_kind.rs")
 }
 
 fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
-    let tokens = grammar.tokens();
-    let tokens = tokens.map(|token| {
-        let data = grammar.index(token);
-        let raw_name = data.name.clone();
-        let name = token_name(&raw_name);
-        let case_name = format_ident!("{}", name.to_upper_camel_case());
-        let syntax_kind = format_ident!("{}", name.to_shouty_snake_case());
-        let regex = token_regex(&raw_name);
-        let token_lit = LitStr::new(&raw_name, proc_macro2::Span::call_site());
-        let enum_case = if let Some(regex) = regex.clone() {
-            LitStr::new(&regex, proc_macro2::Span::call_site());
-            quote! {
-                #[regex(#regex, |lex| lex.slice())]
-                #case_name(&'a str)
-            }
-        } else {
-            quote! {
-                #[token(#token_lit)]
-                #case_name
-            }
-        };
-        let to_syntax_kind = if regex.is_some() {
-            quote! { LexicalToken::#case_name(_) => SyntaxKind::#syntax_kind }
-        } else {
-            quote! { LexicalToken::#case_name => SyntaxKind::#syntax_kind   }
-        };
-        let to_str = if regex.is_some() {
-            quote! { LexicalToken::#case_name(x) => x }
-        } else {
-            quote! { LexicalToken::#case_name => #token_lit }
-        };
-        (enum_case, to_syntax_kind, to_str)
-    }).collect::<Vec<_>>();
-    let enum_cases = tokens.clone().into_iter().map(|(enum_case, _, _)| enum_case);
-    let to_syntax_kind = tokens.clone().into_iter().map(|(_, to_syntax_kind, _)| to_syntax_kind);
+    let tokens = grammar
+        .tokens()
+        .map(|token| {
+            let data = grammar.index(token);
+            let raw_name = data.name.clone();
+            let name = token_name(&raw_name);
+            let case_name = format_ident!("{}", name.to_upper_camel_case());
+            let syntax_kind = format_ident!("{}", name.to_shouty_snake_case());
+            let regex = token_regex(&raw_name);
+            let token_lit = LitStr::new(&raw_name, proc_macro2::Span::call_site());
+            let enum_case = if let Some(regex) = regex.clone() {
+                LitStr::new(&regex, proc_macro2::Span::call_site());
+                quote! {
+                    #[regex(#regex, |lex| lex.slice())]
+                    #case_name(&'a str)
+                }
+            } else {
+                quote! {
+                    #[token(#token_lit)]
+                    #case_name
+                }
+            };
+            let to_syntax_kind = if regex.is_some() {
+                quote! { LexicalToken::#case_name(_) => SyntaxKind::#syntax_kind }
+            } else {
+                quote! { LexicalToken::#case_name => SyntaxKind::#syntax_kind   }
+            };
+            let to_str = if regex.is_some() {
+                quote! { LexicalToken::#case_name(x) => x }
+            } else {
+                quote! { LexicalToken::#case_name => #token_lit }
+            };
+            (enum_case, to_syntax_kind, to_str)
+        })
+        .collect::<Vec<_>>();
+    let enum_cases = tokens
+        .clone()
+        .into_iter()
+        .map(|(enum_case, _, _)| enum_case);
+    let to_syntax_kind = tokens
+        .clone()
+        .into_iter()
+        .map(|(_, to_syntax_kind, _)| to_syntax_kind);
     let to_str = tokens.into_iter().map(|(_, _, display)| display);
     let file = parse_quote! {
         use crate::syntax::SyntaxKind;
@@ -96,7 +113,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
         }
 
         impl <'a> LexicalToken<'a> {
-            fn kind(&'a self) -> SyntaxKind {
+            pub fn kind(&'a self) -> SyntaxKind {
                 match self {
                     LexicalToken::Error(_) => SyntaxKind::ERROR,
                     LexicalToken::Whitespace(_) => SyntaxKind::WHITESPACE,
@@ -105,7 +122,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
                 }
             }
 
-            fn text(&'a self) -> &'a str {
+            pub fn text(&'a self) -> &'a str {
                 match self {
                     LexicalToken::Error(x) => x,
                     LexicalToken::Whitespace(x) => x,
@@ -136,7 +153,7 @@ fn token_name(name: &str) -> String {
         ";" => "Semicolon",
         "." => "Dot",
         ":" => "Colon",
-        _ => return name.to_upper_camel_case(),
+        _ => return format!("{}_KW", name.to_upper_camel_case()),
     }
     .into()
 }
