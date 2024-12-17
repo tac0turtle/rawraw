@@ -76,6 +76,7 @@ pub trait StateHandler {
         gas: &GasMeter,
     ) -> Result<(), ErrorCode>;
 }
+
 pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
     state_handler: &ST,
     account_id: AccountID,
