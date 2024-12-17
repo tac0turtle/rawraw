@@ -23,6 +23,8 @@ quote = "1.0.37"
 syn = "2.0.90"
 prettyplease = "0.2.25"
 heck = "0.5.0"
+anyhow = "1.0.94"
+proc-macro2 = "1.0.92"
 
 
 [lints]

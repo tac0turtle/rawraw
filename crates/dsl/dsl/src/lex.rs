@@ -1,7 +1,7 @@
-use std::fmt;
 use chumsky::input::{Input, Stream, ValueInput};
 use chumsky::prelude::SimpleSpan;
-use logos::{Logos, SpannedIter};
+use logos::Logos;
+use std::fmt;
 
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
 pub enum Token<'a> {
@@ -155,7 +155,7 @@ impl<'a> fmt::Display for Token<'a> {
     }
 }
 
-pub fn lex(input: &str) -> impl ValueInput<Token=Token, Span=SimpleSpan> {
+pub fn lex(input: &str) -> impl ValueInput<Token = Token, Span = SimpleSpan> {
     // this code was copied from the example in https://github.com/zesterer/chumsky/blob/f0a86946172023b1d48f8f85bd91e433c9dbd746/examples/logos.rs#L130
     let token_iter = Token::lexer(&input)
         .spanned()
@@ -167,6 +167,5 @@ pub fn lex(input: &str) -> impl ValueInput<Token=Token, Span=SimpleSpan> {
             Ok(tok) => (tok, span.into()),
             Err(_) => (Token::Error, span.into()),
         });
-    Stream::from_iter(token_iter)
-        .spanned(SimpleSpan::from(input.len()..input.len()))
+    Stream::from_iter(token_iter).spanned(SimpleSpan::from(input.len()..input.len()))
 }
