@@ -10,14 +10,14 @@ pub struct Snapshot {
     index: usize,
 }
 
-pub struct SnapshotState<'a, S> {
-    state: &'a S,
+pub struct SnapshotState<S> {
+    state: S,
     changes: HashMap<Vec<u8>, Value>,
     changelog: Vec<StateChange>,
 }
 
-impl<'a, S> SnapshotState<'a, S> {
-    pub fn new(state: &'a S) -> Self {
+impl<S> SnapshotState<S> {
+    pub fn new(state: S) -> Self {
         Self {
             state,
             changes: Default::default(),
@@ -26,17 +26,12 @@ impl<'a, S> SnapshotState<'a, S> {
     }
 }
 
-impl<'a, S: Store> SnapshotState<'a, S> {
+impl<S: Store> SnapshotState<S> {
     pub fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
         // try to get from values
         match self.changes.get(key) {
             // get from disk db
-            None => {
-                let v = self.state.get(key).unwrap();
-                let mut vec = Vec::new_in(allocator);
-                vec.extend_from_slice(&v);
-                Some(vec)
-            }
+            None => self.state.get(key, allocator),
 
             // found in change list
             Some(value) => match value {
@@ -50,13 +45,13 @@ impl<'a, S: Store> SnapshotState<'a, S> {
         }
     }
 
-    pub fn set(&mut self, key: Vec<u8>, value: Vec<u8>) {
+    pub fn set(&mut self, key: Vec<u8>, value: &Vec<u8>) {
         let previous_value = self
             .changes
             .insert(key.clone(), Value::Updated(value.clone()));
         self.changelog.push(StateChange::Update {
             key,
-            value,
+            value: value.clone(),
             previous_value,
         });
     }
@@ -77,6 +72,9 @@ impl<'a, S: Store> SnapshotState<'a, S> {
     }
 
     pub fn snapshot(&mut self) -> Snapshot {
+        if self.changes.is_empty() {
+            return Snapshot { index: 0 };
+        }
         Snapshot {
             index: self.changelog.len() - 1,
         }
@@ -151,8 +149,16 @@ mod tests {
 
     // implement in memory disk db
     impl Store for HashMap<Vec<u8>, Vec<u8>> {
-        fn get(&self, key: &Vec<u8>) -> Option<Vec<u8>> {
-            self.get(key).cloned()
+        fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
+            let value = self.get(key);
+            match value {
+                Some(value) => {
+                    let mut vec = Vec::new_in(allocator);
+                    vec.extend_from_slice(value.as_slice());
+                    Some(vec)
+                }
+                None => None,
+            }
         }
     }
     #[test]
@@ -175,12 +181,12 @@ mod tests {
         state.insert(charlie_grant, ixc10);
 
         let state = state;
-        let mut snapshot_state = SnapshotState::new(&state);
+        let mut snapshot_state = SnapshotState::new(state);
 
         // set some values
         let mut v1 = Vec::new();
         v1.extend_from_slice(b"begin_block");
-        snapshot_state.set(v1.clone(), v1.clone());
+        snapshot_state.set(v1.clone(), &v1.clone());
 
         snapshot_state.snapshot();
 
@@ -188,13 +194,13 @@ mod tests {
         v2.extend_from_slice(b"ante_handler");
         let mut v3 = Vec::new();
         v3.extend_from_slice(b"ante");
-        snapshot_state.set(v2.clone(), v3.clone());
+        snapshot_state.set(v2.clone(), &v3.clone());
         let mut v4 = Vec::new();
         v4.extend_from_slice(b"bob");
 
         let mut v5 = Vec::new();
         v5.extend_from_slice(b"0ixc");
-        snapshot_state.set(v4.clone(), v5.clone());
+        snapshot_state.set(v4.clone(), &v5.clone());
         let mut v6 = Vec::new();
         v6.extend_from_slice(b"charlie_grant");
         snapshot_state.delete(&v6);
@@ -204,7 +210,7 @@ mod tests {
         v7.extend_from_slice(b"alice");
         let mut v8 = Vec::new();
         v8.extend_from_slice(b"3ixc");
-        snapshot_state.set(v7, v8);
+        snapshot_state.set(v7, &v8);
 
         // test revert
         snapshot_state

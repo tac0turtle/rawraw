@@ -9,6 +9,7 @@ rust-version.workspace = true
 [dependencies]
 ixc_message_api = { path = "../../module_system/message_api" }
 allocator-api2 = "0.2.18"
+ixc_account_manager = { path = "../../vm/account_manager" }
 
 [lints]
 workspace = true

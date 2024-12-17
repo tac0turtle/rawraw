@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_counter() {
-        let mut app = TestApp::default();
+        let app = TestApp::default();
         app.register_handler::<Counter>().unwrap();
         let mut alice_ctx = app.new_client_context().unwrap();
         let counter_client = create_account::<Counter>(&mut alice_ctx, CounterCreate {}).unwrap();
