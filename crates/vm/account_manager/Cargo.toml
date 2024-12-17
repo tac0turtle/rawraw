@@ -10,7 +10,7 @@ publish = false
 ixc_message_api = { path = "../../module_system/message_api" }
 ixc_vm_api = { path = "../api" }
 ixc_core_macros = { path = "../../module_system/core_macros" }
-allocator-api2 = "0.2.18"
+allocator-api2 = { workspace = true }
 arrayvec = "0.7.6"
 
 [lints]

@@ -25,6 +25,11 @@ impl AccountID {
     pub fn is_empty(&self) -> bool {
         self.0 == 0
     }
+
+    /// Returns the account ID as a big-endian byte array.
+    pub fn to_le_bytes(&self) -> [u8; 16] {
+        self.0.to_le_bytes()
+    }
 }
 
 impl From<AccountID> for u128 {

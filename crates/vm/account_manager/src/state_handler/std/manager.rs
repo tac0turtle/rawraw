@@ -1,6 +1,6 @@
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
-use ixc_message_api::AccountID;
+use ixc_message_api::{code::ErrorCode, AccountID};
 
 /// The standard state manager trait which is the interface
 /// that the storage layer must implement in order to be
@@ -76,7 +76,17 @@ pub trait StdStateManager {
 
 /// An error that can occur when interacting with the storage layer.
 /// Currently, the only error that can occur is a fatal error.
+#[derive(Debug, PartialEq)]
 pub enum StdStateError {
     /// A fatal error occurred.
     FatalExecutionError,
+    /// An error occurred while executing
+    ExecutionErrorCode(ErrorCode),
+}
+
+impl From<ErrorCode> for StdStateError {
+    fn from(err: ErrorCode) -> Self {
+        // Convert ErrorCode to StdStateError as appropriate
+        StdStateError::ExecutionErrorCode(err)
+    }
 }
