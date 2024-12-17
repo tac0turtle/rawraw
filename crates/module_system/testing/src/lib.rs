@@ -18,13 +18,12 @@ use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::handler::{HostBackend, RawHandler};
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use ixc_message_api::message::{QueryStateResponse, StateRequest, UpdateStateResponse};
+use ixc_message_api::message::{Message, Request, Response};
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -131,6 +130,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
 #[derive(Default)]
 struct Backend<V> {
     vm: V,
+    account: AccountID,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
 }
@@ -154,41 +154,68 @@ impl<V: ixc_vm_api::VM> Backend<V> {
 
 
 impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
-    fn invoke_msg(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let (tx, mut exec_context) = self.exec_context(message_packet.header().caller);
-
-        exec_context.invoke_msg(message_packet, allocator)?;
-
-        self.state
-            .commit(tx)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+    fn invoke_msg<'a>(&mut self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
+        todo!()
     }
 
-    fn invoke_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let (account_manager, mut tx, mut state_handler) = self.init_operation();
-
-        account_manager.invoke_query(&state_handler, message_packet, allocator)
+    fn invoke_query<'a>(&self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
+        todo!()
     }
 
-    fn update_state<'a>(&mut self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<UpdateStateResponse<'a>, ErrorCode> {
-        let (tx, mut exec_context) = self.exec_context(req.header().caller);
+    fn update_state<'a>(&mut self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
+        todo!()
     }
 
-    fn query_state<'a>(&self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<QueryStateResponse<'a>, ErrorCode> {
+    fn query_state<'a>(&self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
         todo!()
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        todo!()
+        Ok(())
     }
+
+    fn self_account_id(&self) -> AccountID {
+        self.account
+    }
+
+    fn caller(&self) -> AccountID {
+        AccountID::EMPTY
+    }
+    // fn invoke_msg(
+    //     &mut self,
+    //     message_packet: &mut MessagePacket,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode> {
+    //     let (tx, mut exec_context) = self.exec_context(message_packet.header().caller);
+    //
+    //     exec_context.invoke_msg(message_packet, allocator)?;
+    //
+    //     self.state
+    //         .commit(tx)
+    //         .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+    // }
+    //
+    // fn invoke_query(
+    //     &self,
+    //     message_packet: &mut MessagePacket,
+    //     allocator: &dyn Allocator,
+    // ) -> Result<(), ErrorCode> {
+    //     let (account_manager, mut tx, mut state_handler) = self.init_operation();
+    //
+    //     account_manager.invoke_query(&state_handler, message_packet, allocator)
+    // }
+    //
+    // fn update_state<'a>(&mut self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<UpdateStateResponse<'a>, ErrorCode> {
+    //     let (tx, mut exec_context) = self.exec_context(req.header().caller);
+    // }
+    //
+    // fn query_state<'a>(&self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<QueryStateResponse<'a>, ErrorCode> {
+    //     todo!()
+    // }
+    //
+    // fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
+    //     todo!()
+    // }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.
@@ -222,14 +249,14 @@ impl MockHandler {
 }
 
 impl RawHandler for MockHandler {
-    fn handle_msg(
+    fn handle_msg<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        message: &Request,
         callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         for mock in &self.mocks {
-            let res = mock.handle_msg(message_packet, callbacks, allocator);
+            let res = mock.handle_msg(message, callbacks, allocator);
             match res {
                 Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
                 _ => return res,
@@ -238,14 +265,14 @@ impl RawHandler for MockHandler {
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }
 
-    fn handle_query(
+    fn handle_query<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        message: &Request,
         callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         for mock in &self.mocks {
-            let res = mock.handle_query(message_packet, callbacks, allocator);
+            let res = mock.handle_query(message, callbacks, allocator);
             match res {
                 Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
                 _ => return res,
@@ -257,30 +284,30 @@ impl RawHandler for MockHandler {
 
 struct MockWrapper<T: RawHandler + ?Sized>(std::boxed::Box<T>);
 impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
-    fn handle_query(
+    fn handle_query<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        message_packet: &Request,
         callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         self.0.handle_query(message_packet, callbacks, allocator)
     }
 
-    fn handle_msg(
+    fn handle_msg<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        message_packet: &mut Request,
         callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         self.0.handle_msg(message_packet, callbacks, allocator)
     }
 
-    fn handle_system(
+    fn handle_system<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        message_packet: &mut Request,
         callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         self.0.handle_system(message_packet, callbacks, allocator)
     }
 }

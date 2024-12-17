@@ -130,12 +130,9 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
                 GET_SELECTOR => {
                     let key = request.inputs[0].expect_slice()?;
                     let value = self.kv_get(account_id, key, gas, allocator)?;
-                    if let Some(value) = value {
-                        Ok(Response::new1(value.into()))
-                    } else {
-                        // KV-stores should use handler code 0 to indicate not found
-                        const NOT_FOUND: ErrorCode = ErrorCode::HandlerCode(0);
-                        Err(NOT_FOUND)
+                    match value {
+                        Some(value) => Ok(Response::new1(value.into())),
+                        _ => Ok(Default::default()),
                     }
                 }
                 _ => Err(SystemCode(MessageNotHandled)),
