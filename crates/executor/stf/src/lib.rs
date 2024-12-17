@@ -52,9 +52,11 @@ pub trait AfterTxApply {
 /// A state transition function that can be used to execute transactions and query state.
 pub struct STF<BeforeTxApply, PostTxApply>(PhantomData<BeforeTxApply>, PhantomData<PostTxApply>);
 
-pub enum Failure {
+/// TODO: this would be used to whoever is unwrapping the error to know exactly at which stage the tx execution
+/// failed.
+pub enum TxFailure {
     BeforeTx(ErrorCode),
-    ApplyMsg(ErrorCode),
+    ApplyTx(ErrorCode),
     PostTx(ErrorCode),
 }
 
@@ -80,7 +82,7 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
         sh.commit_tx(&mut gas_meter)?;
 
         let mut host_backend = Self::new_host_backend();
-        let mut message_packet = Self::new_message_packet();
+        let mut message_packet = Self::new_message_packet(tx, allocator);
 
         // apply msg
         sh.begin_tx(&mut gas_meter)?;
@@ -104,11 +106,11 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
         todo!("impl")
     }
 
-    fn new_host_backend() -> HostBackendImpl {
+    pub fn new_host_backend() -> HostBackendImpl {
         todo!()
     }
 
-    fn new_message_packet<'a>() -> MessagePacket<'a> {
+    pub fn new_message_packet<'a>(tx: &impl Transation, alloc: &dyn Allocator) -> MessagePacket<'a> {
         todo!()
     }
 }
