@@ -16,7 +16,7 @@ members = [
     "crates/vm/api",
     "crates/vm/account_manager",
     "example", 
-    "crates/executor/state_handler",
+    "crates/executor/state_handler", "crates/modules/bank",
 ]
 
 [workspace.package]
