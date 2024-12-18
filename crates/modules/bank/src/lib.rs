@@ -11,18 +11,25 @@ pub mod bank {
     /// The bank module used for transfering tokens between accounts.
     #[derive(Resources)]
     pub struct Bank {
+        /// The balances of accounts.
         #[state(prefix = 1, key(address, denom), value(amount))]
         pub(crate) balances: AccumulatorMap<(AccountID, Str)>,
+        /// The total supply of tokens.
         #[state(prefix = 2, key(denom), value(total))]
         pub(crate) supply: AccumulatorMap<Str>,
+        /// The super admin account.
         #[state(prefix = 3)]
         super_admin: Item<AccountID>,
+        /// The global send hook account.
         #[state(prefix = 4)]
         global_send_hook: Item<AccountID>,
+        /// The denom admins.
         #[state(prefix = 5)]
         denom_admins: Map<Str, AccountID>,
+        /// The denom send hooks.
         #[state(prefix = 6)]
         denom_send_hooks: Map<Str, AccountID>,
+        /// The denom burn hooks.
         #[state(prefix = 6)]
         denom_burn_hooks: Map<Str, AccountID>,
     }
@@ -145,6 +152,7 @@ pub mod bank {
         pub coin: Coin<'a>,
     }
 
+    /// The bank module used for transfering tokens between accounts.
     impl Bank {
         /// Called when the bank module is created.
         #[on_create]
@@ -169,7 +177,7 @@ pub mod bank {
             Ok(())
         }
 
-        /// Set the denom burn hook.
+        /// Set the denom send hook.
         #[publish]
         pub fn set_denom_send_hook(
             &self,
@@ -186,6 +194,7 @@ pub mod bank {
             self.denom_send_hooks.set(ctx, denom, hook)?;
             Ok(())
         }
+
         /// Set the denom burn hook.
         #[publish]
         pub fn set_denom_burn_hook(
@@ -205,13 +214,16 @@ pub mod bank {
         }
     }
 
+    /// The API of the bank module.
     #[publish]
     impl BankAPI for Bank {
+        /// Get the balance of an account.
         fn get_balance(&self, ctx: &Context, account: AccountID, denom: &str) -> Result<u128> {
             let amount = self.balances.get(ctx, (account, denom))?;
             Ok(amount)
         }
 
+        /// Send tokens from one account to another.
         fn send<'a>(
             &self,
             ctx: &'a mut Context,
@@ -247,6 +259,7 @@ pub mod bank {
             Ok(())
         }
 
+        /// Mint tokens.
         fn mint<'a>(
             &self,
             ctx: &mut Context,
@@ -272,6 +285,7 @@ pub mod bank {
             Ok(())
         }
 
+        /// Burn tokens.
         fn burn<'a>(
             &self,
             ctx: &mut Context,
@@ -298,7 +312,6 @@ pub mod bank {
             }
 
             // Verify sufficient balance and reduce it
-
             self.balances.safe_sub(ctx, (from, denom), amount)?;
 
             // Reduce total supply
