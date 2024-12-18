@@ -6,6 +6,7 @@ use crate::result::ClientResult;
 use crate::Context;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
+use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::AccountID;
 use ixc_schema::buffer::WriterFactory;
@@ -21,14 +22,9 @@ pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    unsafe {
-        let mut packet =
-            encode_message_packet(context.memory_manager(), account, message)?;
-
-        let res = context.dynamic_invoke_msg(&mut packet);
-
-        decode_message_response::<M>(context, &res)
-    }
+    let mut packet = encode_message_packet(context.memory_manager(), account, message)?;
+    let res = dynamic_invoke_msg_packet(context, &mut packet);
+    decode_message_response::<M>(context, &res)
 }
 
 /// Dynamically invokes an account query message.
@@ -39,17 +35,31 @@ pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    unsafe {
-        let mut packet =
-            encode_message_packet(context.memory_manager(), account, message)?;
-
-        let res = context.dynamic_invoke_query(&mut packet);
-
-        decode_message_response::<M>(context, &res)
-    }
+    let packet = encode_message_packet(context.memory_manager(), account, message)?;
+    let res = dynamic_invoke_query_packet(context, &packet);
+    decode_message_response::<M>(context, &res)
 }
 
-unsafe fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
+/// Dynamically invoke a raw query message packet.
+pub fn dynamic_invoke_query_packet<'a>(
+    ctx: &Context<'a>,
+    msg: &ixc_message_api::message::Message,
+) -> Result<Response<'a>, ErrorCode> {
+    let invoke_params = InvokeParams::new(ctx.mem);
+    ctx.with_backend(|backend| backend.invoke_query(msg, &invoke_params))
+}
+
+/// Dynamically invoke a raw message packet.
+pub fn dynamic_invoke_msg_packet<'a>(
+    ctx: &mut Context<'a>,
+    msg: &ixc_message_api::message::Message,
+) -> Result<Response<'a>, ErrorCode> {
+    let invoke_params = InvokeParams::new(ctx.mem);
+    let res = ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?;
+    res
+}
+
+fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
     mem: &'a MemoryManager,
     account: AccountID,
     message: M,
@@ -65,7 +75,7 @@ unsafe fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
     ))
 }
 
-unsafe fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
+fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
     context: &'a Context,
     res: &Result<Response<'a>, ErrorCode>,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
@@ -100,7 +110,8 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
                     cdc,
                     &value,
                     allocator as &dyn WriterFactory,
-                )? {
+                )?
+            {
                 Ok(Response::new1(out1.into()))
             } else {
                 Ok(Response::default())

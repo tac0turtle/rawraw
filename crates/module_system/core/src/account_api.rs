@@ -1,13 +1,10 @@
 //! Basic functionality for creating and managing account lifecycle.
 
 use crate::context::Context;
-use crate::error::ClientError;
 use crate::handler::{Handler, HandlerResources, InitMessage, Service};
+use crate::low_level::{dynamic_invoke_msg_packet, dynamic_invoke_query_packet};
 use crate::result::ClientResult;
-use core::str::from_utf8;
 use ixc_core_macros::message_selector;
-use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::SystemCode::EncodingError;
 use ixc_message_api::message::{Message, Request};
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
@@ -32,11 +29,11 @@ pub fn create_account_raw(ctx: &mut Context, name: &str, init: &[u8]) -> ClientR
 /// Creates a new account for the named handler with opaque initialization data.
 fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
     unsafe {
-        let message = ixc_message_api::message::Message::new(
+        let message = Message::new(
             ROOT_ACCOUNT,
             Request::new2(CREATE_SELECTOR, name.into(), init.into()),
         );
-        let res = ctx.dynamic_invoke_msg(&message)?;
+        let res = dynamic_invoke_msg_packet(ctx, &message)?;
         let id = res.outputs[0].expect_account_id()?;
         Ok(id)
     }
@@ -45,11 +42,11 @@ fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult
 /// Gets the handler ID of the account.
 pub fn get_handler_id<'a>(ctx: &Context<'a>, account_id: AccountID) -> ClientResult<&'a str> {
     unsafe {
-        let message = ixc_message_api::message::Message::new(
+        let message = Message::new(
             ROOT_ACCOUNT,
             Request::new1(GET_HANDLER_ID_SELECTOR, account_id.into()),
         );
-        let res = ctx.dynamic_invoke_query(&message)?;
+        let res = dynamic_invoke_query_packet(ctx, &message)?;
         let handler_id = res.outputs[0].expect_string()?;
         Ok(handler_id)
     }
@@ -62,7 +59,7 @@ pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
             ROOT_ACCOUNT,
             Request::new1(MIGRATE_SELECTOR, new_handler_id.into()),
         );
-        ctx.dynamic_invoke_msg(&msg)?;
+        dynamic_invoke_msg_packet(ctx, &msg)?;
         Ok(())
     }
 }
@@ -76,7 +73,7 @@ pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
         ROOT_ACCOUNT,
         Request::new(SELF_DESTRUCT_SELECTOR),
     );
-    ctx.dynamic_invoke_msg(&msg)?;
+    dynamic_invoke_msg_packet(ctx, &msg)?;
     Ok(())
 }
 
