@@ -1,6 +1,8 @@
 //! A state handler that can be used to store and retrieve state.
+mod event;
 mod snapshot_state;
 
+use crate::event::EventState;
 use crate::snapshot_state::{Snapshot, SnapshotState};
 use allocator_api2::alloc::{Allocator, Global};
 use allocator_api2::vec::Vec;
@@ -20,6 +22,7 @@ pub struct StateHandler<S: Store> {
     /// checkpoints are used to follow the call stack of a transaction
     /// and revert the state changes when the transaction is rolled back.
     checkpoints: Vec<Snapshot>,
+    event_state: EventState,
 }
 
 impl<S: Store> StateHandler<S> {
@@ -28,6 +31,7 @@ impl<S: Store> StateHandler<S> {
         Self {
             snapshot_state: SnapshotState::new(store),
             checkpoints: Vec::with_capacity_in(200, Global),
+            event_state: EventState::new(),
         }
     }
 
@@ -197,12 +201,14 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     /// Begins a new transaction.
     fn begin_tx(&mut self) -> Result<(), StdStateError> {
         self.checkpoints.push(self.snapshot_state.snapshot());
+        self.event_state.snapshot();
         Ok(())
     }
 
     /// Commits the current transaction.
     fn commit_tx(&mut self) -> Result<(), StdStateError> {
         self.checkpoints.pop();
+        self.event_state.commit();
         Ok(())
     }
 
@@ -213,6 +219,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
             .pop()
             .ok_or(StdStateError::FatalExecutionError)?;
         let _ = self.snapshot_state.revert_to_snapshot(snapshot);
+        self.event_state.revert_to_snapshot(self.checkpoints.len());
         Ok(())
     }
 
@@ -227,8 +234,10 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     }
 
     /// Emit an event.
-    fn emit_event(&mut self, _sender: AccountID, _data: &[u8]) -> Result<(), StdStateError> {
-        todo!()
+    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError> {
+        let data_vec = Vec::from(data);
+        self.event_state.emit_event(sender, data_vec);
+        Ok(())
     }
 }
 
