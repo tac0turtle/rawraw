@@ -1,5 +1,6 @@
 #![allow(unused_variables)]
 
+use allocator_api2::alloc::Allocator;
 use crate::binary::encoder::EncodeSizer;
 use crate::buffer::WriterFactory;
 use crate::decoder::{decode_one, DecodeError, Decoder};
@@ -15,7 +16,7 @@ use crate::value::ValueCodec;
 /// Encode an object value.
 pub fn encode_object_value<'a, V: ObjectValue>(
     value: &V::In<'_>,
-    writer_factory: &'a dyn WriterFactory,
+    writer_factory: &'a dyn Allocator,
 ) -> Result<&'a [u8], EncodeError> {
     let mut sizer = EncodeSizer { size: 0 };
     V::encode_reverse(value, &mut sizer)?;

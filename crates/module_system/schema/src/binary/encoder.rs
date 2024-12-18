@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use allocator_api2::alloc::Allocator;
 use crate::buffer::{Writer, WriterFactory};
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
@@ -12,7 +13,7 @@ use simple_time::{Duration, Time};
 
 pub fn encode_value<'a>(
     value: &dyn ValueCodec,
-    writer_factory: &'a dyn WriterFactory,
+    writer_factory: &'a dyn Allocator,
 ) -> Result<&'a [u8], EncodeError> {
     let mut sizer = EncodeSizer { size: 0 };
     value.encode(&mut sizer)?;

@@ -1,9 +1,9 @@
 //! Routing system for message packets.
 
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::HostBackend;
-use ixc_message_api::message::{Message, MessageSelector, Request, Response};
+use ixc_message_api::message::{MessageSelector, Request, Response};
 
 /// A router for message packets.
 /// # Safety
@@ -44,31 +44,31 @@ pub type QueryRoute<T> = (
     ) -> Result<Response<'a>, ErrorCode>,
 );
 
-// /// Execute a message packet on a router.
-// pub fn exec_route<'a, R: Router + ?Sized>(
-//     rtr: &R,
-//     req: &Request,
-//     callbacks: &mut dyn HostBackend,
-//     allocator: &'a dyn Allocator,
-// ) -> Result<Response<'a>, ErrorCode> {
-//     match find_route(R::SORTED_MSG_ROUTES, req.message_selector) {
-//         Some(rt) => rt(rtr, req, callbacks, allocator),
-//         None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
-//     }
-// }
-//
-// /// Execute a query message packet on a router.
-// pub fn exec_query_route<'a, R: Router + ?Sized>(
-//     rtr: &R,
-//     req: &Request,
-//     callbacks: &dyn HostBackend,
-//     allocator: &'a dyn Allocator,
-// ) -> Result<Response<'a>, ErrorCode> {
-//     match find_route(R::SORTED_QUERY_ROUTES, req.message_selector) {
-//         Some(rt) => rt(rtr, req, callbacks, allocator),
-//         None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
-//     }
-// }
+/// Execute a message packet on a router.
+pub fn exec_route<'a, R: Router + ?Sized>(
+    rtr: &R,
+    req: &Request,
+    callbacks: &mut dyn HostBackend,
+    allocator: &'a dyn Allocator,
+) -> Option<Result<Response<'a>, ErrorCode>> {
+    match find_route(R::SORTED_MSG_ROUTES, req.message_selector()) {
+        Some(rt) => Some(rt(rtr, req, callbacks, allocator)),
+        None => None,
+    }
+}
+
+/// Execute a query message packet on a router.
+pub fn exec_query_route<'a, R: Router + ?Sized>(
+    rtr: &R,
+    req: &Request,
+    callbacks: &dyn HostBackend,
+    allocator: &'a dyn Allocator,
+) -> Option<Result<Response<'a>, ErrorCode>> {
+    match find_route(R::SORTED_QUERY_ROUTES, req.message_selector()) {
+        Some(rt) => Some(rt(rtr, req, callbacks, allocator)),
+        None => None,
+    }
+}
 
 /// Find a route for a message selector.
 pub fn find_route<R>(sorted_routes: &[(u64, R)], sel: MessageSelector) -> Option<&R> {

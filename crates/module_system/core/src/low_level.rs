@@ -9,7 +9,6 @@ use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::AccountID;
-use ixc_schema::buffer::WriterFactory;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::value::OptionalValue;
@@ -101,7 +100,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
         <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::Value,
         M::Error,
     >,
-    allocator: &'b &'b dyn Allocator,
+    allocator: &'b dyn Allocator,
 ) -> Result<Response<'b>, ErrorCode> {
     match res {
         Ok(value) => {
@@ -109,7 +108,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
                 <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
                     cdc,
                     &value,
-                    allocator as &dyn WriterFactory,
+                    allocator,
                 )?
             {
                 Ok(Response::new1(out1.into()))

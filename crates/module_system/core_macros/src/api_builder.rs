@@ -272,7 +272,7 @@ impl APIBuilder {
                 (quote! { mut }, quote! { new_mut })
             };
             let route = quote! {
-            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, a| {
+            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, allocator| {
                 unsafe {
                     let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
                     let in1 = packet.in1().expect_slice()?;
@@ -280,7 +280,7 @@ impl APIBuilder {
                     let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
                     let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(cb, &mem);
                     let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
-                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( & cdc, res, a, packet)
+                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( &cdc, res, allocator )
                 }
             }),
             };

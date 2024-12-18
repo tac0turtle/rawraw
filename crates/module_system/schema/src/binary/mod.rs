@@ -1,5 +1,6 @@
 //! Defines a codec for the native binary format.
 
+use allocator_api2::alloc::Allocator;
 use crate::binary::decoder::decode_value;
 use crate::binary::encoder::encode_value;
 use crate::buffer::WriterFactory;
@@ -20,7 +21,7 @@ impl Codec for NativeBinaryCodec {
     fn encode_value<'a>(
         &self,
         value: &dyn ValueCodec,
-        writer_factory: &'a dyn WriterFactory,
+        writer_factory: &'a dyn Allocator,
     ) -> Result<&'a [u8], EncodeError> {
         encode_value(value, writer_factory)
     }

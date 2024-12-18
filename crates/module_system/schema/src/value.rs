@@ -1,12 +1,12 @@
 //! This module contains traits that must be implemented by types that can be used in the schema.
 
-use crate::buffer::WriterFactory;
 use crate::codec::{decode_value, Codec};
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::list::AllocatorVecBuilder;
 use crate::mem::MemoryManager;
 use crate::types::*;
+use allocator_api2::alloc::Allocator;
 
 /// A visitor for decoding values. Unlike SchemaValue, this trait is object safe.
 pub trait ValueCodec<'a> {
@@ -393,7 +393,7 @@ pub trait OptionalValue<'a> {
     fn encode_value<'b>(
         cdc: &dyn Codec,
         value: &Self::Value,
-        writer_factory: &'b dyn WriterFactory,
+        writer_factory: &'b dyn Allocator,
     ) -> Result<Option<&'b [u8]>, EncodeError>;
 }
 
@@ -411,7 +411,7 @@ impl<'a> OptionalValue<'a> for () {
     fn encode_value<'b>(
         _cdc: &dyn Codec,
         _value: &Self::Value,
-        _writer_factory: &'b dyn WriterFactory,
+        _writer_factory: &'b dyn Allocator,
     ) -> Result<Option<&'b [u8]>, EncodeError> {
         Ok(None)
     }
@@ -431,7 +431,7 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
     fn encode_value<'b>(
         cdc: &dyn Codec,
         value: &Self::Value,
-        writer_factory: &'b dyn WriterFactory,
+        writer_factory: &'b dyn Allocator,
     ) -> Result<Option<&'b [u8]>, EncodeError> {
         Ok(Some(cdc.encode_value(value, writer_factory)?))
     }
