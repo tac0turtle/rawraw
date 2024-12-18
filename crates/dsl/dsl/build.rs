@@ -68,8 +68,8 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
             let enum_case = if let Some(regex) = regex.clone() {
                 LitStr::new(&regex, proc_macro2::Span::call_site());
                 quote! {
-                    #[regex(#regex, |lex| lex.slice())]
-                    #case_name(&'a str)
+                    #[regex(#regex)]
+                    #case_name
                 }
             } else {
                 quote! {
@@ -77,61 +77,41 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
                     #case_name
                 }
             };
-            let to_syntax_kind = if regex.is_some() {
-                quote! { Token::#case_name(_) => SyntaxKind::#syntax_kind }
-            } else {
-                quote! { Token::#case_name => SyntaxKind::#syntax_kind   }
-            };
-            let to_str = if regex.is_some() {
-                quote! { Token::#case_name(x) => x }
-            } else {
-                quote! { Token::#case_name => #token_lit }
-            };
-            (enum_case, to_syntax_kind, to_str)
+            let to_syntax_kind = quote! { Token::#case_name => SyntaxKind::#syntax_kind   };
+            (enum_case, to_syntax_kind)
         })
         .collect::<Vec<_>>();
     let enum_cases = tokens
         .clone()
         .into_iter()
-        .map(|(enum_case, _, _)| enum_case);
+        .map(|(enum_case, _)| enum_case);
     let to_syntax_kind = tokens
         .clone()
         .into_iter()
-        .map(|(_, to_syntax_kind, _)| to_syntax_kind);
-    let to_str = tokens.into_iter().map(|(_, _, display)| display);
+        .map(|(_, to_syntax_kind)| to_syntax_kind);
     let file = parse_quote! {
         use crate::syntax::SyntaxKind;
         use logos::Logos;
 
         #[derive(Logos, Debug, PartialEq, Eq, Clone)]
-        pub enum Token<'a> {
-            Error(&'a str),
+        pub enum Token {
+            Error,
             Eof,
             #[regex(r#"[ \t\n\r\f\v]+"#)]
-            Whitespace(&'a str),
+            Whitespace,
             #[regex(r#"//[^\n\r\f\v]*"#)]
-            LineComment(&'a str),
+            LineComment,
             #(#enum_cases),*
         }
 
-        impl <'a> Token<'a> {
-            pub fn kind(&'a self) -> SyntaxKind {
+        impl Token {
+            pub fn kind(&self) -> SyntaxKind {
                 match self {
-                    Token::Error(_) => SyntaxKind::ERROR,
+                    Token::Error => SyntaxKind::ERROR,
                     Token::Eof => SyntaxKind::EOF,
-                    Token::Whitespace(_) => SyntaxKind::WHITESPACE,
-                    Token::LineComment(_) => SyntaxKind::LINE_COMMENT,
+                    Token::Whitespace => SyntaxKind::WHITESPACE,
+                    Token::LineComment => SyntaxKind::LINE_COMMENT,
                     #(#to_syntax_kind),*
-                }
-            }
-
-            pub fn text(&'a self) -> &'a str {
-                match self {
-                    Token::Error(x) => x,
-                    Token::Eof => "",
-                    Token::Whitespace(x) => x,
-                    Token::LineComment(x) => x,
-                    #(#to_str),*
                 }
             }
         }

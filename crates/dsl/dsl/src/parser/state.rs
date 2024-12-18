@@ -1,16 +1,19 @@
 use crate::ast::{AstStruct, ErrorNode};
 use crate::lexer::Token;
 use crate::syntax::{SyntaxKind, SyntaxNode};
-use logos::Span;
 use std::cell::Cell;
+use std::ops::Range;
 use rowan::GreenNodeBuilder;
 
-pub struct Parser<'source> {
-    tokens: Vec<(Token<'source>, Span)>,
+pub struct Parser<'a> {
+    input: &'a str,
+    tokens: Vec<(Token, Span)>,
     pos: usize,
     fuel: Cell<u32>,
     events: Vec<Event>,
 }
+
+pub type Span = Range<usize>;
 
 enum Event {
     Open { kind: SyntaxKind },
@@ -28,9 +31,10 @@ pub struct MarkClosed {
     index: usize,
 }
 
-impl<'source> Parser<'source> {
-    pub fn new(source: Vec<(Token<'source>, Span)>) -> Self {
+impl <'a> Parser<'a> {
+    pub fn new(input: &'a str, source: Vec<(Token, Span)>) -> Self {
         let mut res = Self {
+            input,
             tokens: source,
             pos: 0,
             fuel: Cell::new(256),
@@ -77,11 +81,11 @@ impl<'source> Parser<'source> {
         self.pos == self.tokens.len()
     }
 
-    pub fn cur(&self) -> Token<'source> {
+    pub fn cur(&self) -> Token {
         self.nth(0)
     }
 
-    pub fn nth(&self, lookahead: usize) -> Token<'source> {
+    pub fn nth(&self, lookahead: usize) -> Token {
         if self.fuel.get() == 0 {
             panic!("parser is stuck")
         } else {
@@ -185,8 +189,7 @@ impl<'source> Parser<'source> {
         }
     }
 
-    pub fn finish(self, builder: GreenNodeBuilder) -> SyntaxNode {
-        let mut builder = builder;
+    pub fn finish(self, mut builder: GreenNodeBuilder) -> SyntaxNode {
         builder.start_node(SyntaxKind::ROOT.into());
         let mut i = 0;
         for event in self.events {
@@ -194,8 +197,9 @@ impl<'source> Parser<'source> {
                 Event::Open { kind } => builder.start_node(kind.into()),
                 Event::Close => builder.finish_node(),
                 Event::Advance => {
-                    let token = &self.tokens[i].0;
-                    builder.token(token.kind().into(), token.text());
+                    let (token, span) = &self.tokens[i];
+                    let text = &self.input[span.start..span.end];
+                    builder.token(token.kind().into(), text);
                     i += 1;
                 }
             }
@@ -208,8 +212,8 @@ impl<'source> Parser<'source> {
 
 fn is_whitespace(token: &Token) -> bool {
     match token {
-        Token::Whitespace(_) => true,
-        Token::LineComment(_) => true,
+        Token::Whitespace => true,
+        Token::LineComment => true,
         _ => false,
     }
 }

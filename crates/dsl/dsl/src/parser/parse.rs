@@ -108,14 +108,9 @@ fn typ(p: &mut Parser) {
     p.close::<ast::TypeIdent>(m);
 }
 
-fn at_ident(parser: &mut Parser) -> bool {
-    parser.at_f(|it| matches!(it, Token::Ident(_)))
-}
-
 fn expect_ident(parser: &mut Parser) {
-    if !parser.eat_f(|it| matches!(it, Token::Ident(_))) {
-        // TODO maybe we don't advance but instead just call expect
-        parser.advance_with_error("expected identifier")
+    if !parser.eat(Token::Ident) {
+        parser.advance_with_error("expected identifier");
     }
 }
 
@@ -366,7 +361,7 @@ fn expr_rec(p: &mut Parser, left: Token) {
 fn expr_delimited(p: &mut Parser) -> MarkClosed {
     let m = p.open();
     match p.cur() {
-        Token::Ident(_) => {
+        Token::Ident => {
             expect_ident(p);
             let mut lhs = p.close::<ast::NameExpr>(m);
             //  ExprConstruct

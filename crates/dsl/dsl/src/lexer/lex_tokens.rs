@@ -3,17 +3,17 @@
 use crate::syntax::SyntaxKind;
 use logos::Logos;
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
-pub enum Token<'a> {
-    Error(&'a str),
+pub enum Token {
+    Error,
     Eof,
     #[regex(r#"[ \t\n\r\f\v]+"#)]
-    Whitespace(&'a str),
+    Whitespace,
     #[regex(r#"//[^\n\r\f\v]*"#)]
-    LineComment(&'a str),
+    LineComment,
     #[token("interface")]
     InterfaceKw,
-    #[regex("[a-zA-Z_][a-zA-Z0-9_]*", |lex|lex.slice())]
-    Ident(&'a str),
+    #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
+    Ident,
     #[token("{")]
     LCurly,
     #[token("}")]
@@ -65,15 +65,15 @@ pub enum Token<'a> {
     #[token("in")]
     InKw,
 }
-impl<'a> Token<'a> {
-    pub fn kind(&'a self) -> SyntaxKind {
+impl Token {
+    pub fn kind(&self) -> SyntaxKind {
         match self {
-            Token::Error(_) => SyntaxKind::ERROR,
+            Token::Error => SyntaxKind::ERROR,
             Token::Eof => SyntaxKind::EOF,
-            Token::Whitespace(_) => SyntaxKind::WHITESPACE,
-            Token::LineComment(_) => SyntaxKind::LINE_COMMENT,
+            Token::Whitespace => SyntaxKind::WHITESPACE,
+            Token::LineComment => SyntaxKind::LINE_COMMENT,
             Token::InterfaceKw => SyntaxKind::INTERFACE_KW,
-            Token::Ident(_) => SyntaxKind::IDENT,
+            Token::Ident => SyntaxKind::IDENT,
             Token::LCurly => SyntaxKind::L_CURLY,
             Token::RCurly => SyntaxKind::R_CURLY,
             Token::Semicolon => SyntaxKind::SEMICOLON,
@@ -99,41 +99,6 @@ impl<'a> Token<'a> {
             Token::Dot => SyntaxKind::DOT,
             Token::Eq => SyntaxKind::EQ,
             Token::InKw => SyntaxKind::IN_KW,
-        }
-    }
-    pub fn text(&'a self) -> &'a str {
-        match self {
-            Token::Error(x) => x,
-            Token::Eof => "",
-            Token::Whitespace(x) => x,
-            Token::LineComment(x) => x,
-            Token::InterfaceKw => "interface",
-            Token::Ident(x) => x,
-            Token::LCurly => "{",
-            Token::RCurly => "}",
-            Token::Semicolon => ";",
-            Token::HandlerKw => "handler",
-            Token::LParen => "(",
-            Token::RParen => ")",
-            Token::TxKw => "tx",
-            Token::QueryKw => "query",
-            Token::PureKw => "pure",
-            Token::KeyKw => "key",
-            Token::Colon => ":",
-            Token::Comma => ",",
-            Token::EmitsKw => "emits",
-            Token::LSquare => "[",
-            Token::RSquare => "]",
-            Token::StructKw => "struct",
-            Token::EventKw => "event",
-            Token::MapKw => "map",
-            Token::RArrow => "=>",
-            Token::ClientKw => "client",
-            Token::ImplKw => "impl",
-            Token::ForKw => "for",
-            Token::Dot => ".",
-            Token::Eq => "=",
-            Token::InKw => "in",
         }
     }
 }

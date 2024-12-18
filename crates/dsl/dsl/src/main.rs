@@ -6,7 +6,7 @@ mod parser;
 mod syntax;
 mod lexer;
 
-use crate::lexer::{lex, lex_spanned};
+use crate::lexer::{lex};
 use crate::syntax::{SyntaxKind, SyntaxNode};
 use chumsky::input::ValueInput;
 use chumsky::prelude::*;
@@ -23,8 +23,8 @@ fn read_example() -> anyhow::Result<String> {
 
 fn compile() -> anyhow::Result<()> {
     let input = read_example()?;
-    let tokens = lex_spanned(&input);
-    let root = parser::parse(tokens);
+    let tokens = lex(&input);
+    let root = parser::parse(&input, tokens);
     println!("{:#?}", root);
 
     Ok(())
