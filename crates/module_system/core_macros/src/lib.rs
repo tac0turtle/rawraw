@@ -25,14 +25,51 @@ use syn::{
     LitStr, ReturnType, Signature, TraitItem, Type,
 };
 
-/// This derives an account handler.
+/// Derives a handler implementation for a module.
+///
+/// This macro must be applied to a module and generates the necessary
+/// implementation details for handling messages and queries.
+///
+/// # Example
+/// ```rust
+/// #[handler(MyHandler)]
+/// mod my_handler {
+///     // Handler implementation
+/// }
+/// ```
 #[manyhow]
 #[proc_macro_attribute]
 pub fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<TokenStream2> {
     handler::handler(attr, item)
 }
 
+/// Defines a handler API trait implementation.
+///
 /// This attribute macro should be attached to a trait that implements a handler API.
+/// It generates the necessary routing and implementation code for handling messages
+/// and queries defined in the trait.
+///
+/// # Features
+/// - Automatically implements message routing for trait methods
+/// - Generates necessary boilerplate for handler communication
+/// - Supports both synchronous and asynchronous methods
+///
+/// # Example
+/// ```rust
+/// #[handler_api]
+/// pub trait UserAPI {
+///     /// Creates a new user
+///     fn create_user(&self, username: String, email: String) -> Result<User, Error>;
+///
+///     /// Retrieves user information
+///     fn get_user(&self, user_id: u64) -> Result<Option<User>, Error>;
+/// }
+/// ```
+///
+/// # Notes
+/// - The trait must be public (`pub`)
+/// - Methods should return `Result` types for error handling
+/// - Method parameters must implement necessary serialization traits
 #[manyhow]
 #[proc_macro_attribute]
 pub fn handler_api(attr: TokenStream2, item_trait: ItemTrait) -> manyhow::Result<TokenStream2> {
@@ -86,7 +123,24 @@ pub fn from(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenSt
     bail!("the #[from] attribute is being used in the wrong context, possibly #[handler] has not been applied to the enclosing module")
 }
 
-/// Derive the `Resources` trait for a struct.
+/// Derives the `Resources` trait for a struct.
+///
+/// This macro implements the Resources trait for the annotated struct,
+/// allowing it to be used as a handler resource. It processes the following attributes:
+///
+/// - `#[state]`: Marks fields that represent handler state
+/// - `#[client]`: Marks fields that represent client connections
+///
+/// # Example
+/// ```rust
+/// #[derive(Resources)]
+/// struct MyHandler {
+///     #[state]
+///     counter: u32,
+///     #[client]
+///     connection: Client,
+/// }
+/// ```
 #[manyhow]
 #[proc_macro_derive(Resources, attributes(state, client))]
 pub fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStream2> {
