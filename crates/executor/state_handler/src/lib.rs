@@ -51,8 +51,8 @@ impl<S: Store> StateHandler<S> {
             // account / 2 (accumulator) / key
             // account / 3 (scoped accumulator) / scope / key
             Some(scope) => {
-                let ac = account_id.to_le_bytes();
-                let sc = scope.to_le_bytes();
+                let ac = account_id.to_bytes();
+                let sc = scope.to_bytes();
                 let mut new_key = Vec::new_in(Global);
                 new_key.extend_from_slice(&ac);
                 if accumulator {
@@ -66,7 +66,7 @@ impl<S: Store> StateHandler<S> {
             }
             None => {
                 let mut new_key = Vec::new_in(Global);
-                new_key.extend_from_slice(&account_id.to_le_bytes());
+                new_key.extend_from_slice(&account_id.to_bytes());
                 if accumulator {
                     new_key.push(ACC_SEPARATOR);
                 } else {
