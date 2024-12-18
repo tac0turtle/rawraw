@@ -312,7 +312,16 @@ impl APIBuilder {
             } else {
                 quote! { ::ixc::core::low_level::dynamic_invoke_msg(ctx, _acct_id, _msg) }
             };
+            // Extract method documentation from original trait method
+            let method_docs = publish_target
+                .attrs
+                .iter()
+                .filter(|attr| attr.path().is_ident("doc"))
+                .collect::<Vec<_>>();
+
             self.client_methods.push(quote! {
+                #(#method_docs)*  // Original method docs
+                #[doc = "Generated client implementation."]
                 # signature {
                     let _msg = # msg_struct_name { # ( # msg_fields_init) * };
                     let _acct_id =::ixc::core::handler::Client::account_id( self );
