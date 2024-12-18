@@ -16,7 +16,7 @@ impl KVStoreClient {
     pub(crate) fn get<'a>(&self, ctx: &'a Context, key: &[u8]) -> ClientResult<Option<&'a [u8]>> {
         unsafe {
             let res = dynamic_query_state(ctx, &Request::new1(GET_SELECTOR, key.into()))?;
-            match res.out0() {
+            match res.out1() {
                 Param::Slice(res_bz) => Ok(Some(res_bz)),
                 _ => Ok(None),
             }

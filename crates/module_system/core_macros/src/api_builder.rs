@@ -275,7 +275,7 @@ impl APIBuilder {
             ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, a| {
                 unsafe {
                     let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
-                    let in1 = packet.in0().expect_slice()?;
+                    let in1 = packet.in1().expect_slice()?;
                     let mem = ::ixc::schema::mem::MemoryManager::new();
                     let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
                     let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(cb, &mem);
@@ -310,7 +310,7 @@ impl APIBuilder {
                 (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, packet, cb, a | {
                     unsafe {
                         let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::handler::InitMessage < '_ > >::Codec::default();
-                        let in1 = packet.in0().expect_slice()?;
+                        let in1 = packet.in1().expect_slice()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
                         let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
                         let mut ctx =::ixc::core::Context::new_mut(cb, &mem);

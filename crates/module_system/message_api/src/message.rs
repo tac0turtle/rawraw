@@ -5,6 +5,7 @@ use crate::AccountID;
 
 /// A message.
 #[non_exhaustive]
+#[repr(C)]
 pub struct Message<'a> {
     /// The target account of the message.
     target_account: AccountID,
@@ -17,6 +18,7 @@ pub type MessageSelector = u64;
 
 /// A request.
 #[non_exhaustive]
+#[repr(C)]
 pub struct Request<'a> {
     /// The message selector.
     message_selector: MessageSelector,
@@ -28,6 +30,7 @@ pub struct Request<'a> {
 /// A message response.
 #[non_exhaustive]
 #[derive(Default)]
+#[repr(C)]
 pub struct Response<'a> {
     /// The outputs of the message.
     /// There can be up to two outputs.
@@ -37,6 +40,7 @@ pub struct Response<'a> {
 /// A message response.
 #[derive(Default)]
 #[non_exhaustive]
+#[repr(C, u8)]
 pub enum Param<'a> {
     /// An empty response.
     #[default]
@@ -115,17 +119,17 @@ impl<'a> Request<'a> {
     }
 
     /// Get the first input parameter.
-    pub fn in0(&self) -> &Param<'a> {
+    pub fn in1(&self) -> &Param<'a> {
         &self.inputs[0]
     }
 
     /// Get the second input parameter.
-    pub fn in1(&self) -> &Param<'a> {
+    pub fn in2(&self) -> &Param<'a> {
         &self.inputs[1]
     }
 
     /// Get the third input parameter.
-    pub fn in2(&self) -> &Param<'a> {
+    pub fn in3(&self) -> &Param<'a> {
         &self.inputs[2]
     }
 }
@@ -151,12 +155,12 @@ impl<'a> Response<'a> {
     }
 
     /// Get the first output parameter.
-    pub fn out0(&self) -> &Param<'a> {
+    pub fn out1(&self) -> &Param<'a> {
         &self.outputs[0]
     }
 
     /// Get the second output parameter.
-    pub fn out1(&self) -> &Param<'a> {
+    pub fn out2(&self) -> &Param<'a> {
         &self.outputs[1]
     }
 }
