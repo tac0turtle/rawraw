@@ -23,14 +23,9 @@ fn read_example() -> anyhow::Result<String> {
 
 fn compile() -> anyhow::Result<()> {
     let input = read_example()?;
-    let green_tokens = lex(&input).map(|token| {
-        NodeOrToken::Token(token.into())
-    }).collect::<Vec<_>>();
-    let green_node = GreenNode::new(SyntaxKind::ROOT.into(), green_tokens);
-    let root = SyntaxNode::new_root(green_node);
+    let tokens = lex_spanned(&input);
+    let root = parser::parse(tokens);
     println!("{:#?}", root);
-    let root2 = parser::parse(lex_spanned(&input));
-    println!("{:#?}", root2);
 
     Ok(())
 }

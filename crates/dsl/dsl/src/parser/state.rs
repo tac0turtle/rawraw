@@ -22,6 +22,10 @@ pub struct MarkOpened {
     index: usize,
 }
 
+pub struct MarkClosed {
+    index: usize,
+}
+
 impl<'source> Parser<'source> {
     pub fn new(source: Vec<(Token<'source>, Span)>) -> Self {
         let mut res = Self {
@@ -44,14 +48,25 @@ impl<'source> Parser<'source> {
         mark
     }
 
-    pub fn close<T: AstStruct>(&mut self, m: MarkOpened) {
+    pub fn close<T: AstStruct>(&mut self, m: MarkOpened) -> MarkClosed {
         self.events[m.index] = Event::Open { kind: T::KIND };
         self.events.push(Event::Close);
+        MarkClosed { index: m.index }
     }
 
-    fn advance(&mut self) {
+    pub fn open_before(&mut self, m: MarkClosed) -> MarkOpened {
+        let mark = MarkOpened { index: m.index };
+        self.events.insert(
+            m.index,
+            Event::Open { kind: SyntaxKind::ERROR_NODE },
+        );
+        mark
+    }
+
+    pub fn advance(&mut self) {
         assert!(!self.eof());
         self.events.push(Event::Advance);
+        self.fuel.set(256);
         self.pos += 1;
         self.skip_ws()
     }
@@ -67,8 +82,9 @@ impl<'source> Parser<'source> {
     pub fn nth(&self, lookahead: usize) -> Token<'source> {
         if self.fuel.get() == 0 {
             panic!("parser is stuck")
+        } else {
+            self.fuel.set(self.fuel.get() - 1);
         }
-        self.fuel.set(self.fuel.get() - 1);
         self.tokens
             .get(self.pos + lookahead)
             .map_or(Token::Eof, |(token, _)| token.clone())
@@ -84,6 +100,28 @@ impl<'source> Parser<'source> {
 
     pub fn at_f(&self, f: impl FnOnce(Token) -> bool) -> bool {
         f(self.nth(0))
+    }
+
+    pub fn at_exact(&self, tokens: &[Token]) -> bool {
+        let mut i = 0;
+        for token in tokens {
+            if self.nth(i) != *token {
+                return false;
+            }
+            i += 1;
+        }
+        true
+    }
+
+    pub fn eat_exact(&mut self, tokens: &[Token]) -> bool {
+        if self.at_exact(tokens) {
+            for _ in tokens {
+                self.advance();
+            }
+            true
+        } else {
+            false
+        }
     }
 
     pub fn eat_f(&mut self, f: impl FnOnce(Token) -> bool) -> bool {

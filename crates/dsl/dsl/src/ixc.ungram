@@ -6,7 +6,9 @@ Interface = 'interface' name:'#ident' '{'
     items:InterfaceItem*
 '}'
 
-InterfaceItem = InterfaceFn
+InterfaceItem = InterfaceFn | Struct | Event
+
+InterfaceFn = sig:FnSignature ';'
 
 Handler = 'handler' name:'#ident' '{'
     // items:HandlerItem*
@@ -14,15 +16,17 @@ Handler = 'handler' name:'#ident' '{'
 
 // HandlerItem = HandlerFn
 
-InterfaceFn = sig:FnSignature
+FnSignature = typ:FnType name:'#ident' '(' args:FnParamList ')' events:FnEvents? ret:FnRet?
 
-FnSignature = typ:FnType name:'#ident' '(' args:FnArgList ')' ret:'#ident'
-
-FnArgList = args:FnArg*
+FnParamList = args:FnParam*
 
 FnType = 'tx' | 'query' | 'pure'
 
-FnArg = key:'key'? name:'#ident' ':' typ:Type ','
+FnParam = key:'key'? name:'#ident' ':' typ:Type ','
+
+FnEvents = 'emits' '(' events:Type* ')'
+
+FnRet = ret:'#ident'
 
 Type = TypeIdent | TypeArray
 
@@ -30,5 +34,35 @@ TypeIdent = name:'#ident'
 
 TypeArray = typ:Type '[' ']'
 
-Struct = name:'#ident' '{' fields:StructField* '}'
+Struct = 'struct' name:'#ident' '{' fields:StructField* '}'
+
 StructField = name:'#ident' ':' typ:Type ','
+
+Event = 'event' name:'#ident' '{' fields:StructField* '}'
+
+MapCollection = 'map' name:'#ident' key_fields:MapKeyFields value_fields:MapValueFields? ';'
+MapKeyFields = '[' fields:MapField* ']'
+MapValueFields = '=>' fields:MapField*
+MapField = name:'#ident' ':' typ:Type ','
+
+Client = 'client' name:'#ident' ':' types:ClientTypes ';'
+ClientTypes = types:ClientType*
+ClientType = typ:Type ','
+
+Impl = 'impl' name:'#ident' for:ImplFor '{' items:ImplItem* '}'
+ImplFor = 'for' name:'#ident'
+ImplItem = ImplFn
+ImplFn = sig:FnSignature block:FnBlock
+FnBlock = '{' statements:Stmt* '}'
+Stmt = Expr
+//Pat = name:'#ident'
+Expr = ExprParen |
+    NameExpr |
+    ExprCall
+NameExpr = name:'#ident'
+ExprParen = '(' expr:Expr ')'
+FieldExpr = expr:Expr '.' name:'#ident'
+ExprCall = expr:Expr args:ArgList
+ExprBinary = lhs:Expr op:BinaryOp rhs:Expr
+ArgList = '(' args:Arg* ')'
+Arg = expr:Expr ','

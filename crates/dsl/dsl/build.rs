@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use heck::{ToShoutySnakeCase, ToUpperCamelCase};
 use prettyplease::unparse;
 use proc_macro2::{Ident, TokenStream};
@@ -163,9 +164,9 @@ fn ast_node_ast<'a>(name: &str, rule: &'a Rule) -> anyhow::Result<AstNodeAst<'a>
                         fields.push((label.clone(), ast_node_field(rule)?));
                     }
                     Rule::Node(n) => bail!("node rule must be labeled, got {:?}, in rule: {name}", n),
-                    Rule::Opt(r) => bail!("opt rule must be labeled, got {:?}, in rule: {name}", r),
                     Rule::Rep(r) => bail!("rep rule must be labeled, got {:?}, in rule: {name}", r),
-                    Rule::Token(t) => {} // skip unlabeled tokens
+                    Rule::Token(_) => {} // skip unlabeled tokens
+                    Rule::Opt(r) => bail!("opt rule must be labeled, got {:?}, in rule: {name}", r),
                     Rule::Seq(s) => bail!("nested seq rule not supported {:?}, in rule: {name}", s),
                     Rule::Alt(a) => bail!("nested alt rule not supported {:?}, in rule: {name}", a),
                 }
@@ -244,12 +245,21 @@ fn ast_node_struct(
     ast: &[(String, AstStructField)],
 ) -> anyhow::Result<TokenStream> {
     let mut field_getters: Vec<TokenStream> = vec![];
+    let mut syntax_kinds: HashSet<Ident> = HashSet::new();
+    let mut check_syntax_kind = |syntax_kind: &Ident| {
+        if syntax_kinds.contains(syntax_kind) {
+            bail!("duplicate syntax kind {syntax_kind} within the same struct node {struct_name}, this will make the generated code ambiguous, please wrap one of the children in a new node");
+        }
+        syntax_kinds.insert(syntax_kind.clone());
+        Ok(())
+    };
     for (name, field) in ast {
-        let field_getter = format_ident!("{}", name);
+        let field_getter = to_valid_ident(&name);
         match field {
             AstStructField::Node(n) => {
                 let node_data = grammar.index(*n.clone());
                 let node_struct = format_ident!("{}", node_data.name.to_upper_camel_case());
+                check_syntax_kind(&format_ident!("{}", node_data.name.to_shouty_snake_case()))?;
                 field_getters.push(quote! {
                     #[inline]
                     pub fn #field_getter(&self) -> Option<#node_struct> { rowan::ast::support::child(&self.syntax) }
@@ -257,15 +267,17 @@ fn ast_node_struct(
             }
             AstStructField::Token(t) => {
                 let token_data = grammar.index(*t.clone());
-                let syntax_name = token_syntax_name(&token_data.name);
+                let syntax_kind = token_syntax_name(&token_data.name);
+                check_syntax_kind(&syntax_kind)?;
                 field_getters.push(quote! {
                     #[inline]
-                    pub fn #field_getter(&self) -> Option<SyntaxToken> { rowan::ast::support::token(&self.syntax, SyntaxKind::#syntax_name) }
+                    pub fn #field_getter(&self) -> Option<SyntaxToken> { rowan::ast::support::token(&self.syntax, SyntaxKind::#syntax_kind) }
                 });
             }
             AstStructField::NodeChildren(n) => {
                 let node_data = grammar.index(*n.clone());
                 let node_struct = format_ident!("{}", node_data.name.to_upper_camel_case());
+                check_syntax_kind(&format_ident!("{}", node_data.name.to_shouty_snake_case()))?;
                 field_getters.push(quote! {
                     #[inline]
                     pub fn #field_getter(&self) -> rowan::ast::AstChildren<#node_struct> { rowan::ast::support::children(&self.syntax) }
@@ -367,16 +379,17 @@ fn token_name(name: &str) -> String {
             .to_string();
     }
     match name {
-        "[" => "LBrace",
-        "]" => "RBrace",
+        "[" => "LSquare",
+        "]" => "RSquare",
         "(" => "LParen",
         ")" => "RParen",
-        "{" => "LBracket",
-        "}" => "RBracket",
+        "{" => "LCurly",
+        "}" => "RCurly",
         "," => "Comma",
         ";" => "Semicolon",
         "." => "Dot",
         ":" => "Colon",
+        "=>" => "RArrow",
         _ => return format!("{}_KW", name.to_upper_camel_case()),
     }
     .into()
@@ -394,6 +407,10 @@ fn token_regex(name: &str) -> Option<String> {
         }
         .into(),
     )
+}
+
+fn to_valid_ident(name:&str) -> syn::Ident {
+    syn::parse_str::<syn::Ident>(name).unwrap_or_else(|_| format_ident!("{name}_"))
 }
 
 fn read_ungrammar() -> Grammar {

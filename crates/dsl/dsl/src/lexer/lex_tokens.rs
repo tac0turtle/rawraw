@@ -15,9 +15,11 @@ pub enum Token<'a> {
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*", |lex|lex.slice())]
     Ident(&'a str),
     #[token("{")]
-    LBracket,
+    LCurly,
     #[token("}")]
-    RBracket,
+    RCurly,
+    #[token(";")]
+    Semicolon,
     #[token("handler")]
     HandlerKw,
     #[token("(")]
@@ -36,10 +38,28 @@ pub enum Token<'a> {
     Colon,
     #[token(",")]
     Comma,
+    #[token("emits")]
+    EmitsKw,
     #[token("[")]
-    LBrace,
+    LSquare,
     #[token("]")]
-    RBrace,
+    RSquare,
+    #[token("struct")]
+    StructKw,
+    #[token("event")]
+    EventKw,
+    #[token("map")]
+    MapKw,
+    #[token("=>")]
+    RArrow,
+    #[token("client")]
+    ClientKw,
+    #[token("impl")]
+    ImplKw,
+    #[token("for")]
+    ForKw,
+    #[token(".")]
+    Dot,
 }
 impl<'a> Token<'a> {
     pub fn kind(&'a self) -> SyntaxKind {
@@ -50,8 +70,9 @@ impl<'a> Token<'a> {
             Token::LineComment(_) => SyntaxKind::LINE_COMMENT,
             Token::InterfaceKw => SyntaxKind::INTERFACE_KW,
             Token::Ident(_) => SyntaxKind::IDENT,
-            Token::LBracket => SyntaxKind::L_BRACKET,
-            Token::RBracket => SyntaxKind::R_BRACKET,
+            Token::LCurly => SyntaxKind::L_CURLY,
+            Token::RCurly => SyntaxKind::R_CURLY,
+            Token::Semicolon => SyntaxKind::SEMICOLON,
             Token::HandlerKw => SyntaxKind::HANDLER_KW,
             Token::LParen => SyntaxKind::L_PAREN,
             Token::RParen => SyntaxKind::R_PAREN,
@@ -61,8 +82,17 @@ impl<'a> Token<'a> {
             Token::KeyKw => SyntaxKind::KEY_KW,
             Token::Colon => SyntaxKind::COLON,
             Token::Comma => SyntaxKind::COMMA,
-            Token::LBrace => SyntaxKind::L_BRACE,
-            Token::RBrace => SyntaxKind::R_BRACE,
+            Token::EmitsKw => SyntaxKind::EMITS_KW,
+            Token::LSquare => SyntaxKind::L_SQUARE,
+            Token::RSquare => SyntaxKind::R_SQUARE,
+            Token::StructKw => SyntaxKind::STRUCT_KW,
+            Token::EventKw => SyntaxKind::EVENT_KW,
+            Token::MapKw => SyntaxKind::MAP_KW,
+            Token::RArrow => SyntaxKind::R_ARROW,
+            Token::ClientKw => SyntaxKind::CLIENT_KW,
+            Token::ImplKw => SyntaxKind::IMPL_KW,
+            Token::ForKw => SyntaxKind::FOR_KW,
+            Token::Dot => SyntaxKind::DOT,
         }
     }
     pub fn text(&'a self) -> &'a str {
@@ -73,8 +103,9 @@ impl<'a> Token<'a> {
             Token::LineComment(x) => x,
             Token::InterfaceKw => "interface",
             Token::Ident(x) => x,
-            Token::LBracket => "{",
-            Token::RBracket => "}",
+            Token::LCurly => "{",
+            Token::RCurly => "}",
+            Token::Semicolon => ";",
             Token::HandlerKw => "handler",
             Token::LParen => "(",
             Token::RParen => ")",
@@ -84,8 +115,17 @@ impl<'a> Token<'a> {
             Token::KeyKw => "key",
             Token::Colon => ":",
             Token::Comma => ",",
-            Token::LBrace => "[",
-            Token::RBrace => "]",
+            Token::EmitsKw => "emits",
+            Token::LSquare => "[",
+            Token::RSquare => "]",
+            Token::StructKw => "struct",
+            Token::EventKw => "event",
+            Token::MapKw => "map",
+            Token::RArrow => "=>",
+            Token::ClientKw => "client",
+            Token::ImplKw => "impl",
+            Token::ForKw => "for",
+            Token::Dot => ".",
         }
     }
 }
