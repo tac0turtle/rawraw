@@ -42,11 +42,11 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
         message: &Message,
         invoke_params: &InvokeParams<'c>,
     ) -> Result<Response<'c>, ErrorCode> {
-        let target_account = message.target_account;
+        let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
         if target_account == ROOT_ACCOUNT {
-            return self.handle_system_query(&message.request, allocator);
+            return self.handle_system_query(message.request(), allocator);
         }
 
         let gas =  &self.call_stack.gas;
@@ -66,7 +66,7 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
             allocator,
         )?;
 
-        let res = handler.handle_query(&message.request, self, allocator);
+        let res = handler.handle_query(message.request(), self, allocator);
 
         // pop the call stack
         self.call_stack.pop();
@@ -116,7 +116,7 @@ QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
         allocator: &'c dyn Allocator,
     ) -> Result<Response<'c>, ErrorCode> {
         unsafe {
-            match req.message_selector {
+            match req.message_selector() {
                 GET_HANDLER_ID_SELECTOR => self.handle_get_handler_id(req, allocator),
                 _ => Err(SystemCode(MessageNotHandled)),
             }

@@ -7,9 +7,9 @@ use crate::AccountID;
 #[non_exhaustive]
 pub struct Message<'a> {
     /// The target account of the message.
-    pub target_account: AccountID,
+    target_account: AccountID,
     /// The request.
-    pub request: Request<'a>,
+    request: Request<'a>,
 }
 
 /// A message selector code.
@@ -19,7 +19,7 @@ pub type MessageSelector = u64;
 #[non_exhaustive]
 pub struct Request<'a> {
     /// The message selector.
-    pub message_selector: MessageSelector,
+    message_selector: MessageSelector,
     /// The inputs to the message.
     /// There can be up to three inputs.
     inputs: [Param<'a>; 3],
@@ -59,6 +59,16 @@ impl<'a> Message<'a> {
             request,
         }
     }
+
+    /// Get the target account of the message.
+    pub fn target_account(&self) -> AccountID {
+        self.target_account
+    }
+
+    /// Get the message request.
+    pub fn request(&self) -> &Request<'a> {
+        &self.request
+    }
 }
 
 impl<'a> Request<'a> {
@@ -97,6 +107,11 @@ impl<'a> Request<'a> {
             message_selector,
             inputs: [in1, in2, in3],
         }
+    }
+
+    /// Get the message selector.
+    pub fn message_selector(&self) -> MessageSelector {
+        self.message_selector
     }
 
     /// Get the first input parameter.

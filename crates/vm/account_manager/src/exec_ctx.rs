@@ -58,7 +58,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
         message: &Message,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
-        let target_account = message.target_account;
+        let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
         // begin a transaction
@@ -68,7 +68,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
 
         let res = if target_account == ROOT_ACCOUNT {
             // if the target account is the root account, we can just run the system message
-            self.handle_system_message(&message.request, allocator)
+            self.handle_system_message(&message.request(), allocator)
         } else {
             // push onto the call stack when we're calling a non-system account
             self.call_stack.push(target_account)?;
@@ -84,7 +84,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
                 &handler_id,
                 allocator,
             )?;
-            let res = handler.handle_msg(&message.request, self, allocator);
+            let res = handler.handle_msg(&message.request(), self, allocator);
 
             // pop the call stack
             self.call_stack.pop();
@@ -161,7 +161,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         unsafe {
-            match request.message_selector {
+            match request.message_selector() {
                 CREATE_SELECTOR => self.handle_create(request, allocator),
                 MIGRATE_SELECTOR => self.handle_migrate(request, allocator),
                 SELF_DESTRUCT_SELECTOR => {

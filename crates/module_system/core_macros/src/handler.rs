@@ -98,7 +98,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
         quote! {
             impl ::ixc::message_api::handler::RawHandler for #handler {
                 fn handle_msg<'a>(&self, message_packet: &::ixc::message_api::message::Request, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
-                    let sel = message_packet.message_selector;
+                    let sel = message_packet.message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_MSG_ROUTES, sel) {
                         return rt(self, message_packet, callbacks, allocator)
                     }
@@ -109,7 +109,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
                 }
 
                 fn handle_query<'a>(&self, message_packet: &::ixc::message_api::message::Request, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
-                    let sel = message_packet.message_selector;
+                    let sel = message_packet.message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_QUERY_ROUTES, sel) {
                         return rt(self, message_packet, callbacks, allocator)
                     }
@@ -120,7 +120,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
                 }
 
                 fn handle_system<'a>(&self, message_packet: &::ixc::message_api::message::Request, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
-                    let sel = message_packet.message_selector;
+                    let sel = message_packet.message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_SYSTEM_ROUTES, sel) {
                         return rt(self, message_packet, callbacks, allocator)
                     }

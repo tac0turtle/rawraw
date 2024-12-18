@@ -102,7 +102,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         gas: &GasMeter,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
-        match request.message_selector {
+        match request.message_selector() {
             SET_SELECTOR => {
                 let key = request.in0().expect_slice()?;
                 let value = request.in1().expect_slice()?;
@@ -126,7 +126,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         unsafe {
-            match request.message_selector {
+            match request.message_selector() {
                 GET_SELECTOR => {
                     let key = request.in0().expect_slice()?;
                     let value = self.kv_get(account_id, key, gas, allocator)?;
