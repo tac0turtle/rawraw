@@ -2,7 +2,6 @@
 
 use crate::binary::decoder::decode_value;
 use crate::binary::encoder::encode_value;
-use crate::buffer::WriterFactory;
 use crate::codec::Codec;
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
