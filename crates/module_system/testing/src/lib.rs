@@ -23,6 +23,9 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
+use ixc_account_manager::gas::GasMeter;
+use ixc_account_manager::state_handler::StateHandler;
+use ixc_message_api::code::SystemCode::FatalExecutionError;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -126,47 +129,55 @@ impl<V: NativeVM + 'static> TestApp<V> {
     }
 }
 
-#[derive(Default)]
 struct Backend<V> {
     vm: V,
     account: AccountID,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
+    // invoke_params: InvokeParams<'static>,
 }
 
-impl<V: ixc_vm_api::VM> Backend<V> {
-    // fn init_operation(&self) -> (AccountManager<V>, Tx, StdStateHandler<Tx>) {
-    //     let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-    //     let mut tx = self.state.new_transaction();
-    //     let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
-    //     (account_manager, tx, state_handler)
-    // }
-    //
-    // fn exec_context(&mut self, caller: AccountID) -> (Tx, impl HostBackend) {
-    //     let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-    //     let mut tx = self.state.new_transaction();
-    //     let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
-    //     let exec_context = account_manager.exec_context(caller, &mut state_handler, &mut self.id_gen);
-    //     (tx, exec_context)
-    // }
+impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
+    fn default() -> Self {
+        Self{
+            vm: V::default(),
+            account: AccountID::EMPTY,
+            state: VersionedMultiStore::default(),
+            id_gen: IncrementingIDGenerator::default(),
+            // invoke_params: InvokeParams::new(GLOBAL_ALLOCATOR),
+        }
+    }
 }
-
 
 impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
     fn invoke_msg<'a>(&mut self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        todo!()
+        let mut tx = self.state.new_transaction();
+        let mut state = StdStateHandler::new(&mut tx, Default::default());
+        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
+        let res = account_manager.invoke_msg(&mut state, &mut self.id_gen, self.account, message, invoke_params)?;
+        self.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        Ok(res)
     }
 
     fn invoke_query<'a>(&self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        todo!()
+        let mut tx = self.state.new_transaction();
+        let state = StdStateHandler::new(&mut tx, Default::default());
+        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
+        account_manager.invoke_query(&state, message, invoke_params)
     }
 
     fn update_state<'a>(&mut self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        todo!()
+        let mut tx = self.state.new_transaction();
+        let mut state = StdStateHandler::new(&mut tx, Default::default());
+        let res = state.handle_exec(self.account, req, &GasMeter::Unlimited, invoke_params.allocator)?;
+        self.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        Ok(res)
     }
 
     fn query_state<'a>(&self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        todo!()
+        let mut tx = self.state.new_transaction();
+        let mut state = StdStateHandler::new(&mut tx, Default::default());
+        state.handle_query(self.account, req, &GasMeter::Unlimited, invoke_params.allocator)
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
@@ -180,41 +191,6 @@ impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
     fn caller(&self) -> AccountID {
         AccountID::EMPTY
     }
-    // fn invoke_msg(
-    //     &mut self,
-    //     message_packet: &mut MessagePacket,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     let (tx, mut exec_context) = self.exec_context(message_packet.header().caller);
-    //
-    //     exec_context.invoke_msg(message_packet, allocator)?;
-    //
-    //     self.state
-    //         .commit(tx)
-    //         .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
-    // }
-    //
-    // fn invoke_query(
-    //     &self,
-    //     message_packet: &mut MessagePacket,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     let (account_manager, mut tx, mut state_handler) = self.init_operation();
-    //
-    //     account_manager.invoke_query(&state_handler, message_packet, allocator)
-    // }
-    //
-    // fn update_state<'a>(&mut self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<UpdateStateResponse<'a>, ErrorCode> {
-    //     let (tx, mut exec_context) = self.exec_context(req.header().caller);
-    // }
-    //
-    // fn query_state<'a>(&self, req: &StateRequest, allocator: &'a dyn Allocator) -> Result<QueryStateResponse<'a>, ErrorCode> {
-    //     todo!()
-    // }
-    //
-    // fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-    //     todo!()
-    // }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.

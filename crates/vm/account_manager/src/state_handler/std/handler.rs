@@ -104,13 +104,13 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
     ) -> Result<Response<'a>, ErrorCode> {
         match request.message_selector() {
             SET_SELECTOR => {
-                let key = request.in1().expect_slice()?;
-                let value = request.in2().expect_slice()?;
+                let key = request.in1().expect_bytes()?;
+                let value = request.in2().expect_bytes()?;
                 self.kv_set(account_id, key, value, gas)?;
                 Ok(Default::default())
             }
             DELETE_SELECTOR => {
-                let key = request.in1().expect_slice()?;
+                let key = request.in1().expect_bytes()?;
                 self.kv_delete(account_id, key, gas)?;
                 Ok(Default::default())
             }
@@ -128,7 +128,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         unsafe {
             match request.message_selector() {
                 GET_SELECTOR => {
-                    let key = request.in1().expect_slice()?;
+                    let key = request.in1().expect_bytes()?;
                     let value = self.kv_get(account_id, key, gas, allocator)?;
                     match value {
                         Some(value) => Ok(Response::new1(value.into())),

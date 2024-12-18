@@ -8,7 +8,7 @@ pub mod native_vm;
 pub mod state_handler;
 mod call_stack;
 mod query_ctx;
-mod gas;
+pub mod gas;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
@@ -43,9 +43,9 @@ impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STAC
 impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LIMIT> {
     /// Returns a new host backend for the provided state handler.
     pub fn invoke_msg<'b, ST: StateHandler, IDG: IDGenerator>(
-        &'b self,
-        state_handler: &'b mut ST,
-        id_generator: &'b mut IDG,
+        &self,
+        state_handler: &mut ST,
+        id_generator: &mut IDG,
         caller: AccountID,
         message: &Message,
         allocator: &InvokeParams<'b>,

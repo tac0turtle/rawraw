@@ -7,6 +7,7 @@ use alloc::string::String;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
 use core::borrow::Borrow;
+use ixc_message_api::alloc_util;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::RawHandler;
 use ixc_vm_api::{ReadonlyStore, VM};
@@ -37,7 +38,9 @@ impl VM for NativeVMImpl {
         allocator: &'a dyn Allocator,
     ) -> Result<Option<&'a str>, ErrorCode> {
         if self.handlers.contains_key(handler_id) {
-            todo!()
+            unsafe {
+                Ok(Some(alloc_util::copy_str(allocator, handler_id)?))
+            }
         } else {
             Ok(None)
         }

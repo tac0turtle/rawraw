@@ -167,7 +167,7 @@ impl<'a> Response<'a> {
 
 impl<'a> Param<'a> {
     /// Expect the parameter to be a slice or return an encoding error.
-    pub fn expect_slice(&self) -> Result<&'a [u8], ErrorCode> {
+    pub fn expect_bytes(&self) -> Result<&'a [u8], ErrorCode> {
         match self {
             Param::Slice(slice) => Ok(slice),
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),

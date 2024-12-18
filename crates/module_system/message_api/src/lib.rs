@@ -7,6 +7,7 @@ mod account_id;
 pub mod code;
 pub mod handler;
 pub mod message;
+pub mod alloc_util;
 
 pub use account_id::AccountID;
 

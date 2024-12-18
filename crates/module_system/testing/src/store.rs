@@ -4,7 +4,7 @@ use imbl::{HashMap, OrdMap, Vector};
 use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
 use ixc_account_manager::state_handler::StateHandler;
 use ixc_core_macros::message_selector;
-use ixc_message_api::AccountID;
+use ixc_message_api::{alloc_util, AccountID};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
@@ -73,10 +73,9 @@ impl StdStateManager for Tx {
         }
         if let Some(store) = self.current_frame()?.store.stores.get(&account_id) {
             if let Some(value) = store.kv_store.get(key) {
-                // let mut copy = allocator_api2::vec::Vec::new_in(allocator);
-                // copy.extend_from_slice(value.as_slice());
-                // Ok(Some(copy))
-                todo!("kv_get")
+                unsafe {
+                    Ok(Some(alloc_util::copy_bytes(allocator, value.as_slice())?))
+                }
             } else {
                 Ok(None)
             }

@@ -7,6 +7,7 @@ use crate::list::AllocatorVecBuilder;
 use crate::mem::MemoryManager;
 use crate::types::*;
 use allocator_api2::alloc::Allocator;
+use ixc_message_api::message::Param;
 
 /// A visitor for decoding values. Unlike SchemaValue, this trait is object safe.
 pub trait ValueCodec<'a> {
@@ -385,7 +386,7 @@ pub trait OptionalValue<'a> {
     /// Decode the value.
     fn decode_value(
         cdc: &dyn Codec,
-        data: &'a [u8],
+        data: &Param<'a>,
         memory_manager: &'a MemoryManager,
     ) -> Result<Self::Value, DecodeError>;
 
@@ -402,7 +403,7 @@ impl<'a> OptionalValue<'a> for () {
 
     fn decode_value(
         _cdc: &dyn Codec,
-        _data: &'a [u8],
+        _data: &Param<'a>,
         _memory_manager: &'a MemoryManager,
     ) -> Result<Self::Value, DecodeError> {
         Ok(())
@@ -422,9 +423,11 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
 
     fn decode_value(
         cdc: &dyn Codec,
-        data: &'a [u8],
+        data: &Param<'a>,
         memory_manager: &'a MemoryManager,
     ) -> Result<Self::Value, DecodeError> {
+        let data = data.expect_bytes()
+            .map_err(|_| DecodeError::InvalidData)?;
         decode_value(cdc, data, memory_manager)
     }
 

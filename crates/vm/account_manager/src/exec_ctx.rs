@@ -180,7 +180,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     ) -> Result<Response<'a>, ErrorCode> {
         // get the input data
         let handler_id = req.in1().expect_string()?;
-        let init_data = req.in2().expect_slice()?;
+        let init_data = req.in2().expect_bytes()?;
 
         let gas =  &self.call_stack.gas;
 
