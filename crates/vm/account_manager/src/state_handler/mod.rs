@@ -6,7 +6,6 @@ use crate::id_generator;
 use crate::id_generator::IDGenerator;
 use alloc::format;
 use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::SystemCode::EncodingError;
 use ixc_message_api::message::{Request, Response};

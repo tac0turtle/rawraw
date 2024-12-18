@@ -1,4 +1,3 @@
-use core::borrow::Borrow;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::AccountID;
@@ -87,10 +86,10 @@ impl<'a> Context<'a> {
 
     /// Execute a closure directly on an immutable reference to the host backend.
     pub fn with_backend<R>(&self, f: impl FnOnce(&dyn HostBackend) -> R) -> R {
-        match self.backend {
-            BackendHandle::Mut(ref backend) => f(*backend),
-            BackendHandle::Immutable(ref backend) => f(*backend),
-            BackendHandle::Boxed(ref backend) => f(backend.as_ref()),
+        match &self.backend {
+            BackendHandle::Mut(backend) => f(*backend),
+            BackendHandle::Immutable(backend) => f(*backend),
+            BackendHandle::Boxed(backend) => f(backend.as_ref()),
         }
     }
 

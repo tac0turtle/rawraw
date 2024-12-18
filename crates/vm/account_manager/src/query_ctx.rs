@@ -2,7 +2,6 @@ use crate::call_stack::CallStack;
 use crate::state_handler::{get_account_handler_id, StateHandler};
 use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
