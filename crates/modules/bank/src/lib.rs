@@ -480,4 +480,193 @@ mod tests {
         let result = bank_client.burn(&mut charlie, bob_id, "foo", 100);
         assert!(result.is_err());
     }
+    #[test]
+    fn test_mint_with_hooks() {
+        let app = TestApp::default();
+        app.register_handler::<Bank>().unwrap();
+
+        // Initialize bank with root account
+        let mut root = app.client_context_for(ROOT_ACCOUNT);
+        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
+
+        // Set up Alice as denom admin
+        let mut alice = app.new_client_context().unwrap();
+        let alice_id = alice.self_account_id();
+        bank_client
+            .create_denom(&mut root, "foo", alice_id)
+            .unwrap();
+
+        // Set up Bob's account for receiving mints
+        let bob = app.new_client_context().unwrap();
+        let bob_id = bob.self_account_id();
+
+        // Set up a mock receive hook for Bob
+        let mut mock_receive_hook = MockReceiveHook::new();
+        mock_receive_hook
+            .expect_on_receive()
+            .times(2) // We'll mint twice
+            .returning(|_, _, _, _| Ok(()));
+        let mut mock = MockHandler::new();
+        mock.add_handler::<dyn ReceiveHook>(Box::new(mock_receive_hook));
+
+        // Create mock account and associate it with Bob's ID
+        let mock_id = app.add_mock(mock).unwrap();
+        let bob_with_hook = app.client_context_for(mock_id);
+
+        // Test successful mint by denom admin
+        bank_client.mint(&mut alice, mock_id, "foo", 500).unwrap();
+
+        // Verify initial balance and supply
+        let bob_balance = bank_client
+            .get_balance(&bob_with_hook, mock_id, "foo")
+            .unwrap();
+        assert_eq!(bob_balance, 500);
+
+        app.exec_in(&bank_client, |bank, ctx| {
+            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
+            assert_eq!(foo_supply, 500);
+        });
+
+        // Test second mint
+        bank_client.mint(&mut alice, mock_id, "foo", 300).unwrap();
+
+        // Verify updated balance and supply
+        let bob_balance = bank_client
+            .get_balance(&bob_with_hook, mock_id, "foo")
+            .unwrap();
+        assert_eq!(bob_balance, 800);
+
+        app.exec_in(&bank_client, |bank, ctx| {
+            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
+            assert_eq!(foo_supply, 800);
+        });
+    }
+
+    #[test]
+    fn test_mint_unauthorized() {
+        let app = TestApp::default();
+        app.register_handler::<Bank>().unwrap();
+
+        // Initialize bank
+        let mut root = app.client_context_for(ROOT_ACCOUNT);
+        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
+
+        // Set up Alice as denom admin
+        let alice = app.new_client_context().unwrap();
+        let alice_id = alice.self_account_id();
+        bank_client
+            .create_denom(&mut root, "foo", alice_id)
+            .unwrap();
+
+        // Try to mint with unauthorized account (Bob)
+        let mut bob = app.new_client_context().unwrap();
+        let bob_id = bob.self_account_id();
+
+        // Bob tries to mint to himself
+        let result = bank_client.mint(&mut bob, bob_id, "foo", 1000);
+        assert!(result.is_err());
+
+        // Verify no balance was created
+        let bob_balance = bank_client.get_balance(&bob, bob_id, "foo").unwrap();
+        assert_eq!(bob_balance, 0);
+
+        // Verify supply wasn't affected
+        app.exec_in(&bank_client, |bank, ctx| {
+            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
+            assert_eq!(foo_supply, 0);
+        });
+    }
+
+    #[test]
+    fn test_mint_to_multiple_accounts() {
+        let app = TestApp::default();
+        app.register_handler::<Bank>().unwrap();
+
+        // Initialize bank
+        let mut root = app.client_context_for(ROOT_ACCOUNT);
+        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
+
+        // Set up Alice as denom admin
+        let mut alice = app.new_client_context().unwrap();
+        let alice_id = alice.self_account_id();
+        bank_client
+            .create_denom(&mut root, "foo", alice_id)
+            .unwrap();
+
+        // Create multiple recipient accounts
+        let bob = app.new_client_context().unwrap();
+        let charlie = app.new_client_context().unwrap();
+        let dave = app.new_client_context().unwrap();
+
+        // Mint different amounts to different accounts
+        bank_client
+            .mint(&mut alice, bob.self_account_id(), "foo", 100)
+            .unwrap();
+        bank_client
+            .mint(&mut alice, charlie.self_account_id(), "foo", 200)
+            .unwrap();
+        bank_client
+            .mint(&mut alice, dave.self_account_id(), "foo", 300)
+            .unwrap();
+
+        // Verify individual balances
+        assert_eq!(
+            bank_client
+                .get_balance(&bob, bob.self_account_id(), "foo")
+                .unwrap(),
+            100
+        );
+        assert_eq!(
+            bank_client
+                .get_balance(&charlie, charlie.self_account_id(), "foo")
+                .unwrap(),
+            200
+        );
+        assert_eq!(
+            bank_client
+                .get_balance(&dave, dave.self_account_id(), "foo")
+                .unwrap(),
+            300
+        );
+
+        // Verify total supply
+        app.exec_in(&bank_client, |bank, ctx| {
+            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
+            assert_eq!(foo_supply, 600);
+        });
+    }
+
+    #[test]
+    fn test_mint_events() {
+        let app = TestApp::default();
+        app.register_handler::<Bank>().unwrap();
+
+        // Initialize bank
+        let mut root = app.client_context_for(ROOT_ACCOUNT);
+        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
+
+        // Set up Alice as denom admin
+        let mut alice = app.new_client_context().unwrap();
+        let alice_id = alice.self_account_id();
+        bank_client
+            .create_denom(&mut root, "foo", alice_id)
+            .unwrap();
+
+        // Create recipient account
+        let bob = app.new_client_context().unwrap();
+        let bob_id = bob.self_account_id();
+
+        // Capture and verify mint event
+        app.exec_in(&bank_client, |bank, mut ctx| {
+            let mut events = EventBus::<EventMint>::default();
+            bank.mint(&mut ctx, bob_id, "foo", 1000, events.clone())
+                .unwrap();
+
+            let emitted_events = events.get_events();
+            assert_eq!(emitted_events.len(), 1);
+            assert_eq!(emitted_events[0].to, bob_id);
+            assert_eq!(emitted_events[0].coin.denom, "foo");
+            assert_eq!(emitted_events[0].coin.amount, 1000);
+        });
+    }
 }
