@@ -1,16 +1,18 @@
-#![allow(unused_variables)] //TODO remove
+#![allow(unused_variables)]
+
 use crate::buffer::{Reader, ReverseSliceWriter, Writer, WriterFactory};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
 use crate::state_object::value::ObjectValue;
 use crate::state_object::KeyFieldValue;
+use allocator_api2::alloc::Allocator;
 
 /// Encode an object key with the given prefix.
 pub fn encode_object_key<'b, K: ObjectKey>(
     prefix: &[u8],
     key: &K::In<'_>,
-    writer_factory: &'b dyn WriterFactory,
+    writer_factory: &'b dyn Allocator,
 ) -> Result<&'b [u8], EncodeError> {
     let out_size = <K as ObjectKey>::out_size(key) + prefix.len();
     let mut writer = writer_factory.new_reverse(out_size)?;

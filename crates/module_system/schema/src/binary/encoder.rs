@@ -7,12 +7,13 @@ use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
+use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 
 pub fn encode_value<'a>(
     value: &dyn ValueCodec,
-    writer_factory: &'a dyn WriterFactory,
+    writer_factory: &'a dyn Allocator,
 ) -> Result<&'a [u8], EncodeError> {
     let mut sizer = EncodeSizer { size: 0 };
     value.encode(&mut sizer)?;

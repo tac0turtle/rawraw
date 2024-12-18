@@ -249,7 +249,7 @@ impl APIBuilder {
                 &mut self.items,
                 quote! {
                     impl < 'a >::ixc::core::message::MessageBase < 'a > for # msg_struct_name # opt_lifetime {
-                        const SELECTOR: ::ixc::message_api::header::MessageSelector = # selector;
+                        const SELECTOR: ::ixc::message_api::message::MessageSelector = # selector;
                         type Response < 'b > = < # return_type as::ixc::core::message::ExtractResponseTypes >::Response;
                         type Error = < # return_type as::ixc::core::message::ExtractResponseTypes >::Error;
                         type Codec =::ixc::schema::binary::NativeBinaryCodec;
@@ -272,16 +272,15 @@ impl APIBuilder {
                 (quote! { mut }, quote! { new_mut })
             };
             let route = quote! {
-            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, a| {
+            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, allocator| {
                 unsafe {
                     let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
-                    let header = packet.header();
-                    let in1 = header.in_pointer1.get(packet);
+                    let in1 = packet.request().in1().expect_bytes()?;
                     let mem = ::ixc::schema::mem::MemoryManager::new();
                     let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(header.account, header.caller, header.gas_left, cb, & mem);
+                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(packet.target_account(), cb, &mem);
                     let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
-                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( & cdc, res, a, packet)
+                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( &cdc, res, allocator )
                 }
             }),
             };
@@ -311,13 +310,12 @@ impl APIBuilder {
                 (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, packet, cb, a | {
                     unsafe {
                         let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::handler::InitMessage < '_ > >::Codec::default();
-                        let header = packet.header();
-                        let in1 = header.in_pointer1.get(packet);
+                        let in1 = packet.request().in1().expect_bytes()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
                         let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                        let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, & mem);
+                        let mut ctx =::ixc::core::Context::new_mut(packet.target_account(), cb, &mem);
                         let res = h.# fn_name( & mut ctx, # (# fn_call_args) * );
-                        ::ixc::core::low_level::encode_default_response(res, a, packet)
+                        ::ixc::core::low_level::encode_default_response(res)
                     }
                     }),}
                 );

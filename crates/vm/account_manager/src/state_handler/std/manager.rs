@@ -1,5 +1,4 @@
 use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use ixc_message_api::{code::ErrorCode, AccountID};
 
 /// The standard state manager trait which is the interface
@@ -9,13 +8,13 @@ pub trait StdStateManager {
     /// Get the value of a key in storage.
     /// Keys are scoped to an account and optionally to a scope which is another account
     /// under which this storage key would be scoped.
-    fn kv_get<A: Allocator>(
+    fn kv_get<'a>(
         &self,
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-        allocator: A,
-    ) -> Result<Option<Vec<u8, A>>, StdStateError>;
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, StdStateError>;
     /// Set the value of a key in storage.
     fn kv_set(
         &mut self,
