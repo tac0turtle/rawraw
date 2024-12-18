@@ -4,13 +4,12 @@
 #![no_std]
 
 mod account_id;
+pub mod alloc_util;
 pub mod code;
 pub mod handler;
 pub mod message;
-pub mod alloc_util;
 
 pub use account_id::AccountID;
 
 /// The root system account ID.
 pub const ROOT_ACCOUNT: AccountID = AccountID::new(1);
-

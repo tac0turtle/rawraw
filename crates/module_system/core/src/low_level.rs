@@ -105,9 +105,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
         Ok(value) => {
             if let Some(out1) =
                 <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
-                    cdc,
-                    &value,
-                    allocator,
+                    cdc, &value, allocator,
                 )?
             {
                 Ok(Response::new1(out1.into()))
@@ -121,9 +119,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
 
 /// Encodes a default response to the out1 pointer of the message packet.
 /// Used for encoding the response of a message in macros.
-pub fn encode_default_response<'b>(
-    res: crate::Result<()>,
-) -> Result<Response<'b>, ErrorCode> {
+pub fn encode_default_response<'b>(res: crate::Result<()>) -> Result<Response<'b>, ErrorCode> {
     match res {
         Ok(_) => Ok(Default::default()),
         Err(e) => encode_handler_error(e),

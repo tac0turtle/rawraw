@@ -73,9 +73,7 @@ impl StdStateManager for Tx {
         }
         if let Some(store) = self.current_frame()?.store.stores.get(&account_id) {
             if let Some(value) = store.kv_store.get(key) {
-                unsafe {
-                    Ok(Some(alloc_util::copy_bytes(allocator, value.as_slice())?))
-                }
+                unsafe { Ok(Some(alloc_util::copy_bytes(allocator, value.as_slice())?)) }
             } else {
                 Ok(None)
             }

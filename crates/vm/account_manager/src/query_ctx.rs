@@ -12,20 +12,31 @@ use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
 use ixc_vm_api::VM;
 
-pub(crate) struct QueryContext<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> {
+pub(crate) struct QueryContext<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
+{
     account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
     state_handler: &'a ST,
     call_stack: &'b CallStack<CALL_STACK_LIMIT>,
 }
 
-impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT> {
-    pub(crate) fn new(account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>, state_handler: &'a ST, call_stack: &'b CallStack<CALL_STACK_LIMIT>) -> Self {
-        Self { account_manager, state_handler, call_stack }
+impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
+    QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
+{
+    pub(crate) fn new(
+        account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
+        state_handler: &'a ST,
+        call_stack: &'b CallStack<CALL_STACK_LIMIT>,
+    ) -> Self {
+        Self {
+            account_manager,
+            state_handler,
+            call_stack,
+        }
     }
 }
 
 impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBackend
-for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
+    for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 {
     fn invoke_msg<'c>(
         &mut self,
@@ -49,7 +60,7 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
             return self.handle_system_query(message.request(), allocator);
         }
 
-        let gas =  &self.call_stack.gas;
+        let gas = &self.call_stack.gas;
 
         // find the account's handler ID
         let handler_id =
@@ -91,7 +102,8 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
     ) -> Result<Response<'c>, ErrorCode> {
         let active_account = self.call_stack.active_account()?;
         let gas_meter = &self.call_stack.gas;
-        self.state_handler.handle_query(active_account, req, gas_meter, invoke_params.allocator)
+        self.state_handler
+            .handle_query(active_account, req, gas_meter, invoke_params.allocator)
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
@@ -104,7 +116,7 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 }
 
 impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
-QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
+    QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 {
     fn handle_system_query<'c>(
         &self,
@@ -129,12 +141,7 @@ QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 
         // look up the handler ID
         let gas = &self.call_stack.gas;
-        let handler_id = get_account_handler_id(
-            self.state_handler,
-            account_id,
-            gas,
-            allocator,
-        )?
+        let handler_id = get_account_handler_id(self.state_handler, account_id, gas, allocator)?
             .ok_or(SystemCode(AccountNotFound))?;
 
         // copy the handler ID to the out pointer

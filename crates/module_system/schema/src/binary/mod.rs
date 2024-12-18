@@ -1,6 +1,5 @@
 //! Defines a codec for the native binary format.
 
-use allocator_api2::alloc::Allocator;
 use crate::binary::decoder::decode_value;
 use crate::binary::encoder::encode_value;
 use crate::buffer::WriterFactory;
@@ -9,6 +8,7 @@ use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
 use crate::value::ValueCodec;
+use allocator_api2::alloc::Allocator;
 
 pub(crate) mod decoder;
 pub(crate) mod encoder;

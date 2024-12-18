@@ -37,9 +37,7 @@ impl VM for NativeVMImpl {
         allocator: &'a dyn Allocator,
     ) -> Result<Option<&'a str>, ErrorCode> {
         if self.handlers.contains_key(handler_id) {
-            unsafe {
-                Ok(Some(alloc_util::copy_str(allocator, handler_id)?))
-            }
+            unsafe { Ok(Some(alloc_util::copy_str(allocator, handler_id)?)) }
         } else {
             Ok(None)
         }

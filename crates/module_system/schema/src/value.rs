@@ -426,8 +426,7 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
         data: &Param<'a>,
         memory_manager: &'a MemoryManager,
     ) -> Result<Self::Value, DecodeError> {
-        let data = data.expect_bytes()
-            .map_err(|_| DecodeError::InvalidData)?;
+        let data = data.expect_bytes().map_err(|_| DecodeError::InvalidData)?;
         decode_value(cdc, data, memory_manager)
     }
 

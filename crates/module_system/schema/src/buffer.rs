@@ -19,7 +19,7 @@ pub trait Writer {
     fn pos(&self) -> usize;
 }
 
-impl <'a> WriterFactory<'a> for &'a dyn Allocator {
+impl<'a> WriterFactory<'a> for &'a dyn Allocator {
     fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter<'a>, EncodeError> {
         unsafe {
             let ptr = self

@@ -11,14 +11,16 @@ pub enum GasMeter {
     /// A metered gas meter.
     Metered {
         /// The amount of gas left.
-        gas_left: Cell<u64>
+        gas_left: Cell<u64>,
     },
 }
 
 impl GasMeter {
     /// Create a new metered gas meter.
     pub fn new(gas_left: u64) -> Self {
-        Self::Metered { gas_left: Cell::new(gas_left) }
+        Self::Metered {
+            gas_left: Cell::new(gas_left),
+        }
     }
 
     /// Get the amount of gas left.

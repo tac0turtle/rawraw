@@ -1,6 +1,5 @@
 #![allow(unused)]
 
-use allocator_api2::alloc::Allocator;
 use crate::buffer::{Writer, WriterFactory};
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
@@ -8,6 +7,7 @@ use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
+use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 

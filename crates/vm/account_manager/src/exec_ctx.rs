@@ -2,8 +2,7 @@ use crate::call_stack::CallStack;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::{
-    destroy_account_data, get_account_handler_id, init_next_account, set_handler_id,
-    StateHandler,
+    destroy_account_data, get_account_handler_id, init_next_account, set_handler_id, StateHandler,
 };
 use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
@@ -74,9 +73,13 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
             self.call_stack.push(target_account)?;
 
             // find the account's handler ID
-            let handler_id =
-                get_account_handler_id(self.state_handler, target_account, &self.call_stack.gas, allocator)?
-                    .ok_or(SystemCode(AccountNotFound))?;
+            let handler_id = get_account_handler_id(
+                self.state_handler,
+                target_account,
+                &self.call_stack.gas,
+                allocator,
+            )?
+            .ok_or(SystemCode(AccountNotFound))?;
 
             // run the handler
             let handler = self.account_manager.code_manager.resolve_handler(
@@ -163,7 +166,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
                 SELF_DESTRUCT_SELECTOR => {
                     self.handle_self_destruct()?;
                     Ok(Default::default())
-                },
+                }
                 _ => Err(SystemCode(MessageNotHandled)),
             }
         }
@@ -178,7 +181,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         let handler_id = req.in1().expect_string()?;
         let init_data = req.in2().expect_bytes()?;
 
-        let gas =  &self.call_stack.gas;
+        let gas = &self.call_stack.gas;
 
         // resolve the handler ID and retrieve the VM
         let handler_id = self
@@ -266,7 +269,10 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create
-        let on_migrate = Message::new(active_account, Request::new1(ON_MIGRATE_SELECTOR, old_handler_id.into()));
+        let on_migrate = Message::new(
+            active_account,
+            Request::new1(ON_MIGRATE_SELECTOR, old_handler_id.into()),
+        );
 
         // retrieve the handler
         let handler = self.account_manager.code_manager.resolve_handler(

@@ -2,13 +2,13 @@
 #![no_std]
 extern crate alloc;
 
+mod call_stack;
 mod exec_ctx;
+pub mod gas;
 pub mod id_generator;
 pub mod native_vm;
-pub mod state_handler;
-mod call_stack;
 mod query_ctx;
-pub mod gas;
+pub mod state_handler;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
@@ -81,11 +81,8 @@ impl<'a, S: StateHandler> ReadOnlyStoreWrapper<'a, S> {
 }
 
 impl<S: StateHandler> ReadonlyStore for ReadOnlyStoreWrapper<'_, S> {
-    fn get(
-        &self,
-        account_id: AccountID,
-        key: &[u8],
-    ) -> Result<Option<&[u8]>, ErrorCode> {
-        self.state_handler.kv_get(account_id, key, self.gas, self.allocator)
+    fn get(&self, account_id: AccountID, key: &[u8]) -> Result<Option<&[u8]>, ErrorCode> {
+        self.state_handler
+            .kv_get(account_id, key, self.gas, self.allocator)
     }
 }

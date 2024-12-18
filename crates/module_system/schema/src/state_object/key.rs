@@ -1,12 +1,12 @@
 #![allow(unused_variables)]
 
-use allocator_api2::alloc::Allocator;
 use crate::buffer::{Reader, ReverseSliceWriter, Writer, WriterFactory};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
 use crate::state_object::value::ObjectValue;
 use crate::state_object::KeyFieldValue;
+use allocator_api2::alloc::Allocator;
 
 /// Encode an object key with the given prefix.
 pub fn encode_object_key<'b, K: ObjectKey>(

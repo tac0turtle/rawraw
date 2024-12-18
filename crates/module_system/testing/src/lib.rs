@@ -112,9 +112,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
             // and we want to release the borrow before we call create_account_raw
             // because that will mutably borrow the backend again
             let mut backend = self.backend.write().unwrap();
-            backend
-                .vm
-                .register_handler(&handler_id, Box::new(mock));
+            backend.vm.register_handler(&handler_id, Box::new(mock));
         }
         create_account_raw(&mut root, &handler_id, &[])
     }
@@ -147,7 +145,7 @@ struct BackendWrapper<V> {
 
 impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
     fn default() -> Self {
-        Self{
+        Self {
             vm: V::default(),
             state: VersionedMultiStore::default(),
             id_gen: IncrementingIDGenerator::default(),
@@ -156,17 +154,34 @@ impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
 }
 
 impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
-    fn invoke_msg<'a>(&mut self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
+    fn invoke_msg<'a>(
+        &mut self,
+        message: &Message,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
         let mut backend = self.backend.write().unwrap();
         let mut tx = backend.state.new_transaction();
         let mut state = StdStateHandler::new(&mut tx, Default::default());
         let account_manager: AccountManager<V> = AccountManager::new(&backend.vm);
-        let res = account_manager.invoke_msg(&mut state, &backend.id_gen, self.account, message, invoke_params)?;
-        backend.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        let res = account_manager.invoke_msg(
+            &mut state,
+            &backend.id_gen,
+            self.account,
+            message,
+            invoke_params,
+        )?;
+        backend
+            .state
+            .commit(tx)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
         Ok(res)
     }
 
-    fn invoke_query<'a>(&self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
+    fn invoke_query<'a>(
+        &self,
+        message: &Message,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
         // TODO add a read only state handler impl for query
         let backend = self.backend.write().unwrap();
         let mut tx = backend.state.new_transaction();
@@ -175,20 +190,41 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         account_manager.invoke_query(&state, message, invoke_params)
     }
 
-    fn update_state<'a>(&mut self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
+    fn update_state<'a>(
+        &mut self,
+        req: &Request,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
         let mut backend = self.backend.write().unwrap();
         let mut tx = backend.state.new_transaction();
         let mut state = StdStateHandler::new(&mut tx, Default::default());
-        let res = state.handle_exec(self.account, req, &GasMeter::Unlimited, invoke_params.allocator)?;
-        backend.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        let res = state.handle_exec(
+            self.account,
+            req,
+            &GasMeter::Unlimited,
+            invoke_params.allocator,
+        )?;
+        backend
+            .state
+            .commit(tx)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
         Ok(res)
     }
 
-    fn query_state<'a>(&self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
+    fn query_state<'a>(
+        &self,
+        req: &Request,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
         let backend = self.backend.write().unwrap();
         let mut tx = backend.state.new_transaction();
         let state = StdStateHandler::new(&mut tx, Default::default());
-        state.handle_query(self.account, req, &GasMeter::Unlimited, invoke_params.allocator)
+        state.handle_query(
+            self.account,
+            req,
+            &GasMeter::Unlimited,
+            invoke_params.allocator,
+        )
     }
 
     fn consume_gas(&self, _gas: u64) -> Result<(), ErrorCode> {

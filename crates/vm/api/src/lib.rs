@@ -64,11 +64,7 @@ pub trait VM {
 /// this state should only be used to retrieve the code for a handler from the store.
 pub trait ReadonlyStore {
     /// Gets the value for the given key for the given account.
-    fn get(
-        &self,
-        account_id: AccountID,
-        key: &[u8],
-    ) -> Result<Option<&[u8]>, ErrorCode>;
+    fn get(&self, account_id: AccountID, key: &[u8]) -> Result<Option<&[u8]>, ErrorCode>;
 }
 
 /// A descriptor for a handler.

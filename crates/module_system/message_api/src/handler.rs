@@ -1,8 +1,8 @@
 //! The raw handler and host backend interfaces.
 use crate::code::{ErrorCode, SystemCode};
 use crate::message::{Message, Request, Response};
-pub use allocator_api2::alloc::Allocator;
 use crate::AccountID;
+pub use allocator_api2::alloc::Allocator;
 
 /// A handler for an account.
 pub trait RawHandler {
@@ -72,7 +72,6 @@ pub trait HostBackend {
 
     /// Get the account ID of the caller of the message.
     fn caller(&self) -> AccountID;
-
 }
 
 /// Parameters common to all invoke methods on HostBackend.
@@ -85,8 +84,6 @@ pub struct InvokeParams<'a> {
 impl<'a> InvokeParams<'a> {
     /// Create a new InvokeParams.
     pub fn new(allocator: &'a dyn Allocator) -> Self {
-        Self {
-            allocator,
-        }
+        Self { allocator }
     }
 }

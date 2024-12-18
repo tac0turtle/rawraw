@@ -1,6 +1,5 @@
 #![allow(unused_variables)]
 
-use allocator_api2::alloc::Allocator;
 use crate::binary::encoder::EncodeSizer;
 use crate::buffer::WriterFactory;
 use crate::decoder::{decode_one, DecodeError, Decoder};
@@ -12,6 +11,7 @@ use crate::state_object::value_field::ObjectFieldValue;
 use crate::structs::StructType;
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
+use allocator_api2::alloc::Allocator;
 
 /// Encode an object value.
 pub fn encode_object_value<'a, V: ObjectValue>(

@@ -12,7 +12,11 @@ use ixc_message_api::{code::ErrorCode, AccountID};
 /// A store that can be used to store and retrieve state.
 pub trait Store {
     /// Get the value for the given key.
-    fn get<'a>(&self, key: &Vec<u8>, allocator: &'a dyn Allocator) -> Result<Option<&'a [u8]>, StdStateError>;
+    fn get<'a>(
+        &self,
+        key: &Vec<u8>,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, StdStateError>;
 }
 
 /// StateHandler is a cache-based state handler that can be used to store and retrieve state.
