@@ -12,7 +12,7 @@ use ixc_message_api::{code::ErrorCode, AccountID};
 /// A store that can be used to store and retrieve state.
 pub trait Store {
     /// Get the value for the given key.
-    fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>>;
+    fn get<'a>(&self, key: &Vec<u8>, allocator: &'a dyn Allocator) -> Result<Option<&'a [u8]>, StdStateError>;
 }
 
 /// StateHandler is a cache-based state handler that can be used to store and retrieve state.
@@ -80,16 +80,16 @@ impl<S: Store> StateHandler<S> {
 }
 
 impl<S: Store> StdStateManager for StateHandler<S> {
-    fn kv_get<A: Allocator>(
+    fn kv_get<'a>(
         &self,
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-        allocator: A,
-    ) -> Result<Option<Vec<u8, A>>, StdStateError> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, StdStateError> {
         let constructed_key = Self::construct_key(account_id, scope, key, false);
 
-        match self.snapshot_state.get(&constructed_key, allocator) {
+        match self.snapshot_state.get(&constructed_key, allocator)? {
             Some(value) => Ok(Some(value)),
             None => Ok(None),
         }
@@ -116,7 +116,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         key: &[u8],
     ) -> Result<(), StdStateError> {
         let constructed_key = Self::construct_key(account_id, scope, key, false);
-        self.snapshot_state.delete(&constructed_key);
+        self.snapshot_state.delete(&constructed_key)?;
         Ok(())
     }
 
@@ -128,7 +128,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     ) -> Result<u128, StdStateError> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
 
-        match self.snapshot_state.get(&constructed_key, Global) {
+        match self.snapshot_state.get(&constructed_key, &Global)? {
             Some(value) => {
                 let mut data = [0u8; 16];
                 data.copy_from_slice(&value);
@@ -147,7 +147,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     ) -> Result<(), StdStateError> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
 
-        let bz = self.snapshot_state.get(&constructed_key, Global);
+        let bz = self.snapshot_state.get(&constructed_key, &Global)?;
         let old_value: u128 = match bz {
             Some(value) => {
                 let mut data = [0u8; 16];
@@ -176,7 +176,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         value: u128,
     ) -> Result<bool, StdStateError> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
-        let bz = self.snapshot_state.get(&constructed_key, Global);
+        let bz = self.snapshot_state.get(&constructed_key, &Global)?;
 
         let old_value: u128 = match bz {
             Some(value) => {
@@ -277,14 +277,14 @@ mod tests {
         state_handler.commit_tx().unwrap();
         assert_eq!(
             state_handler
-                .kv_get(AccountID::new(1), None, b"key1", Global)
+                .kv_get(AccountID::new(1), None, b"key1", &Global)
                 .unwrap()
                 .unwrap(),
             b"value1"
         );
         assert_eq!(
             state_handler
-                .kv_get(AccountID::new(1), None, b"key2", Global)
+                .kv_get(AccountID::new(1), None, b"key2", &Global)
                 .unwrap()
                 .unwrap(),
             b"value2"

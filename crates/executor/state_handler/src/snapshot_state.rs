@@ -1,10 +1,11 @@
+use crate::Store;
 use allocator_api2::{
     alloc::{Allocator, Global},
     vec::Vec,
 };
+use ixc_account_manager::state_handler::std::StdStateError;
+use ixc_message_api::alloc_util;
 use std::{borrow::Borrow, collections::HashMap};
-
-use crate::Store;
 
 pub struct Snapshot {
     index: usize,
@@ -27,21 +28,26 @@ impl<S> SnapshotState<S> {
 }
 
 impl<S: Store> SnapshotState<S> {
-    pub fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
+    pub fn get<'a>(
+        &self,
+        key: &Vec<u8>,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, StdStateError> {
         // try to get from values
-        match self.changes.get(key) {
-            // get from disk db
-            None => self.state.get(key, allocator),
+        unsafe {
+            match self.changes.get(key) {
+                // get from disk db
+                None => self.state.get(key, allocator),
 
-            // found in change list
-            Some(value) => match value {
-                Value::Updated(data) => {
-                    let mut vec = Vec::new_in(allocator);
-                    vec.extend_from_slice(data.borrow());
-                    Some(vec)
-                }
-                Value::Deleted => None,
-            },
+                // found in change list
+                Some(value) => match value {
+                    Value::Updated(data) => Ok(Some(
+                        alloc_util::copy_bytes(allocator, data.as_slice())
+                            .map_err(|_| StdStateError::FatalExecutionError)?,
+                    )),
+                    Value::Deleted => Ok(None),
+                },
+            }
         }
     }
 
@@ -56,13 +62,14 @@ impl<S: Store> SnapshotState<S> {
         });
     }
 
-    pub fn delete(&mut self, key: &Vec<u8>) {
-        let value = self.get(key, Global); //TODO: change from global allocator
+    pub fn delete(&mut self, key: &Vec<u8>) -> Result<(), StdStateError> {
+        let value = self.get(key, &Global)?; //TODO: change from global allocator
         self.changes.insert(key.clone(), Value::Deleted);
         self.changelog.push(StateChange::Delete {
             key: key.clone(),
-            old_value: value,
+            old_value: value.map(|v| v.into()),
         });
+        Ok(())
     }
 
     /// Returns the state changes.
@@ -146,18 +153,24 @@ impl StateChange {
 mod tests {
     use super::*;
     use allocator_api2::vec::Vec;
+    use ixc_message_api::alloc_util;
 
     // implement in memory disk db
     impl Store for HashMap<Vec<u8>, Vec<u8>> {
-        fn get<A: Allocator>(&self, key: &Vec<u8>, allocator: A) -> Option<Vec<u8, A>> {
-            let value = self.get(key);
-            match value {
-                Some(value) => {
-                    let mut vec = Vec::new_in(allocator);
-                    vec.extend_from_slice(value.as_slice());
-                    Some(vec)
-                }
-                None => None,
+        fn get<'a>(
+            &self,
+            key: &Vec<u8>,
+            allocator: &'a dyn Allocator,
+        ) -> Result<Option<&'a [u8]>, StdStateError> {
+            let value = Self::get(self, key);
+            unsafe {
+                Ok(match value {
+                    Some(value) => Some(
+                        alloc_util::copy_bytes(allocator, value.as_slice())
+                            .map_err(|_| StdStateError::FatalExecutionError)?,
+                    ),
+                    None => None,
+                })
             }
         }
     }
@@ -203,7 +216,7 @@ mod tests {
         snapshot_state.set(v4.clone(), &v5.clone());
         let mut v6 = Vec::new();
         v6.extend_from_slice(b"charlie_grant");
-        snapshot_state.delete(&v6);
+        snapshot_state.delete(&v6).unwrap();
 
         let before_tx_exec_snapshot = snapshot_state.snapshot();
         let mut v7 = Vec::new();
