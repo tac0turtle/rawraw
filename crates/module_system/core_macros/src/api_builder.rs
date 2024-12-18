@@ -327,6 +327,7 @@ impl APIBuilder {
         Ok(())
     }
 
+    /// Implements the Router trait for the target.
     pub(crate) fn impl_router(&mut self, target: TokenStream2) -> manyhow::Result<()> {
         let routes = &self.routes;
         let query_routes = &self.query_routes;
