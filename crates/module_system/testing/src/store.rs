@@ -73,9 +73,10 @@ impl StdStateManager for Tx {
         }
         if let Some(store) = self.current_frame()?.store.stores.get(&account_id) {
             if let Some(value) = store.kv_store.get(key) {
-                let mut copy = allocator_api2::vec::Vec::new_in(allocator);
-                copy.extend_from_slice(value.as_slice());
-                Ok(Some(copy))
+                // let mut copy = allocator_api2::vec::Vec::new_in(allocator);
+                // copy.extend_from_slice(value.as_slice());
+                // Ok(Some(copy))
+                todo!("kv_get")
             } else {
                 Ok(None)
             }

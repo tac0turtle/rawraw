@@ -89,7 +89,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
 
     /// Creates a new client for the given account.
     pub fn client_context_for(&self, account_id: AccountID) -> Context {
-        let ctx = Context::new_ref_cell(account_id, account_id, 0, &self.backend, &self.mem);
+        let ctx = Context::new_ref_cell(&self.backend, &self.mem);
         ctx
     }
 
@@ -135,20 +135,20 @@ struct Backend<V> {
 }
 
 impl<V: ixc_vm_api::VM> Backend<V> {
-    fn init_operation(&self) -> (AccountManager<V>, Tx, StdStateHandler<Tx>) {
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-        let mut tx = self.state.new_transaction();
-        let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
-        (account_manager, tx, state_handler)
-    }
-
-    fn exec_context(&mut self, caller: AccountID) -> (Tx, impl HostBackend) {
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-        let mut tx = self.state.new_transaction();
-        let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
-        let exec_context = account_manager.exec_context(caller, &mut state_handler, &mut self.id_gen);
-        (tx, exec_context)
-    }
+    // fn init_operation(&self) -> (AccountManager<V>, Tx, StdStateHandler<Tx>) {
+    //     let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
+    //     let mut tx = self.state.new_transaction();
+    //     let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
+    //     (account_manager, tx, state_handler)
+    // }
+    //
+    // fn exec_context(&mut self, caller: AccountID) -> (Tx, impl HostBackend) {
+    //     let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
+    //     let mut tx = self.state.new_transaction();
+    //     let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
+    //     let exec_context = account_manager.exec_context(caller, &mut state_handler, &mut self.id_gen);
+    //     (tx, exec_context)
+    // }
 }
 
 

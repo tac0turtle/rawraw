@@ -125,7 +125,6 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
 /// Used for encoding the response of a message in macros.
 pub fn encode_default_response<'b>(
     res: crate::Result<()>,
-    allocator: &'b dyn Allocator,
 ) -> Result<Response<'b>, ErrorCode> {
     match res {
         Ok(_) => Ok(Default::default()),
