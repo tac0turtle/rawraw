@@ -1,7 +1,27 @@
+//! CommunityPool is a module that allows users to deposit and spend tokens.
+
+/// # Resources
+///
+/// ## PoolBalance
+///
+/// Tracks balances per denom.
+///
+/// ## PoolParams
+///
+/// Stores the parameters of the community pool.
+///
+/// ## Admin
+///
+/// Stores the account ID of the admin.
+///
+/// ## SpendHooks
+///
+/// Stores the spend hooks per denom.
 #[ixc::handler(CommunityPool)]
 pub mod community_pool {
     use ixc::*;
 
+    /// CommunityPool is a module that allows users to deposit and spend tokens.
     #[derive(Resources)]
     pub struct CommunityPool {
         #[state(prefix = 1)]
@@ -14,14 +34,19 @@ pub mod community_pool {
         spend_hooks: Map<Str, AccountID>, // Optional hooks per denom
     }
 
+    /// PoolParams is a struct that represents the parameters of the community pool.
     #[derive(SchemaValue, Clone, Default)]
+    #[sealed]
     pub struct PoolParams {
+        /// SpendEnabled is a boolean that determines whether spending is enabled.
         pub spend_enabled: bool,
+        /// MinProposalAmount is the minimum amount of tokens that can be spent.
         pub min_proposal_amount: u128,
     }
 
     /// Coin is a struct that represents a coin.
     #[derive(SchemaValue, Clone, Default)]
+    #[sealed]
     pub struct Coin<'a> {
         /// The denom of the coin.
         pub denom: &'a str,
@@ -31,6 +56,7 @@ pub mod community_pool {
 
     /// EventDeposit is emitted when a deposit is executed.
     #[derive(SchemaValue, Clone, Default)]
+    #[sealed]
     pub struct EventDeposit<'a> {
         /// EventSpend is emitted when a spend is executed.
         pub from: AccountID,
@@ -40,6 +66,7 @@ pub mod community_pool {
 
     /// EventSpend is emitted when a spend is executed.
     #[derive(SchemaValue, Clone, Default)]
+    #[sealed]
     pub struct EventSpend<'a> {
         /// The account that was spent to.
         pub to: AccountID,
@@ -49,8 +76,10 @@ pub mod community_pool {
         pub proposal_id: u64,
     }
 
+    /// SpendHook is a trait that allows modules to hook into the spending process.
     #[handler_api]
     pub trait SpendHook {
+        /// BeforeSpend is called before a spend is executed.
         fn before_spend<'a>(
             &self,
             ctx: &mut Context<'a>,
@@ -61,7 +90,9 @@ pub mod community_pool {
         ) -> Result<()>;
     }
 
+    /// CommunityPool is a module that allows users to deposit and spend tokens.
     impl CommunityPool {
+        /// Create is called when the community pool is created.
         #[on_create]
         pub fn create(&self, ctx: &mut Context) -> Result<()> {
             // Initialize with default params
@@ -77,6 +108,7 @@ pub mod community_pool {
             Ok(())
         }
 
+        /// SetParams is used to set the community pool parameters.
         #[publish]
         pub fn set_params(&self, ctx: &mut Context, new_params: PoolParams) -> Result<()> {
             ensure!(self.admin.get(ctx)? == ctx.caller(), "not authorized");
@@ -84,6 +116,7 @@ pub mod community_pool {
             Ok(())
         }
 
+        /// SetSpendHook is used to set a spend hook for a specific denom.
         #[publish]
         pub fn set_spend_hook(
             &self,
@@ -96,13 +129,14 @@ pub mod community_pool {
             Ok(())
         }
 
+        /// Deposit is used to add tokens to the community pool.
         #[publish]
         pub fn deposit<'a>(
             &self,
             ctx: &mut Context,
             denom: &'a str,
             amount: u128,
-            evt: EventBus<EventDeposit<'a>>,
+            mut evt: EventBus<EventDeposit<'a>>,
         ) -> Result<()> {
             // Add to pool balance
             self.pool_balance.add(ctx, denom, amount)?;
@@ -119,6 +153,7 @@ pub mod community_pool {
             Ok(())
         }
 
+        /// Spend is used to send tokens from the community pool to another account.
         #[publish]
         pub fn spend<'a>(
             &self,
@@ -127,7 +162,7 @@ pub mod community_pool {
             denom: &'a str,
             amount: u128,
             proposal_id: u64,
-            evt: EventBus<EventSpend<'a>>,
+            mut evt: EventBus<EventSpend<'a>>,
         ) -> Result<()> {
             // Verify spend is enabled
             let params = self.params.get(ctx)?;
@@ -141,10 +176,7 @@ pub mod community_pool {
             }
 
             // Verify sufficient balance and subtract
-            ensure!(
-                self.pool_balance.safe_sub(ctx, denom, amount)?,
-                "insufficient pool balance"
-            );
+            self.pool_balance.safe_sub(ctx, denom, amount)?;
 
             // Emit spend event
             evt.emit(
@@ -159,6 +191,7 @@ pub mod community_pool {
             Ok(())
         }
 
+        /// GetBalance is used to get the balance of a specific denom.
         #[publish]
         pub fn get_balance(&self, ctx: &Context, denom: &str) -> Result<u128> {
             Ok(self.pool_balance.get(ctx, denom)?)
