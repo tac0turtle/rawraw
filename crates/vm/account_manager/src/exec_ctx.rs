@@ -179,8 +179,8 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         // get the input data
-        let handler_id = req.inputs[0].expect_string()?;
-        let init_data = req.inputs[1].expect_slice()?;
+        let handler_id = req.in0().expect_string()?;
+        let init_data = req.in1().expect_slice()?;
 
         let gas =  &self.call_stack.gas;
 
@@ -245,7 +245,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     ) -> Result<Response<'a>, ErrorCode> {
         // get the input data
         let active_account = self.call_stack.active_account()?;
-        let new_handler_id = req.inputs[0].expect_string()?;
+        let new_handler_id = req.in0().expect_string()?;
 
         let gas = &self.call_stack.gas;
 

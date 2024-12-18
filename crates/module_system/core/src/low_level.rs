@@ -82,7 +82,7 @@ fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
     match res {
         Ok(res) => {
             let cdc = M::Codec::default();
-            let out = res.outputs[0].expect_slice()?;
+            let out = res.out0().expect_slice()?;
             let res = M::Response::<'a>::decode_value(&cdc, out, context.memory_manager())?;
             Ok(res)
         }

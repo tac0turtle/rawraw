@@ -22,7 +22,7 @@ pub struct Request<'a> {
     pub message_selector: MessageSelector,
     /// The inputs to the message.
     /// There can be up to three inputs.
-    pub inputs: [Param<'a>; 3],
+    inputs: [Param<'a>; 3],
 }
 
 /// A message response.
@@ -31,7 +31,7 @@ pub struct Request<'a> {
 pub struct Response<'a> {
     /// The outputs of the message.
     /// There can be up to two outputs.
-    pub outputs: [Param<'a>; 2],
+    outputs: [Param<'a>; 2],
 }
 
 /// A message response.
@@ -98,6 +98,21 @@ impl<'a> Request<'a> {
             inputs: [in1, in2, in3],
         }
     }
+
+    /// Get the first input parameter.
+    pub fn in0(&self) -> &Param<'a> {
+        &self.inputs[0]
+    }
+
+    /// Get the second input parameter.
+    pub fn in1(&self) -> &Param<'a> {
+        &self.inputs[1]
+    }
+
+    /// Get the third input parameter.
+    pub fn in2(&self) -> &Param<'a> {
+        &self.inputs[2]
+    }
 }
 
 impl<'a> Response<'a> {
@@ -118,6 +133,16 @@ impl<'a> Response<'a> {
         Self {
             outputs: [out1, out2],
         }
+    }
+
+    /// Get the first output parameter.
+    pub fn out0(&self) -> &Param<'a> {
+        &self.outputs[0]
+    }
+
+    /// Get the second output parameter.
+    pub fn out1(&self) -> &Param<'a> {
+        &self.outputs[1]
     }
 }
 

@@ -129,7 +129,7 @@ QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
         allocator: &'c dyn Allocator,
     ) -> Result<Response<'c>, ErrorCode> {
         // get the account ID from the in pointer
-        let account_id = req.inputs[0].expect_account_id()?;
+        let account_id = req.in0().expect_account_id()?;
 
         // look up the handler ID
         let gas = &self.call_stack.gas;

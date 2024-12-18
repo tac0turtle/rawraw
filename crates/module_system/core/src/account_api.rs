@@ -34,7 +34,7 @@ fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult
             Request::new2(CREATE_SELECTOR, name.into(), init.into()),
         );
         let res = dynamic_invoke_msg_packet(ctx, &message)?;
-        let id = res.outputs[0].expect_account_id()?;
+        let id = res.out0().expect_account_id()?;
         Ok(id)
     }
 }
@@ -47,7 +47,7 @@ pub fn get_handler_id<'a>(ctx: &Context<'a>, account_id: AccountID) -> ClientRes
             Request::new1(GET_HANDLER_ID_SELECTOR, account_id.into()),
         );
         let res = dynamic_invoke_query_packet(ctx, &message)?;
-        let handler_id = res.outputs[0].expect_string()?;
+        let handler_id = res.out0().expect_string()?;
         Ok(handler_id)
     }
 }
