@@ -333,17 +333,17 @@ impl APIBuilder {
             &mut self.items,
             quote! {
                 unsafe impl ::ixc::core::routing::Router for #target {
-                    const SORTED_MSG_ROUTES: &'static [::ixc::core::routing::Route<'_, Self>] =
+                    const SORTED_MSG_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
                         &::ixc::core::routing::sort_routes([
                             #(#routes)*
                         ]);
 
-                    const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::QueryRoute<'_, Self>] =
+                    const SORTED_QUERY_ROUTES: &'static [::ixc::core::routing::QueryRoute<Self>] =
                         &::ixc::core::routing::sort_query_routes([
                             #(#query_routes)*
                         ]);
 
-                    const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<'_, Self>] =
+                    const SORTED_SYSTEM_ROUTES: &'static [::ixc::core::routing::Route<Self>] =
                         &::ixc::core::routing::sort_routes([
                             #(#system_routes)*
                         ]);

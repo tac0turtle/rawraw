@@ -13,19 +13,19 @@ where
     Self: 'static,
 {
     /// The message routes sorted by message selector.
-    const SORTED_MSG_ROUTES: &'static [Route<'_, Self>];
+    const SORTED_MSG_ROUTES: &'static [Route<Self>];
 
     /// The query routes sorted by message selector.
-    const SORTED_QUERY_ROUTES: &'static [QueryRoute<'_, Self>];
+    const SORTED_QUERY_ROUTES: &'static [QueryRoute<Self>];
 
     /// The system routes sorted by message selector.
-    const SORTED_SYSTEM_ROUTES: &'static [Route<'_, Self>];
+    const SORTED_SYSTEM_ROUTES: &'static [Route<Self>];
 }
 
 /// A route for a message packet.
-pub type Route<'a, T> = (
+pub type Route<T> = (
     u64,
-    fn(
+    for<'a> fn(
         &T,
         &Request,
         callbacks: &mut dyn HostBackend,
@@ -34,9 +34,9 @@ pub type Route<'a, T> = (
 );
 
 /// A route for a message packet.
-pub type QueryRoute<'a, T> = (
+pub type QueryRoute<T> = (
     u64,
-    fn(
+    for<'a> fn(
         &T,
         &Request,
         callbacks: &dyn HostBackend,
