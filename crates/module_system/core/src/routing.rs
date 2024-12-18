@@ -1,7 +1,7 @@
 //! Routing system for message packets.
 
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::message::{MessageSelector, Request, Response};
 
@@ -50,10 +50,10 @@ pub fn exec_route<'a, R: Router + ?Sized>(
     req: &Request,
     callbacks: &mut dyn HostBackend,
     allocator: &'a dyn Allocator,
-) -> Option<Result<Response<'a>, ErrorCode>> {
+) -> Result<Response<'a>, ErrorCode> {
     match find_route(R::SORTED_MSG_ROUTES, req.message_selector()) {
-        Some(rt) => Some(rt(rtr, req, callbacks, allocator)),
-        None => None,
+        Some(rt) => rt(rtr, req, callbacks, allocator),
+        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
     }
 }
 
@@ -63,10 +63,10 @@ pub fn exec_query_route<'a, R: Router + ?Sized>(
     req: &Request,
     callbacks: &dyn HostBackend,
     allocator: &'a dyn Allocator,
-) -> Option<Result<Response<'a>, ErrorCode>> {
+) -> Result<Response<'a>, ErrorCode> {
     match find_route(R::SORTED_QUERY_ROUTES, req.message_selector()) {
-        Some(rt) => Some(rt(rtr, req, callbacks, allocator)),
-        None => None,
+        Some(rt) => rt(rtr, req, callbacks, allocator),
+        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
     }
 }
 
