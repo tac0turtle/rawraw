@@ -389,6 +389,7 @@ fn token_name(name: &str) -> String {
         ";" => "Semicolon",
         "." => "Dot",
         ":" => "Colon",
+        "=" => "Eq",
         "=>" => "RArrow",
         _ => return format!("{}_KW", name.to_upper_camel_case()),
     }

@@ -55,7 +55,7 @@ ImplItem = ImplFn
 ImplFn = sig:FnSignature block:FnBlock
 FnBlock = '{' statements:Stmt* '}'
 Stmt = Expr
-//Pat = name:'#ident'
+
 Expr = ExprParen |
     NameExpr |
     ExprCall
@@ -63,6 +63,13 @@ NameExpr = name:'#ident'
 ExprParen = '(' expr:Expr ')'
 FieldExpr = expr:Expr '.' name:'#ident'
 ExprCall = expr:Expr args:ArgList
-ExprBinary = lhs:Expr op:BinaryOp rhs:Expr
+ExprBinary = op:BinaryOp exprs:Expr*
+Rhs = expr:Expr
+BinaryOp = '.' | '='
 ArgList = '(' args:Arg* ')'
 Arg = expr:Expr ','
+ExprConstruct = name:'#ident' fields:ExprConstructFieldList?
+ExprConstructFieldList = '{' fields:ExprConstructField* '}'
+ExprConstructField = name:'#ident' ':' expr:Expr? ','
+
+ForStmt = 'for' pat:'#ident' 'in' iterable:Expr block:FnBlock

@@ -31,7 +31,7 @@ impl BankAPI for Bank {
            amount = coin.amount;
            balances.safe_sub(from, denom, amount);
            balances.add(to, denom, amount);
-           emit EventTransfer { from, to, denom, amount };
+           emit(EventTransfer { from, to, denom, amount });
        }
    }
 

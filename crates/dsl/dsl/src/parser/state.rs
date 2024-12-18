@@ -18,10 +18,12 @@ enum Event {
     Advance,
 }
 
+#[derive(Clone)]
 pub struct MarkOpened {
     index: usize,
 }
 
+#[derive(Clone)]
 pub struct MarkClosed {
     index: usize,
 }

@@ -291,28 +291,33 @@ fn impl_fn(p: &mut Parser) {
 
 fn fn_block(p: &mut Parser) {
     let m = p.open();
-    p.expect(Token::LSquare);
-    while !p.at(Token::RSquare) && !p.eof() {
+    p.expect(Token::LCurly);
+    while !p.at(Token::RCurly) && !p.eof() {
         statement(p);
     }
-    p.expect(Token::RSquare);
+    p.expect(Token::RCurly);
     p.close::<ast::FnBlock>(m);
 }
 
 fn statement(p: &mut Parser) {
-    expr(p);
-    p.advance_with_error("expected statement");
+    let cur = p.cur();
+    match cur {
+        Token::ForKw => {
+            for_stmt(p);
+            // optional semicolon
+            p.eat(Token::Semicolon);
+        },
+        _ => {
+            expr(p);
+            if !p.at(Token::RCurly) {
+                p.expect(Token::Semicolon);
+            }
+        }
+    }
 }
 
 fn expr(p: &mut Parser) {
-    let mut lhs = expr_delimited(p);
-
-    // ExprCall = Expr ArgList
-    while p.at(Token::LParen) {
-        let m = p.open_before(lhs);
-        arg_list(p);
-        lhs = p.close::<ast::ExprCall>(m);
-    }
+    expr_rec(p, Token::Eof);
 }
 
 fn expr_rec(p: &mut Parser, left: Token) {
@@ -320,9 +325,10 @@ fn expr_rec(p: &mut Parser, left: Token) {
         fn tightness(kind: &Token) -> Option<usize> {
             [
                 // Precedence table:
-                &[Token::Dot],
+                &[Token::Eq],
                 // [Plus, Minus].as_slice(),
                 // &[Star, Slash],
+                &[Token::Dot],
             ]
             .iter()
             .position(|level| level.contains(kind))
@@ -362,7 +368,14 @@ fn expr_delimited(p: &mut Parser) -> MarkClosed {
     match p.cur() {
         Token::Ident(_) => {
             expect_ident(p);
-            p.close::<ast::NameExpr>(m)
+            let mut lhs = p.close::<ast::NameExpr>(m);
+            //  ExprConstruct
+            if p.at(Token::LCurly) {
+                let m = p.open_before(lhs);
+                expr_construct_field_list(p);
+                lhs = p.close::<ast::ExprConstruct>(m);
+            }
+            lhs
         }
         Token::LParen => {
             p.expect(Token::LParen);
@@ -399,4 +412,34 @@ fn arg(p: &mut Parser) {
         p.expect(Token::Comma);
     }
     p.close::<ast::Arg>(m);
+}
+
+fn for_stmt(p: &mut Parser) {
+    let m = p.open();
+    p.expect(Token::ForKw);
+    expect_ident(p);
+    p.expect(Token::InKw);
+    expr(p);
+    fn_block(p);
+    p.close::<ast::ForStmt>(m);
+}
+
+fn expr_construct_field_list(p: &mut Parser) {
+    let m = p.open();
+    p.expect(Token::LCurly);
+    while !p.at(Token::RCurly) && !p.eof() {
+        expr_construct_field(p);
+    }
+    p.expect(Token::RCurly);
+    p.close::<ast::ExprConstructFieldList>(m);
+}
+
+fn expr_construct_field(p: &mut Parser) {
+    let m = p.open();
+    expect_ident(p);
+    if p.at(Token::Colon) {
+        p.expect(Token::Colon);
+        expr(p);
+    }
+    p.close::<ast::ExprConstructField>(m);
 }

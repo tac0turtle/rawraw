@@ -60,6 +60,10 @@ pub enum Token<'a> {
     ForKw,
     #[token(".")]
     Dot,
+    #[token("=")]
+    Eq,
+    #[token("in")]
+    InKw,
 }
 impl<'a> Token<'a> {
     pub fn kind(&'a self) -> SyntaxKind {
@@ -93,6 +97,8 @@ impl<'a> Token<'a> {
             Token::ImplKw => SyntaxKind::IMPL_KW,
             Token::ForKw => SyntaxKind::FOR_KW,
             Token::Dot => SyntaxKind::DOT,
+            Token::Eq => SyntaxKind::EQ,
+            Token::InKw => SyntaxKind::IN_KW,
         }
     }
     pub fn text(&'a self) -> &'a str {
@@ -126,6 +132,8 @@ impl<'a> Token<'a> {
             Token::ImplKw => "impl",
             Token::ForKw => "for",
             Token::Dot => ".",
+            Token::Eq => "=",
+            Token::InKw => "in",
         }
     }
 }
