@@ -1,8 +1,8 @@
 //! Utility functions for working with allocators.
+use crate::code::{ErrorCode, SystemCode};
+use allocator_api2::alloc::Allocator;
 use core::alloc::Layout;
 use core::str::from_utf8_unchecked;
-use allocator_api2::alloc::{AllocError, Allocator};
-use crate::code::{ErrorCode, SystemCode};
 
 /// Copies a string into the given allocator.
 pub unsafe fn copy_str<'a>(allocator: &'a dyn Allocator, s: &str) -> Result<&'a str, ErrorCode> {

@@ -275,10 +275,10 @@ impl APIBuilder {
             ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, allocator| {
                 unsafe {
                     let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
-                    let in1 = packet.in1().expect_bytes()?;
+                    let in1 = packet.request().in1().expect_bytes()?;
                     let mem = ::ixc::schema::mem::MemoryManager::new();
                     let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(cb, &mem);
+                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(packet.target_account(), cb, &mem);
                     let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
                     ::ixc::core::low_level::encode_response::< #msg_struct_name > ( &cdc, res, allocator )
                 }
@@ -310,10 +310,10 @@ impl APIBuilder {
                 (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, packet, cb, a | {
                     unsafe {
                         let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::handler::InitMessage < '_ > >::Codec::default();
-                        let in1 = packet.in1().expect_bytes()?;
+                        let in1 = packet.request().in1().expect_bytes()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
                         let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                        let mut ctx =::ixc::core::Context::new_mut(cb, &mem);
+                        let mut ctx =::ixc::core::Context::new_mut(packet.target_account(), cb, &mem);
                         let res = h.# fn_name( & mut ctx, # (# fn_call_args) * );
                         ::ixc::core::low_level::encode_default_response(res)
                     }

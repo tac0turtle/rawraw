@@ -29,8 +29,8 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 {
     fn invoke_msg<'c>(
         &mut self,
-        message: &Message,
-        invoke_params: &InvokeParams<'c>,
+        _message: &Message,
+        _invoke_params: &InvokeParams<'c>,
     ) -> Result<Response<'c>, ErrorCode> {
         Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
@@ -66,7 +66,7 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
             allocator,
         )?;
 
-        let res = handler.handle_query(message.request(), self, allocator);
+        let res = handler.handle_query(&message, self, allocator);
 
         // pop the call stack
         self.call_stack.pop();
@@ -76,8 +76,8 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 
     fn update_state<'c>(
         &mut self,
-        req: &Request,
-        invoke_params: &InvokeParams<'c>,
+        _req: &Request,
+        _invoke_params: &InvokeParams<'c>,
     ) -> Result<Response<'c>, ErrorCode> {
         Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
@@ -96,10 +96,6 @@ for QueryContext<'b, 'a, CM, ST, CALL_STACK_LIMIT>
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
         self.call_stack.gas.consume_gas(gas)
-    }
-
-    fn self_account_id(&self) -> AccountID {
-        self.call_stack.active_account().unwrap()
     }
 
     fn caller(&self) -> AccountID {

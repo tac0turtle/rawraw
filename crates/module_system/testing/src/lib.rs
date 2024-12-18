@@ -3,11 +3,13 @@
 mod store;
 
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
-use crate::store::{Tx, VersionedMultiStore};
+use crate::store::VersionedMultiStore;
 use allocator_api2::alloc::Allocator;
+use ixc_account_manager::gas::GasMeter;
 use ixc_account_manager::id_generator::IncrementingIDGenerator;
 use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
 use ixc_account_manager::state_handler::std::StdStateHandler;
+use ixc_account_manager::state_handler::StateHandler;
 use ixc_account_manager::AccountManager;
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
@@ -16,6 +18,7 @@ use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
+use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
@@ -23,21 +26,19 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use ixc_account_manager::gas::GasMeter;
-use ixc_account_manager::state_handler::StateHandler;
-use ixc_message_api::code::SystemCode::FatalExecutionError;
+use std::sync::{Arc, RwLock};
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
     mem: MemoryManager,
     mock_id: Cell<u64>,
-    backend: RefCell<Backend<V>>,
+    backend: Arc<RwLock<Backend<V>>>,
 }
 
 impl Default for TestApp<NativeVMImpl> {
     fn default() -> Self {
         let test_app = Self {
-            backend: RefCell::new(Default::default()),
+            backend: Arc::new(RwLock::new(Default::default())),
             mem: Default::default(),
             mock_id: Cell::new(0),
         };
@@ -50,7 +51,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
     pub fn register_handler<H: Handler>(&self) -> core::result::Result<(), InitializationError> {
         let scope = ResourceScope::default();
-        let mut backend = self.backend.borrow_mut();
+        let mut backend = self.backend.write().unwrap();
         unsafe {
             backend
                 .vm
@@ -66,7 +67,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
         client_bindings: &[(&'static str, AccountID)],
     ) -> core::result::Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
-        let mut backend = self.backend.borrow_mut();
+        let mut backend = self.backend.write().unwrap();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
         scope.account_resolver = Some(&binding_map);
         unsafe {
@@ -92,7 +93,11 @@ impl<V: NativeVM + 'static> TestApp<V> {
 
     /// Creates a new client for the given account.
     pub fn client_context_for(&self, account_id: AccountID) -> Context {
-        let ctx = Context::new_ref_cell(&self.backend, &self.mem);
+        let backend = BackendWrapper {
+            account: account_id,
+            backend: self.backend.clone(),
+        };
+        let ctx = Context::new_ref_cell(account_id, Box::new(backend), &self.mem);
         ctx
     }
 
@@ -106,10 +111,10 @@ impl<V: NativeVM + 'static> TestApp<V> {
             // we need a scope here because we borrow the backend mutably
             // and we want to release the borrow before we call create_account_raw
             // because that will mutably borrow the backend again
-            let mut backend = self.backend.borrow_mut();
+            let mut backend = self.backend.write().unwrap();
             backend
                 .vm
-                .register_handler(&handler_id, std::boxed::Box::new(mock));
+                .register_handler(&handler_id, Box::new(mock));
         }
         create_account_raw(&mut root, &handler_id, &[])
     }
@@ -131,61 +136,63 @@ impl<V: NativeVM + 'static> TestApp<V> {
 
 struct Backend<V> {
     vm: V,
-    account: AccountID,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
-    // invoke_params: InvokeParams<'static>,
+}
+
+struct BackendWrapper<V> {
+    account: AccountID,
+    backend: Arc<RwLock<Backend<V>>>,
 }
 
 impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
     fn default() -> Self {
         Self{
             vm: V::default(),
-            account: AccountID::EMPTY,
             state: VersionedMultiStore::default(),
             id_gen: IncrementingIDGenerator::default(),
-            // invoke_params: InvokeParams::new(GLOBAL_ALLOCATOR),
         }
     }
 }
 
-impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
+impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn invoke_msg<'a>(&mut self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        let mut tx = self.state.new_transaction();
+        let mut backend = self.backend.write().unwrap();
+        let mut tx = backend.state.new_transaction();
         let mut state = StdStateHandler::new(&mut tx, Default::default());
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-        let res = account_manager.invoke_msg(&mut state, &mut self.id_gen, self.account, message, invoke_params)?;
-        self.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        let account_manager: AccountManager<V> = AccountManager::new(&backend.vm);
+        let res = account_manager.invoke_msg(&mut state, &backend.id_gen, self.account, message, invoke_params)?;
+        backend.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
         Ok(res)
     }
 
     fn invoke_query<'a>(&self, message: &Message, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        let mut tx = self.state.new_transaction();
+        // TODO add a read only state handler impl for query
+        let backend = self.backend.write().unwrap();
+        let mut tx = backend.state.new_transaction();
         let state = StdStateHandler::new(&mut tx, Default::default());
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
+        let account_manager: AccountManager<V> = AccountManager::new(&backend.vm);
         account_manager.invoke_query(&state, message, invoke_params)
     }
 
     fn update_state<'a>(&mut self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        let mut tx = self.state.new_transaction();
+        let mut backend = self.backend.write().unwrap();
+        let mut tx = backend.state.new_transaction();
         let mut state = StdStateHandler::new(&mut tx, Default::default());
         let res = state.handle_exec(self.account, req, &GasMeter::Unlimited, invoke_params.allocator)?;
-        self.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        backend.state.commit(tx).map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
         Ok(res)
     }
 
     fn query_state<'a>(&self, req: &Request, invoke_params: &InvokeParams<'a>) -> Result<Response<'a>, ErrorCode> {
-        let mut tx = self.state.new_transaction();
-        let mut state = StdStateHandler::new(&mut tx, Default::default());
+        let backend = self.backend.write().unwrap();
+        let mut tx = backend.state.new_transaction();
+        let state = StdStateHandler::new(&mut tx, Default::default());
         state.handle_query(self.account, req, &GasMeter::Unlimited, invoke_params.allocator)
     }
 
-    fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
+    fn consume_gas(&self, _gas: u64) -> Result<(), ErrorCode> {
         Ok(())
-    }
-
-    fn self_account_id(&self) -> AccountID {
-        self.account
     }
 
     fn caller(&self) -> AccountID {
@@ -195,7 +202,7 @@ impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
 
 /// Defines a mock handler composed of mock handler API trait implementations.
 pub struct MockHandler {
-    mocks: Vec<std::boxed::Box<dyn RawHandler>>,
+    mocks: Vec<Box<dyn RawHandler>>,
 }
 
 impl Default for MockHandler {
@@ -211,12 +218,12 @@ impl MockHandler {
     }
 
     /// Adds a mock handler API trait implementation to the mock handler.
-    pub fn add_handler<T: RawHandler + ?Sized + 'static>(&mut self, mock: std::boxed::Box<T>) {
+    pub fn add_handler<T: RawHandler + ?Sized + 'static>(&mut self, mock: Box<T>) {
         self.mocks.push(Box::new(MockWrapper::<T>(mock)));
     }
 
     /// Creates a mock handler for one mock handler API trait implementation.
-    pub fn of<T: RawHandler + ?Sized + 'static>(mock: std::boxed::Box<T>) -> Self {
+    pub fn of<T: RawHandler + ?Sized + 'static>(mock: Box<T>) -> Self {
         let mut mocks = MockHandler::new();
         mocks.add_handler(Box::new(MockWrapper::<T>(mock)));
         mocks
@@ -226,7 +233,7 @@ impl MockHandler {
 impl RawHandler for MockHandler {
     fn handle_msg<'a>(
         &self,
-        message: &Request,
+        message: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -242,7 +249,7 @@ impl RawHandler for MockHandler {
 
     fn handle_query<'a>(
         &self,
-        message: &Request,
+        message: &Message,
         callbacks: &dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -257,11 +264,11 @@ impl RawHandler for MockHandler {
     }
 }
 
-struct MockWrapper<T: RawHandler + ?Sized>(std::boxed::Box<T>);
+struct MockWrapper<T: RawHandler + ?Sized>(Box<T>);
 impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
     fn handle_query<'a>(
         &self,
-        message_packet: &Request,
+        message_packet: &Message,
         callbacks: &dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -270,7 +277,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
 
     fn handle_msg<'a>(
         &self,
-        message_packet: &Request,
+        message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -279,7 +286,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
 
     fn handle_system<'a>(
         &self,
-        message_packet: &Request,
+        message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {

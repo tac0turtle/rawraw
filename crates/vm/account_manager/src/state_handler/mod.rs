@@ -96,7 +96,7 @@ pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
 }
 
 pub(crate) fn init_next_account<ST: StateHandler, IDG: IDGenerator>(
-    id_generator: &mut IDG,
+    id_generator: &IDG,
     state_handler: &mut ST,
     handler_id: &str,
     allocator: &dyn Allocator,

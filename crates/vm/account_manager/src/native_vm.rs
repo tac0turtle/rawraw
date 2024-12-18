@@ -5,7 +5,6 @@ use alloc::boxed::Box;
 use alloc::collections::btree_map::BTreeMap;
 use alloc::string::String;
 use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use core::borrow::Borrow;
 use ixc_message_api::alloc_util;
 use ixc_message_api::code::{ErrorCode, SystemCode};

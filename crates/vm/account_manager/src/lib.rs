@@ -16,10 +16,7 @@ use crate::gas::GasMeter;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::StateHandler;
-use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::SystemCode;
-use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::handler::{Allocator, HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Response};
 use ixc_message_api::AccountID;
@@ -45,7 +42,7 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
     pub fn invoke_msg<'b, ST: StateHandler, IDG: IDGenerator>(
         &self,
         state_handler: &mut ST,
-        id_generator: &mut IDG,
+        id_generator: &IDG,
         caller: AccountID,
         message: &Message,
         allocator: &InvokeParams<'b>,

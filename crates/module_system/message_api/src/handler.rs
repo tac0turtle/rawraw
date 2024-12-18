@@ -9,7 +9,7 @@ pub trait RawHandler {
     /// Handle a message.
     fn handle_msg<'a>(
         &self,
-        _message: &Request,
+        _message: &Message,
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -19,7 +19,7 @@ pub trait RawHandler {
     /// Handle a query message.
     fn handle_query<'a>(
         &self,
-        _message: &Request,
+        _message: &Message,
         _callbacks: &dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -29,7 +29,7 @@ pub trait RawHandler {
     /// Handle a system message.
     fn handle_system<'a>(
         &self,
-        _message_packet: &Request,
+        _message_packet: &Message,
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
@@ -69,9 +69,6 @@ pub trait HostBackend {
 
     /// Consume gas. Returns an out-of-gas error if there is not enough gas.
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode>;
-
-    /// Get the account ID of the account that is handling the message.
-    fn self_account_id(&self) -> AccountID;
 
     /// Get the account ID of the caller of the message.
     fn caller(&self) -> AccountID;

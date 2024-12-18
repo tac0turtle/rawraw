@@ -8,15 +8,15 @@
 /// that the account is not valid or does not exist.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(transparent)]
-pub struct AccountID([u8; 16]);
+pub struct AccountID(u128);
 
 impl AccountID {
     /// The empty account ID.
-    pub const EMPTY: AccountID = AccountID([0; 16]);
+    pub const EMPTY: AccountID = AccountID::new(0);
 
     /// Creates a new account ID from the given integer.
     pub const fn new(id: u128) -> Self {
-        AccountID(id.to_le_bytes())
+        AccountID(id)
     }
 
     /// Returns true if the account ID is zero.
@@ -27,14 +27,14 @@ impl AccountID {
     }
 
     /// Returns the account ID as a big-endian byte array.
-    pub fn to_bytes(&self) -> &[u8; 16] {
-        &self.0
+    pub fn to_bytes(&self) -> [u8; 16] {
+        self.0.to_le_bytes()
     }
 }
 
 impl From<AccountID> for u128 {
     fn from(val: AccountID) -> Self {
-        u128::from_le_bytes(val.0)
+        val.0
     }
 }
 
@@ -46,12 +46,12 @@ impl From<u128> for AccountID {
 
 impl From<[u8; 16]> for AccountID {
     fn from(value: [u8; 16]) -> Self {
-        AccountID(value)
+        AccountID::new(u128::from_le_bytes(value))
     }
 }
 
 impl From<AccountID> for [u8; 16] {
     fn from(value: AccountID) -> Self {
-        value.0
+        value.to_bytes()
     }
 }

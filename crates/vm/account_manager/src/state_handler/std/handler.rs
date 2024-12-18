@@ -1,3 +1,4 @@
+use crate::gas::GasMeter;
 use crate::state_handler::std::manager::StdStateManager;
 use crate::state_handler::StateHandler;
 use allocator_api2::alloc::Allocator;
@@ -6,9 +7,8 @@ use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
-use ixc_message_api::AccountID;
 use ixc_message_api::message::{MessageSelector, Request, Response};
-use crate::gas::GasMeter;
+use ixc_message_api::AccountID;
 
 /// The standard state handler.
 pub struct StdStateHandler<'a, S: StdStateManager> {
@@ -46,7 +46,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         &self,
         account_id: AccountID,
         key: &[u8],
-        gas: &GasMeter,
+        _gas: &GasMeter,
         allocator: &'a dyn Allocator,
     ) -> Result<Option<&'a [u8]>, ErrorCode> {
         self.state
@@ -125,18 +125,16 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         gas: &GasMeter,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
-        unsafe {
-            match request.message_selector() {
-                GET_SELECTOR => {
-                    let key = request.in1().expect_bytes()?;
-                    let value = self.kv_get(account_id, key, gas, allocator)?;
-                    match value {
-                        Some(value) => Ok(Response::new1(value.into())),
-                        _ => Ok(Default::default()),
-                    }
+        match request.message_selector() {
+            GET_SELECTOR => {
+                let key = request.in1().expect_bytes()?;
+                let value = self.kv_get(account_id, key, gas, allocator)?;
+                match value {
+                    Some(value) => Ok(Response::new1(value.into())),
+                    _ => Ok(Default::default()),
                 }
-                _ => Err(SystemCode(MessageNotHandled)),
             }
+            _ => Err(SystemCode(MessageNotHandled)),
         }
     }
 

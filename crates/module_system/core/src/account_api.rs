@@ -28,40 +28,34 @@ pub fn create_account_raw(ctx: &mut Context, name: &str, init: &[u8]) -> ClientR
 
 /// Creates a new account for the named handler with opaque initialization data.
 fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
-    unsafe {
-        let message = Message::new(
-            ROOT_ACCOUNT,
-            Request::new2(CREATE_SELECTOR, name.into(), init.into()),
-        );
-        let res = dynamic_invoke_msg_packet(ctx, &message)?;
-        let id = res.out1().expect_account_id()?;
-        Ok(id)
-    }
+    let message = Message::new(
+        ROOT_ACCOUNT,
+        Request::new2(CREATE_SELECTOR, name.into(), init.into()),
+    );
+    let res = dynamic_invoke_msg_packet(ctx, &message)?;
+    let id = res.out1().expect_account_id()?;
+    Ok(id)
 }
 
 /// Gets the handler ID of the account.
 pub fn get_handler_id<'a>(ctx: &Context<'a>, account_id: AccountID) -> ClientResult<&'a str> {
-    unsafe {
-        let message = Message::new(
-            ROOT_ACCOUNT,
-            Request::new1(GET_HANDLER_ID_SELECTOR, account_id.into()),
-        );
-        let res = dynamic_invoke_query_packet(ctx, &message)?;
-        let handler_id = res.out1().expect_string()?;
-        Ok(handler_id)
-    }
+    let message = Message::new(
+        ROOT_ACCOUNT,
+        Request::new1(GET_HANDLER_ID_SELECTOR, account_id.into()),
+    );
+    let res = dynamic_invoke_query_packet(ctx, &message)?;
+    let handler_id = res.out1().expect_string()?;
+    Ok(handler_id)
 }
 
 /// Migrates the account to the new handler with the specified ID.
 pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
-    unsafe {
-        let msg = Message::new(
-            ROOT_ACCOUNT,
-            Request::new1(MIGRATE_SELECTOR, new_handler_id.into()),
-        );
-        dynamic_invoke_msg_packet(ctx, &msg)?;
-        Ok(())
-    }
+    let msg = Message::new(
+        ROOT_ACCOUNT,
+        Request::new1(MIGRATE_SELECTOR, new_handler_id.into()),
+    );
+    dynamic_invoke_msg_packet(ctx, &msg)?;
+    Ok(())
 }
 
 /// Self-destructs the account.
@@ -69,10 +63,7 @@ pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
 /// # Safety
 /// This function is unsafe because it can be used to destroy the account and all its state.
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
-    let msg = Message::new(
-        ROOT_ACCOUNT,
-        Request::new(SELF_DESTRUCT_SELECTOR),
-    );
+    let msg = Message::new(ROOT_ACCOUNT, Request::new(SELF_DESTRUCT_SELECTOR));
     dynamic_invoke_msg_packet(ctx, &msg)?;
     Ok(())
 }

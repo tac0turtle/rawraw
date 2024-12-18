@@ -27,7 +27,7 @@ pub(crate) struct ExecContext<
 > {
     account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
     state_handler: &'a mut ST,
-    id_generator: &'a mut IDG,
+    id_generator: &'a IDG,
     call_stack: CallStack<CALL_STACK_LIMIT>,
 }
 
@@ -37,7 +37,7 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usi
     pub fn new(
         account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
         state_handler: &'a mut ST,
-        id_generator: &'a mut IDG,
+        id_generator: &'a IDG,
         account: AccountID,
     ) -> Self {
         Self {
@@ -84,7 +84,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
                 &handler_id,
                 allocator,
             )?;
-            let res = handler.handle_msg(&message.request(), self, allocator);
+            let res = handler.handle_msg(&message, self, allocator);
 
             // pop the call stack
             self.call_stack.pop();
@@ -141,10 +141,6 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
         self.call_stack.gas.consume_gas(gas)
-    }
-
-    fn self_account_id(&self) -> AccountID {
-        self.call_stack.active_account().unwrap()
     }
 
     fn caller(&self) -> AccountID {
@@ -206,7 +202,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create
-        let on_create = Request::new1(ON_CREATE_SELECTOR, init_data.into());
+        let on_create = Message::new(id, Request::new1(ON_CREATE_SELECTOR, init_data.into()));
 
         // run the on_create handler
         let handler = self.account_manager.code_manager.resolve_handler(
@@ -270,7 +266,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create
-        let on_migrate = Request::new1(ON_MIGRATE_SELECTOR, old_handler_id.into());
+        let on_migrate = Message::new(active_account, Request::new1(ON_MIGRATE_SELECTOR, old_handler_id.into()));
 
         // retrieve the handler
         let handler = self.account_manager.code_manager.resolve_handler(

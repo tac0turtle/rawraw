@@ -23,7 +23,7 @@ impl Frame {
 
 impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
     pub(crate) fn new(active_account: AccountID) -> Self {
-        let mut res = Self {
+        let res = Self {
             call_stack: RefCell::new(Default::default()),
             gas: GasMeter::Unlimited, // TODO
         };
