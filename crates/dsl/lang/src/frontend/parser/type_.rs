@@ -3,12 +3,12 @@ use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::state::Parser;
 
 // parse a type
-pub fn typ(p: &mut Parser) {
+pub fn type_(p: &mut Parser) {
     if p.at(LSquare) {
         let m = p.open();
         p.expect(LSquare);
         p.expect(RSquare);
-        typ(p);
+        type_(p);
         p.close::<ast::TypeArray>(m);
     } else {
         let m = p.open();

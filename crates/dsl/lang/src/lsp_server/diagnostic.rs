@@ -2,6 +2,7 @@ use line_index::LineIndex;
 use salsa::Database;
 use tower_lsp::lsp_types;
 use crate::db::FileSource;
+use crate::frontend;
 use crate::frontend::diagnostic::{Diagnostic, Severity};
 use crate::lsp_server::line_col::{build_line_index, to_lsp_range};
 use crate::frontend::{parser};
@@ -26,9 +27,9 @@ impl From<Severity> for lsp_types::DiagnosticSeverity {
 
 pub fn run_diagnostics(db: &dyn Database, src: FileSource) -> Vec<lsp_types::Diagnostic> {
     let mut lsp_diags = vec![];
-    let _ = parser::parse(&*db, src);
+    let _ = frontend::compile(&*db, src);
     let line_index = build_line_index(&*db, src);
-    let diags = parser::parse::accumulated::<Diagnostic>(&*db, src);
+    let diags = frontend::compile::accumulated::<Diagnostic>(&*db, src);
     for diag in diags {
         lsp_diags.push(to_lsp_diagnostic(&line_index, diag));
     }

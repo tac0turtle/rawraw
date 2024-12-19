@@ -1,7 +1,6 @@
 #![allow(missing_docs)]
 
-mod db;
-mod cli;
+pub mod db;
 pub mod lsp_server;
 pub mod frontend;
 

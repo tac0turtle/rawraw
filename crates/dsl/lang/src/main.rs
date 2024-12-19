@@ -1,12 +1,30 @@
 use std::io::Read;
+use clap::{Parser, Subcommand};
+use ixc_lang::frontend;
+use ixc_lang::frontend::compile_cli;
+use ixc_lang::frontend::diagnostic::Diagnostic;
 
-fn read_example() -> anyhow::Result<String> {
-    let mut input = String::new();
-    // read examples/ex1.ixc
-    std::fs::File::open("crates/dsl/dsl/examples/ex1.ixc")?.read_to_string(&mut input)?;
-    Ok(input)
+#[derive(Parser)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    #[command(name = "lsp-server")]
+    LSPServer,
 }
 
 fn main() {
-    ixc_lang::lsp_server::main()
+    tracing_subscriber::fmt::init();
+
+    let cli = Cli::parse();
+    match cli.command {
+        Some(Command::LSPServer) => ixc_lang::lsp_server::main(),
+        _ =>  {
+            // test example:
+            compile_cli("crates/dsl/lang/examples/ex1.ixc")
+        }
+    }
 }

@@ -1,7 +1,7 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::state::Parser;
-use crate::frontend::parser::typ::typ;
+use crate::frontend::parser::type_::type_;
 
 pub fn map_collection(p: &mut Parser) {
     let m = p.open();
@@ -29,7 +29,7 @@ fn map_key_field(p: &mut Parser) {
     let m = p.open();
     p.expect(Ident);
     p.expect(Colon);
-    typ(p);
+    type_(p);
     if !p.at(RSquare) {
         p.expect(Comma);
     }
@@ -49,7 +49,7 @@ fn map_value_field(p: &mut Parser) {
     let m = p.open();
     p.expect(Ident);
     p.expect(Colon);
-    typ(p);
+    type_(p);
     if !p.at(Semicolon) {
         p.expect(Comma);
     }

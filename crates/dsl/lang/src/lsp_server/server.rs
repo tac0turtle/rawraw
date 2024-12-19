@@ -4,7 +4,7 @@ use std::pin::Pin;
 use std::sync::Mutex;
 use dashmap::DashMap;
 use rowan::GreenNode;
-use tracing::debug;
+use tracing::{debug, info};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::*;
@@ -133,6 +133,7 @@ impl LanguageServer for LSPServer {
 
 #[tokio::main]
 pub async fn main() {
+    info!("Starting LSP server");
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
