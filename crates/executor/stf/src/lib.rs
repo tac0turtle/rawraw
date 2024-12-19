@@ -1,5 +1,4 @@
 //! A state transition function that can be used to execute transactions and query state.
-mod examples;
 mod info;
 
 use crate::info::Info;
@@ -36,8 +35,8 @@ pub trait Transation {
 pub trait BeforeTxApply {
     fn before_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
         am: &AccountManager<Vm>,
-        idg: &mut IDG,
         sh: &mut SH,
+        idg: &mut IDG,
         tx: &Tx,
         alloc: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
@@ -46,15 +45,28 @@ pub trait BeforeTxApply {
 pub trait AfterTxApply {
     fn after_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
         am: &AccountManager<Vm>,
-        idg: &mut IDG,
         sh: &SH,
+        idg: &mut IDG,
         tx: &Tx,
         msg_result: &Result<&[u8], ErrorCode>,
     ) -> Result<(), ErrorCode>;
 }
 
+pub trait BeginBlocker {
+    fn begin_blocker<Vm: VM, SH: StateHandler>();
+}
+
+pub trait EndBlocker {
+    fn end_blocker<Vm: VM, SH: StateHandler>();
+}
+
 /// A state transition function that can be used to execute transactions and query state.
-pub struct STF<BeforeTxApply, PostTxApply>(PhantomData<BeforeTxApply>, PhantomData<PostTxApply>);
+pub struct STF<BeforeTxApply, PostTxApply, BeginBlocker, EndBlocker>(
+    PhantomData<BeforeTxApply>,
+    PhantomData<PostTxApply>,
+    PhantomData<BeginBlocker>,
+    PhantomData<EndBlocker>,
+);
 
 /// TODO: this would be used to whoever is unwrapping the error to know exactly at which stage the tx execution
 /// failed.
@@ -64,11 +76,17 @@ pub enum TxFailure {
     PostTx(ErrorCode),
 }
 
-impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
+impl<Btx: BeforeTxApply, PTx: AfterTxApply, Bb: BeginBlocker, Eb: EndBlocker>
+    STF<Btx, PTx, Bb, Eb>
+{
     pub const ACCOUNT_TO_HANDLER_PREFIX: u8 = 0;
     pub const fn new() -> Self {
-        Self(PhantomData, PhantomData)
+        Self(PhantomData, PhantomData, PhantomData, PhantomData)
     }
+
+    pub fn begin_block() {}
+
+    pub fn end_block() {}
 
     pub fn apply_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
         am: &AccountManager<Vm>,
@@ -89,7 +107,6 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
 
         PTx::after_tx_apply(am, sh, id_generator, tx, &resp)?;
 
-
         Ok(todo!("impl"))
     }
 
@@ -100,7 +117,7 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
         todo!()
     }
 
-    fn response_from_message_packet(packet: &MessagePacket<'_>) -> Result<&'_ [u8], ErrorCode> {
+    fn response_from_message_packet<'a>(packet: &'a MessagePacket<'a>) -> Result<&'a [u8], ErrorCode> {
         todo!()
     }
 }
