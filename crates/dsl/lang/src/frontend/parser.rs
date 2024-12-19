@@ -1,10 +1,6 @@
-use crate::ast::ParsedAST;
+use crate::frontend::ast::ParsedAST;
 use crate::db::FileSource;
-use crate::lexer;
-use crate::lexer::Token;
-use crate::syntax::{SyntaxKind, SyntaxNode};
-use logos::Span;
-use rowan::{GreenNode, GreenNodeBuilder};
+use crate::frontend::lexer;
 use salsa::{Accumulator, Database};
 
 mod file;

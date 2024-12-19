@@ -1,9 +1,9 @@
-use crate::ast;
-use crate::lexer::Token;
-use crate::lexer::Token::*;
-use crate::parser::map::map_collection;
-use crate::parser::state::{MarkClosed, Parser};
-use crate::parser::typ::typ;
+use crate::frontend::ast;
+use crate::frontend::lexer::Token;
+use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::map::map_collection;
+use crate::frontend::parser::state::{MarkClosed, Parser};
+use crate::frontend::parser::typ::typ;
 
 pub fn file(p: &mut Parser) {
     let m = p.open();
@@ -305,11 +305,11 @@ fn expr_delimited(p: &mut Parser) -> MarkClosed {
             expect_ident(p);
             let mut lhs = p.close::<ast::NameExpr>(m);
             //  ExprConstruct
-            if p.at(LCurly) {
-                let m = p.open_before(lhs);
-                expr_construct_field_list(p);
-                lhs = p.close::<ast::ExprConstruct>(m);
-            }
+            // if p.at(LCurly) {
+            //     let m = p.open_before(lhs);
+            //     expr_construct_field_list(p);
+            //     lhs = p.close::<ast::ExprConstruct>(m);
+            // }
             lhs
         }
         LParen => {

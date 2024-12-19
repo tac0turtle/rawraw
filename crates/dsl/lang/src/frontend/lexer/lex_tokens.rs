@@ -1,6 +1,6 @@
 //! GENERATED CODE -- DO NOT EDIT!
 
-use crate::syntax::SyntaxKind;
+use crate::frontend::syntax::SyntaxKind;
 use logos::Logos;
 #[derive(Logos, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token {

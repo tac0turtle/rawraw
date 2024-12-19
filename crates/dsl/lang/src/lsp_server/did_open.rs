@@ -1,10 +1,11 @@
 use tower_lsp::lsp_types::{Diagnostic, DidOpenTextDocumentParams, Position, Range};
 use std::borrow::Borrow;
 use crate::db::{Db, FileSource};
-use crate::lsp::server::LSPServer;
-use crate::{diagnostic, parser};
-use crate::lsp::diagnostic::{run_diagnostics, to_lsp_diagnostic};
-use crate::lsp::line_col;
+use crate::lsp_server::server::LSPServer;
+use crate::frontend::diagnostic;
+use crate::frontend::parser;
+use crate::lsp_server::diagnostic::{run_diagnostics, to_lsp_diagnostic};
+use crate::lsp_server::line_col;
 
 impl LSPServer {
     pub async fn on_did_open(&self, params: DidOpenTextDocumentParams) {

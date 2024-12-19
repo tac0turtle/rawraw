@@ -1,6 +1,6 @@
 use crate::db::FileSource;
-use crate::lsp::diagnostic::run_diagnostics;
-use crate::lsp::server::LSPServer;
+use crate::lsp_server::diagnostic::run_diagnostics;
+use crate::lsp_server::server::LSPServer;
 use salsa::Setter;
 use tower_lsp::lsp_types::{
     Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Position, Range,

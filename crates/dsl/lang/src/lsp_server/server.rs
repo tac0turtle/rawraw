@@ -7,9 +7,7 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
-use crate::{lexer, parser};
 use crate::db::{Db, FileSource};
-use crate::syntax::SyntaxNode;
 
 pub struct LSPServer {
     pub client: Client,

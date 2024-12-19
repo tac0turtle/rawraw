@@ -1,6 +1,6 @@
-use crate::ast;
-use crate::lexer::Token::*;
-use crate::parser::state::Parser;
+use crate::frontend::ast;
+use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::state::Parser;
 
 // parse a type
 pub fn typ(p: &mut Parser) {

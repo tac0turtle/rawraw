@@ -51,7 +51,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
             #(#idents),*
         }
     };
-    write_file(&file, "src/syntax/syntax_kind.rs")
+    write_file(&file, "src/frontend/syntax/syntax_kind.rs")
 }
 
 fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
@@ -90,7 +90,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
         .into_iter()
         .map(|(_, to_syntax_kind)| to_syntax_kind);
     let file = parse_quote! {
-        use crate::syntax::SyntaxKind;
+        use crate::frontend::syntax::SyntaxKind;
         use logos::Logos;
 
         #[derive(Logos, Debug, PartialEq, Eq, Clone, Copy)]
@@ -116,7 +116,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
             }
         }
     };
-    write_file(&file, "src/lexer/lex_tokens.rs")
+    write_file(&file, "src/frontend/lexer/lex_tokens.rs")
 }
 
 enum AstNodeAst<'a> {
@@ -281,7 +281,7 @@ fn ast_node_struct(
         impl #struct_name {
             #(#field_getters)*
         }
-        impl crate::ast::AstStruct for #struct_name {
+        impl crate::frontend::ast::AstStruct for #struct_name {
             const KIND: SyntaxKind = SyntaxKind::#syntax_name;
         }
     })
@@ -337,10 +337,10 @@ fn generate_ast(grammar: &Grammar) -> anyhow::Result<()> {
         )?);
     }
     let file = parse_quote! {
-        use crate::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
+        use crate::frontend::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
         #(#nodes)*
     };
-    write_file(&file, "src/ast/nodes.rs")
+    write_file(&file, "src/frontend/ast/nodes.rs")
 }
 
 fn token_syntax_name(name: &str) -> syn::Ident {

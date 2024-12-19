@@ -1,7 +1,7 @@
-use crate::ast;
-use crate::lexer::Token::*;
-use crate::parser::state::Parser;
-use crate::parser::typ::typ;
+use crate::frontend::ast;
+use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::state::Parser;
+use crate::frontend::parser::typ::typ;
 
 pub fn map_collection(p: &mut Parser) {
     let m = p.open();

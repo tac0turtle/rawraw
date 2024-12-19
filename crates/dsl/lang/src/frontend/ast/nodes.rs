@@ -1,6 +1,6 @@
 //! GENERATED CODE -- DO NOT EDIT!
 
-use crate::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
+use crate::frontend::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct File {
     syntax: SyntaxNode,
@@ -23,7 +23,7 @@ impl File {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for File {
+impl crate::frontend::ast::AstStruct for File {
     const KIND: SyntaxKind = SyntaxKind::FILE;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -66,7 +66,7 @@ impl Interface {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for Interface {
+impl crate::frontend::ast::AstStruct for Interface {
     const KIND: SyntaxKind = SyntaxKind::INTERFACE;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -91,7 +91,7 @@ impl Handler {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::ast::AstStruct for Handler {
+impl crate::frontend::ast::AstStruct for Handler {
     const KIND: SyntaxKind = SyntaxKind::HANDLER;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -130,7 +130,7 @@ impl InterfaceFn {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for InterfaceFn {
+impl crate::frontend::ast::AstStruct for InterfaceFn {
     const KIND: SyntaxKind = SyntaxKind::INTERFACE_FN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -159,7 +159,7 @@ impl Struct {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for Struct {
+impl crate::frontend::ast::AstStruct for Struct {
     const KIND: SyntaxKind = SyntaxKind::STRUCT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -188,7 +188,7 @@ impl Event {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for Event {
+impl crate::frontend::ast::AstStruct for Event {
     const KIND: SyntaxKind = SyntaxKind::EVENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -229,7 +229,7 @@ impl FnSignature {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for FnSignature {
+impl crate::frontend::ast::AstStruct for FnSignature {
     const KIND: SyntaxKind = SyntaxKind::FN_SIGNATURE;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -268,7 +268,7 @@ impl FnParamList {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for FnParamList {
+impl crate::frontend::ast::AstStruct for FnParamList {
     const KIND: SyntaxKind = SyntaxKind::FN_PARAM_LIST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -293,7 +293,7 @@ impl FnEvents {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for FnEvents {
+impl crate::frontend::ast::AstStruct for FnEvents {
     const KIND: SyntaxKind = SyntaxKind::FN_EVENTS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -318,7 +318,7 @@ impl FnRet {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::ast::AstStruct for FnRet {
+impl crate::frontend::ast::AstStruct for FnRet {
     const KIND: SyntaxKind = SyntaxKind::FN_RET;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -351,7 +351,7 @@ impl FnParam {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for FnParam {
+impl crate::frontend::ast::AstStruct for FnParam {
     const KIND: SyntaxKind = SyntaxKind::FN_PARAM;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -390,7 +390,7 @@ impl TypeIdent {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::ast::AstStruct for TypeIdent {
+impl crate::frontend::ast::AstStruct for TypeIdent {
     const KIND: SyntaxKind = SyntaxKind::TYPE_IDENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -415,7 +415,7 @@ impl TypeArray {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for TypeArray {
+impl crate::frontend::ast::AstStruct for TypeArray {
     const KIND: SyntaxKind = SyntaxKind::TYPE_ARRAY;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -444,7 +444,7 @@ impl StructField {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for StructField {
+impl crate::frontend::ast::AstStruct for StructField {
     const KIND: SyntaxKind = SyntaxKind::STRUCT_FIELD;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -477,7 +477,7 @@ impl MapCollection {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for MapCollection {
+impl crate::frontend::ast::AstStruct for MapCollection {
     const KIND: SyntaxKind = SyntaxKind::MAP_COLLECTION;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -502,7 +502,7 @@ impl MapKeyFields {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for MapKeyFields {
+impl crate::frontend::ast::AstStruct for MapKeyFields {
     const KIND: SyntaxKind = SyntaxKind::MAP_KEY_FIELDS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -527,7 +527,7 @@ impl MapValueFields {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for MapValueFields {
+impl crate::frontend::ast::AstStruct for MapValueFields {
     const KIND: SyntaxKind = SyntaxKind::MAP_VALUE_FIELDS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -556,7 +556,7 @@ impl MapField {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for MapField {
+impl crate::frontend::ast::AstStruct for MapField {
     const KIND: SyntaxKind = SyntaxKind::MAP_FIELD;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -585,7 +585,7 @@ impl Client {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for Client {
+impl crate::frontend::ast::AstStruct for Client {
     const KIND: SyntaxKind = SyntaxKind::CLIENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -610,7 +610,7 @@ impl ClientTypes {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ClientTypes {
+impl crate::frontend::ast::AstStruct for ClientTypes {
     const KIND: SyntaxKind = SyntaxKind::CLIENT_TYPES;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -635,7 +635,7 @@ impl ClientType {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ClientType {
+impl crate::frontend::ast::AstStruct for ClientType {
     const KIND: SyntaxKind = SyntaxKind::CLIENT_TYPE;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -668,7 +668,7 @@ impl Impl {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for Impl {
+impl crate::frontend::ast::AstStruct for Impl {
     const KIND: SyntaxKind = SyntaxKind::IMPL;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -693,7 +693,7 @@ impl ImplFor {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::ast::AstStruct for ImplFor {
+impl crate::frontend::ast::AstStruct for ImplFor {
     const KIND: SyntaxKind = SyntaxKind::IMPL_FOR;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -736,7 +736,7 @@ impl ImplFn {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ImplFn {
+impl crate::frontend::ast::AstStruct for ImplFn {
     const KIND: SyntaxKind = SyntaxKind::IMPL_FN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -761,7 +761,7 @@ impl FnBlock {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for FnBlock {
+impl crate::frontend::ast::AstStruct for FnBlock {
     const KIND: SyntaxKind = SyntaxKind::FN_BLOCK;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -814,7 +814,7 @@ impl ExprParen {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ExprParen {
+impl crate::frontend::ast::AstStruct for ExprParen {
     const KIND: SyntaxKind = SyntaxKind::EXPR_PAREN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -839,7 +839,7 @@ impl NameExpr {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::ast::AstStruct for NameExpr {
+impl crate::frontend::ast::AstStruct for NameExpr {
     const KIND: SyntaxKind = SyntaxKind::NAME_EXPR;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -868,7 +868,7 @@ impl ExprCall {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ExprCall {
+impl crate::frontend::ast::AstStruct for ExprCall {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CALL;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -897,7 +897,7 @@ impl FieldExpr {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::ast::AstStruct for FieldExpr {
+impl crate::frontend::ast::AstStruct for FieldExpr {
     const KIND: SyntaxKind = SyntaxKind::FIELD_EXPR;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -922,7 +922,7 @@ impl ArgList {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ArgList {
+impl crate::frontend::ast::AstStruct for ArgList {
     const KIND: SyntaxKind = SyntaxKind::ARG_LIST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -951,7 +951,7 @@ impl ExprBinary {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ExprBinary {
+impl crate::frontend::ast::AstStruct for ExprBinary {
     const KIND: SyntaxKind = SyntaxKind::EXPR_BINARY;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -990,7 +990,7 @@ impl Rhs {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for Rhs {
+impl crate::frontend::ast::AstStruct for Rhs {
     const KIND: SyntaxKind = SyntaxKind::RHS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1015,7 +1015,7 @@ impl Arg {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for Arg {
+impl crate::frontend::ast::AstStruct for Arg {
     const KIND: SyntaxKind = SyntaxKind::ARG;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1044,7 +1044,7 @@ impl ExprConstruct {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ExprConstruct {
+impl crate::frontend::ast::AstStruct for ExprConstruct {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CONSTRUCT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1069,7 +1069,7 @@ impl ExprConstructFieldList {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ExprConstructFieldList {
+impl crate::frontend::ast::AstStruct for ExprConstructFieldList {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CONSTRUCT_FIELD_LIST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1098,7 +1098,7 @@ impl ExprConstructField {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ExprConstructField {
+impl crate::frontend::ast::AstStruct for ExprConstructField {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CONSTRUCT_FIELD;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1131,6 +1131,6 @@ impl ForStmt {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::ast::AstStruct for ForStmt {
+impl crate::frontend::ast::AstStruct for ForStmt {
     const KIND: SyntaxKind = SyntaxKind::FOR_STMT;
 }

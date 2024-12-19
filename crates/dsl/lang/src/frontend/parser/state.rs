@@ -1,7 +1,7 @@
-use crate::ast::{AstStruct, ErrorNode};
-use crate::diagnostic::{text_range_from_span, Diagnostic, Severity};
-use crate::lexer::Token;
-use crate::syntax::SyntaxKind;
+use crate::frontend::ast::{AstStruct, ErrorNode};
+use crate::frontend::diagnostic::{text_range_from_span, Diagnostic, Severity};
+use crate::frontend::lexer::Token;
+use crate::frontend::syntax::SyntaxKind;
 use rowan::{GreenNode, GreenNodeBuilder};
 use salsa::{Accumulator, Database};
 use std::cell::Cell;

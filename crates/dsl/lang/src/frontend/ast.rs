@@ -1,5 +1,5 @@
 use rowan::GreenNode;
-use crate::syntax::{SyntaxKind, SyntaxNode};
+use crate::frontend::syntax::{SyntaxKind, SyntaxNode};
 
 mod nodes;
 
