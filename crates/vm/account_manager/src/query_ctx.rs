@@ -8,7 +8,7 @@ use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{AccountNotFound, MessageNotHandled};
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
-use ixc_message_api::{AccountID, ROOT_ACCOUNT};
+use ixc_message_api::ROOT_ACCOUNT;
 use ixc_vm_api::VM;
 
 pub(crate) struct QueryContext<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
@@ -106,7 +106,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        self.call_stack.gas.consume(gas)
+        self.call_stack.consume_gas(gas)
     }
 }
 

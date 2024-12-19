@@ -144,7 +144,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        self.call_stack.gas.consume(gas)
+        self.call_stack.consume_gas(gas)
     }
 }
 
