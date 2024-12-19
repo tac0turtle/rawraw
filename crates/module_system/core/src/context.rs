@@ -1,10 +1,9 @@
-use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::handler::{HostBackend, InvokeParams};
-use ixc_message_api::AccountID;
-use ixc_schema::mem::MemoryManager;
-
 #[cfg(feature = "std")]
 extern crate alloc;
+use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::handler::HostBackend;
+use ixc_message_api::AccountID;
+use ixc_schema::mem::MemoryManager;
 
 /// Context wraps a single message request (and possibly response as well) along with
 /// the router callbacks necessary for making nested message calls.

@@ -5,7 +5,7 @@ use allocator_api2::{
 };
 use ixc_account_manager::state_handler::std::StdStateError;
 use ixc_message_api::alloc_util;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 pub struct Snapshot {
     index: usize,

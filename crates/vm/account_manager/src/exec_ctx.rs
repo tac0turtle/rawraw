@@ -275,7 +275,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         // retrieve the handler
         let handler = self.account_manager.code_manager.resolve_handler(
             &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
-            &new_handler_id,
+            new_handler_id,
             allocator,
         )?;
 
