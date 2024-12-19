@@ -108,10 +108,6 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
         self.call_stack.gas.consume_gas(gas)
     }
-
-    fn caller(&self) -> AccountID {
-        AccountID::EMPTY
-    }
 }
 
 impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>

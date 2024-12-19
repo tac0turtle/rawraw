@@ -87,7 +87,8 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
                 &handler_id,
                 allocator,
             )?;
-            let res = handler.handle_msg(&message, self, allocator);
+            let caller = self.call_stack.caller()?;
+            let res = handler.handle_msg(&caller, &message, self, allocator);
 
             // pop the call stack
             self.call_stack.pop();
@@ -144,10 +145,6 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
         self.call_stack.gas.consume_gas(gas)
-    }
-
-    fn caller(&self) -> AccountID {
-        self.call_stack.caller().unwrap()
     }
 }
 
@@ -217,7 +214,8 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         // push a frame onto the call stack
         self.call_stack.push(id)?;
 
-        let res = handler.handle_system(&on_create, self, allocator);
+        let caller = self.call_stack.caller()?;
+        let res = handler.handle_system(&caller, &on_create, self, allocator);
 
         // pop the frame
         self.call_stack.pop();
@@ -282,7 +280,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         )?;
 
         // execute the on-migrate packet with the system message handler
-        handler.handle_system(&on_migrate, self, allocator)
+        handler.handle_system(&active_account, &on_migrate, self, allocator)
     }
 
     unsafe fn handle_self_destruct(&mut self) -> Result<(), ErrorCode> {

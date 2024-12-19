@@ -4,6 +4,7 @@ use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::message::{Message, MessageSelector, Response};
+use ixc_message_api::AccountID;
 
 /// A router for message packets.
 /// # Safety
@@ -27,6 +28,7 @@ pub type Route<T> = (
     u64,
     for<'a> fn(
         &T,
+        &AccountID,
         &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
@@ -47,12 +49,13 @@ pub type QueryRoute<T> = (
 /// Execute a message packet on a router.
 pub fn exec_route<'a, R: Router + ?Sized>(
     rtr: &R,
+    caller: &AccountID,
     req: &Message,
     callbacks: &mut dyn HostBackend,
     allocator: &'a dyn Allocator,
 ) -> Result<Response<'a>, ErrorCode> {
     match find_route(R::SORTED_MSG_ROUTES, req.request().message_selector()) {
-        Some(rt) => rt(rtr, req, callbacks, allocator),
+        Some(rt) => rt(rtr, caller, req, callbacks, allocator),
         None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
     }
 }

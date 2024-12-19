@@ -97,7 +97,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
             account: account_id,
             backend: self.backend.clone(),
         };
-        let ctx = Context::new_ref_cell(account_id, Box::new(backend), &self.mem);
+        let ctx = Context::new_boxed(&account_id, &account_id, Box::new(backend), &self.mem);
         ctx
     }
 
@@ -230,10 +230,6 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn consume_gas(&self, _gas: u64) -> Result<(), ErrorCode> {
         Ok(())
     }
-
-    fn caller(&self) -> AccountID {
-        AccountID::EMPTY
-    }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.
@@ -269,12 +265,13 @@ impl MockHandler {
 impl RawHandler for MockHandler {
     fn handle_msg<'a>(
         &self,
+        caller: &AccountID,
         message: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         for mock in &self.mocks {
-            let res = mock.handle_msg(message, callbacks, allocator);
+            let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
                 Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
                 _ => return res,
@@ -313,20 +310,24 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
 
     fn handle_msg<'a>(
         &self,
+        caller: &AccountID,
         message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
-        self.0.handle_msg(message_packet, callbacks, allocator)
+        self.0
+            .handle_msg(caller, message_packet, callbacks, allocator)
     }
 
     fn handle_system<'a>(
         &self,
+        caller: &AccountID,
         message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
-        self.0.handle_system(message_packet, callbacks, allocator)
+        self.0
+            .handle_system(caller, message_packet, callbacks, allocator)
     }
 }
 

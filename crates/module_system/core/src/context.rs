@@ -10,6 +10,7 @@ extern crate alloc;
 /// the router callbacks necessary for making nested message calls.
 pub struct Context<'a> {
     account_id: AccountID,
+    caller_id: AccountID,
     backend: BackendHandle<'a>,
     pub(crate) mem: &'a MemoryManager,
 }
@@ -24,12 +25,13 @@ enum BackendHandle<'a> {
 impl<'a> Context<'a> {
     /// Create a new context from a message packet and host callbacks with a pre-allocated memory manager.
     pub fn new(
-        account_id: AccountID,
+        account_id: &AccountID,
         host_callbacks: &'a dyn HostBackend,
         mem: &'a MemoryManager,
     ) -> Self {
         Self {
-            account_id,
+            account_id: account_id.clone(),
+            caller_id: AccountID::EMPTY,
             mem,
             backend: BackendHandle::Immutable(host_callbacks),
         }
@@ -37,27 +39,31 @@ impl<'a> Context<'a> {
 
     /// Creates a new context with mutable host backend and a pre-allocated memory manager.
     pub fn new_mut(
-        account_id: AccountID,
+        account_id: &AccountID,
+        caller_id: &AccountID,
         host_callbacks: &'a mut dyn HostBackend,
         mem: &'a MemoryManager,
     ) -> Self {
         Self {
-            account_id,
+            account_id: account_id.clone(),
+            caller_id: caller_id.clone(),
             mem,
             backend: BackendHandle::Mut(host_callbacks),
         }
     }
 
-    /// Creates a new context with a RefCell host backend and a pre-allocated memory manager.
+    /// Creates a new context with a Box host backend and a pre-allocated memory manager.
     /// This constructor is primarily intended for use in testing.
     #[cfg(feature = "std")]
-    pub fn new_ref_cell(
-        account_id: AccountID,
+    pub fn new_boxed(
+        account_id: &AccountID,
+        caller_id: &AccountID,
         host_callbacks: alloc::boxed::Box<dyn HostBackend>,
         mem: &'a MemoryManager,
     ) -> Self {
         Self {
-            account_id,
+            account_id: account_id.clone(),
+            caller_id: caller_id.clone(),
             mem,
             backend: BackendHandle::Boxed(host_callbacks),
         }
@@ -70,8 +76,13 @@ impl<'a> Context<'a> {
     }
 
     /// This is the address of the account which is making the message call.
+    ///
+    /// For queries this will always be [`AccountID::EMPTY`].
+    /// For system messages, this is the forwarded caller that was responsible
+    /// for triggering the system message, any.
+    /// For example, when an account is created, this is the account that called create.
     pub fn caller(&self) -> AccountID {
-        self.with_backend(|backend| backend.caller())
+        self.caller_id
     }
 
     /// Consume gas. Returns an out of gas error if there is not enough gas.

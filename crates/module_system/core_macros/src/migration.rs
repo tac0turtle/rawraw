@@ -99,11 +99,11 @@ pub(crate) fn build_on_migrate_handler(
     }
     if !cases.is_empty() {
         builder.system_routes.push(quote! {
-                (::ixc::core::account_api::ON_MIGRATE_SELECTOR, | h: & Self, packet, cb, a | {
+                (::ixc::core::account_api::ON_MIGRATE_SELECTOR, | h: & Self, caller, packet, cb, a | {
                     unsafe {
                        let old_handler_id = packet.request().in1().expect_string()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
-                        let mut ctx =::ixc::core::Context::new_mut(packet.target_account(), cb, &mem);
+                        let mut ctx =::ixc::core::Context::new_mut(&packet.target_account(), caller, cb, &mem);
                         let scope: ::ixc::core::resource::ResourceScope<'_> = ::core::default::Default::default();
                         let res = match old_handler_id {
                             #(#cases)*

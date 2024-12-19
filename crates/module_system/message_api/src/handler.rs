@@ -9,6 +9,7 @@ pub trait RawHandler {
     /// Handle a message.
     fn handle_msg<'a>(
         &self,
+        _caller: &AccountID,
         _message: &Message,
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
@@ -29,6 +30,7 @@ pub trait RawHandler {
     /// Handle a system message.
     fn handle_system<'a>(
         &self,
+        _forwarded_caller: &AccountID,
         _message_packet: &Message,
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
@@ -69,9 +71,6 @@ pub trait HostBackend {
 
     /// Consume gas. Returns an out-of-gas error if there is not enough gas.
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode>;
-
-    /// Get the account ID of the caller of the message.
-    fn caller(&self) -> AccountID;
 }
 
 /// Parameters common to all invoke methods on HostBackend.
