@@ -7,6 +7,7 @@ mod syntax;
 mod lexer;
 mod lsp;
 mod db;
+mod diagnostic;
 
 use crate::lexer::{lex};
 use crate::syntax::{SyntaxKind, SyntaxNode};
@@ -23,14 +24,14 @@ fn read_example() -> anyhow::Result<String> {
     Ok(input)
 }
 
-fn compile() -> anyhow::Result<()> {
-    let input = read_example()?;
-    let tokens = lex(&input);
-    let root = parser::parse(&input, tokens);
-    println!("{:#?}", root);
-
-    Ok(())
-}
+// fn compile() -> anyhow::Result<()> {
+//     let input = read_example()?;
+//     let tokens = lex(&input);
+//     let root = parser::parse_tokens(&input, tokens);
+//     println!("{:#?}", root);
+//
+//     Ok(())
+// }
 
 fn main() {
     //

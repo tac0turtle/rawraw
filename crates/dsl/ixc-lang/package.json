@@ -9,7 +9,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:ixc"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
@@ -17,7 +19,8 @@
         "id": "ixc",
         "extensions": [
           ".ixc"
-        ]
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [

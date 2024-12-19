@@ -1,3 +1,4 @@
+use rowan::GreenNode;
 use crate::syntax::{SyntaxKind, SyntaxNode};
 
 mod nodes;
@@ -14,3 +15,7 @@ impl AstStruct for ErrorNode {
     const KIND: SyntaxKind = SyntaxKind::ERROR_NODE;
 }
 
+#[salsa::tracked]
+pub struct ParsedAST<'db> {
+    #[return_ref] pub root: GreenNode,
+}

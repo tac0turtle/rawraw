@@ -1,13 +1,20 @@
-use logos::Span;
-use rowan::{GreenNode, GreenNodeBuilder};
+use crate::ast::ParsedAST;
+use crate::db::FileSource;
+use crate::lexer;
 use crate::lexer::Token;
 use crate::syntax::{SyntaxKind, SyntaxNode};
+use logos::Span;
+use rowan::{GreenNode, GreenNodeBuilder};
+use salsa::{Accumulator, Database};
 
-mod parse;
+mod file;
 mod state;
 
-pub fn parse<'source, I: Iterator<Item=(Token, Span)>>(src: &str, tokens: I) -> GreenNode {
-    let mut parser = state::Parser::new(src, tokens.collect());
-    parse::file(&mut parser);
-    parser.finish(Default::default())
+#[salsa::tracked]
+pub fn parse(db: &dyn Database, src: FileSource) -> ParsedAST<'_> {
+    let tokens = lexer::lex(src.text(db));
+    let mut parser = state::Parser::new(src.text(db), tokens.collect());
+    file::file(&mut parser);
+    let root = parser.finish(Default::default(), db);
+    ParsedAST::new(db, root)
 }

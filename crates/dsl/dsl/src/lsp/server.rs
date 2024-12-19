@@ -106,6 +106,7 @@ impl LanguageServer for LSPServer {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        self.on_did_change(params).await;
         self.client
             .log_message(MessageType::INFO, "Did Change Called!")
             .await;

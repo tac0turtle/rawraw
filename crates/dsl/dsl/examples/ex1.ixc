@@ -1,5 +1,6 @@
 interface BankAPI {
    struct Coin {
+   
        denom: Str,
        amount: u128,
    }
@@ -10,7 +11,6 @@ interface BankAPI {
        denom: Str,
        amount: u128,
    }
-
    tx send(key to: AccountID, coins: []Coin) emits(EventTransfer);
    query get_balance(account: AccountID, denom: Str) u128;
 }

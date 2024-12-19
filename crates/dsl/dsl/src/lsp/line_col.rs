@@ -4,15 +4,8 @@ use rowan::TextSize;
 use salsa::Database;
 use tower_lsp::lsp_types;
 
-// #[salsa::tracked]
-// pub struct LineColIndex<'db> {
-//     #[return_ref]
-//     pub index: line_index::LineIndex,
-// }
-//
-
 #[salsa::tracked(return_ref)]
-pub fn new_line_col_index(db: &dyn Database, source: FileSource) -> LineIndex {
+pub fn line_col_index(db: &dyn Database, source: FileSource) -> LineIndex {
     LineIndex::new(source.text(db))
 }
 

@@ -7,7 +7,8 @@
 mod server;
 mod did_open;
 mod document_symbol;
-mod line_col;
 mod did_change;
+mod diagnostic;
+mod line_col;
 
 pub use server::main;

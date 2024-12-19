@@ -1,9 +1,11 @@
 use crate::ast::{AstStruct, ErrorNode};
+use crate::diagnostic::{text_range_from_span, Diagnostic, Severity};
 use crate::lexer::Token;
-use crate::syntax::{SyntaxKind, SyntaxNode};
+use crate::syntax::SyntaxKind;
+use rowan::{GreenNode, GreenNodeBuilder};
+use salsa::{Accumulator, Database};
 use std::cell::Cell;
 use std::ops::Range;
-use rowan::{GreenNode, GreenNodeBuilder};
 
 pub struct Parser<'a> {
     input: &'a str,
@@ -11,6 +13,7 @@ pub struct Parser<'a> {
     pos: usize,
     fuel: Cell<u32>,
     events: Vec<Event>,
+    diagnostics: Vec<Diagnostic>,
 }
 
 pub type Span = Range<usize>;
@@ -39,6 +42,7 @@ impl <'a> Parser<'a> {
             pos: 0,
             fuel: Cell::new(256),
             events: vec![],
+            diagnostics: vec![],
         };
         res.skip_ws();
         res
@@ -152,7 +156,7 @@ impl <'a> Parser<'a> {
             return;
         }
         // TODO: Error reporting.
-        eprintln!("expected {token:?}");
+        self.emit_error(format!("expected {token:?}"));
     }
 
     pub fn expect_f(&mut self, eq: impl FnOnce(Token) -> bool, error: &str) {
@@ -160,23 +164,32 @@ impl <'a> Parser<'a> {
             return;
         }
         // TODO: Error reporting.
-        eprintln!("error: {error}");
+        self.emit_error(error.into());
     }
 
     pub fn expect_any(&mut self, tokens: &[Token]) {
         if self.eat_any(tokens) {
             return;
         }
-        // TODO: Error reporting.
-        eprintln!("expected one of: {tokens:?}");
+        // TODO: Error reporting
+        self.emit_error(format!("expected one of: {tokens:?}"));
     }
 
     pub fn advance_with_error(&mut self, error: &str) {
         let m = self.open();
         // TODO: Error reporting.
-        eprintln!("{error}");
+        self.emit_error(error.into());
         self.advance();
         self.close::<ErrorNode>(m);
+    }
+
+    fn emit_error(&mut self, message: String) {
+        let span = &self.tokens[self.pos].1;
+        self.diagnostics.push(Diagnostic {
+            message,
+            range: text_range_from_span(span),
+            severity: Severity::Error,
+        });
     }
 
     fn skip_ws(&mut self) {
@@ -189,7 +202,7 @@ impl <'a> Parser<'a> {
         }
     }
 
-    pub fn finish(self, mut builder: GreenNodeBuilder) -> GreenNode {
+    pub fn finish(self, mut builder: GreenNodeBuilder, db: &dyn Database) -> GreenNode {
         builder.start_node(SyntaxKind::ROOT.into());
         let mut i = 0;
         for event in self.events {
@@ -205,7 +218,11 @@ impl <'a> Parser<'a> {
             }
         }
         builder.finish_node();
-        builder.finish()
+        let root =builder.finish();
+        for diag in self.diagnostics {
+            diag.accumulate(db);
+        }
+        root
     }
 }
 
