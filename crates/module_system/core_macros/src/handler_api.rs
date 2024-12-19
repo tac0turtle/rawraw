@@ -3,7 +3,7 @@ use crate::handler::{PublishedFnInfo, PublishedFnType};
 use manyhow::manyhow;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{ItemTrait, TraitItem};
+use syn::{ItemTrait, LitStr, TraitItem};
 
 /// Handles the #[handler_api] attribute.
 pub(crate) fn handler_api(
@@ -16,10 +16,36 @@ pub(crate) fn handler_api(
     // we extract method data for each function in the trait using the APIBuilder
     for item in &item_trait.items {
         if let TraitItem::Fn(f) = item {
+            // Extract docs from the function attributes
+            let fn_docs = f
+                .attrs
+                .iter()
+                .filter_map(|attr| {
+                    if attr.path().is_ident("doc") {
+                        match &attr.meta {
+                            syn::Meta::NameValue(meta) => {
+                                if let syn::Expr::Lit(expr_lit) = &meta.value {
+                                    if let syn::Lit::Str(lit_str) = &expr_lit.lit {
+                                        let new_doc = format!(
+                                            "{} (Generated client method)",
+                                            lit_str.value()
+                                        );
+                                        return Some(LitStr::new(&new_doc, lit_str.span()));
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    None
+                })
+                .collect::<Vec<_>>();
+
             let publish_target = PublishedFnInfo {
                 signature: f.sig.clone(),
                 ty: PublishedFnType::Publish { attr: None },
                 attrs: f.attrs.clone(),
+                docs: fn_docs, // Add this field to PublishedFnInfo
             };
             builder.extract_method_data(trait_ident, &dyn_trait, &publish_target)?;
         }
@@ -45,9 +71,35 @@ pub(crate) fn handler_api(
 
     let items = &mut builder.items;
 
+    let docs = item_trait
+        .attrs
+        .iter()
+        .filter_map(|attr| {
+            if attr.path().is_ident("doc") {
+                match &attr.meta {
+                    syn::Meta::NameValue(meta) => {
+                        if let syn::Expr::Lit(expr_lit) = &meta.value {
+                            if let syn::Lit::Str(lit_str) = &expr_lit.lit {
+                                let new_doc = format!("{} (Generated client)", lit_str.value());
+                                return Some(LitStr::new(&new_doc, lit_str.span()));
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None
+        })
+        .collect::<Vec<_>>();
     let client_signatures = &builder.client_signatures;
+
     Ok(quote! {
         #item_trait
+
+        #(#[doc = #docs])*
+        pub trait #client_trait_ident {
+            #( #client_signatures; )*
+        }
 
         #(#items)*
 
@@ -59,10 +111,6 @@ pub(crate) fn handler_api(
             fn handle_query(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
                 ::ixc::core::routing::exec_query_route(self, message_packet, callbacks, allocator)
             }
-        }
-
-        pub trait #client_trait_ident {
-            #( #client_signatures; )*
         }
     })
 }
