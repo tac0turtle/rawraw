@@ -1,13 +1,16 @@
 //! A state transition function that can be used to execute transactions and query state.
-mod info;
 mod examples;
+mod info;
 
-use std::marker::PhantomData;
 use crate::info::Info;
+use std::marker::PhantomData;
 
 use allocator_api2::alloc::Allocator;
+use ixc_account_manager::authz::AuthorizationMiddleware;
+use ixc_account_manager::id_generator::IDGenerator;
 use ixc_account_manager::state_handler::gas::GasMeter;
 use ixc_account_manager::state_handler::StateHandler;
+use ixc_account_manager::AccountManager;
 use ixc_message_api::handler::{HostBackend, RawHandler};
 use ixc_message_api::{code::ErrorCode, header::MessageSelector, packet::MessagePacket, AccountID};
 use ixc_vm_api::VM;
@@ -31,21 +34,22 @@ pub trait Transation {
 }
 
 pub trait BeforeTxApply {
-    fn before_tx_apply<Vm: VM, SH: StateHandler, Tx: Transation>(
-        vm: &Vm,
+    fn before_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
+        am: &AccountManager<Vm>,
+        idg: &mut IDG,
         sh: &mut SH,
         tx: &Tx,
-        handler: &dyn RawHandler,
         alloc: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
 }
 
 pub trait AfterTxApply {
-    fn after_tx_apply<Vm: VM, SH: StateHandler, Tx: Transation>(
-        vm: &Vm,
+    fn after_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
+        am: &AccountManager<Vm>,
+        idg: &mut IDG,
         sh: &SH,
         tx: &Tx,
-        msg_result: &[u8],
+        msg_result: &Result<&[u8], ErrorCode>,
     ) -> Result<(), ErrorCode>;
 }
 
@@ -66,71 +70,44 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply> STF<Btx, PTx> {
         Self(PhantomData, PhantomData)
     }
 
-    pub fn apply_tx<Vm: VM, SH: StateHandler, Tx: Transation>(
-        vm: &Vm,
+    pub fn apply_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
+        am: &AccountManager<Vm>,
         sh: &mut SH,
+        id_generator: &mut IDG,
         tx: &Tx,
         allocator: &dyn Allocator,
     ) -> Result<Vec<u8>, ErrorCode> {
-        let handler = Self::get_handler_for_sender(tx.sender(), vm, sh, allocator)?;
-
-        let mut gas_meter = GasMeter::new(0);
-
-        // before tx handle
-        sh.begin_tx(&mut gas_meter)?;
-        Btx::before_tx_apply(vm, sh, tx, handler, allocator)?;
-        sh.commit_tx(&mut gas_meter)?;
-
-        let mut host_backend = Self::new_host_backend();
+        Btx::before_tx_apply(am, sh, id_generator, tx, allocator)?;
         let mut message_packet = Self::new_message_packet(tx, allocator);
 
-        // apply msg
-        sh.begin_tx(&mut gas_meter)?;
-        let resp = handler.handle_msg(&mut message_packet, &mut host_backend, allocator)?;
-        sh.commit_tx(&mut gas_meter)?;
+        // handle msg
 
-        // post tx handle
-        sh.begin_tx(&mut gas_meter)?;
-        PTx::after_tx_apply(vm, sh, tx, &[])?;
-        sh.commit_tx(&mut gas_meter)?;
+        let mut msg = Self::new_message_packet(tx, allocator);
+        am.invoke_msg(sh, id_generator, &NoOpAuthorizer, &mut msg, allocator)?;
+
+        let resp = Self::response_from_message_packet(&msg);
+
+        PTx::after_tx_apply(am, sh, id_generator, tx, &resp)?;
+
 
         Ok(todo!("impl"))
     }
 
-    fn get_handler_for_sender<'a, 'b, SH: StateHandler, Vm: VM>(
-        sender: &AccountID,
-        vm: &Vm,
-        sh: &SH,
-        alloc: &'b dyn Allocator,
-    ) -> Result<&'a dyn RawHandler, ErrorCode> {
-        todo!("impl")
-    }
-
-    pub fn new_host_backend() -> HostBackendImpl {
+    pub fn new_message_packet<'a>(
+        tx: &impl Transation,
+        alloc: &dyn Allocator,
+    ) -> MessagePacket<'a> {
         todo!()
     }
 
-    pub fn new_message_packet<'a>(tx: &impl Transation, alloc: &dyn Allocator) -> MessagePacket<'a> {
+    fn response_from_message_packet(packet: &MessagePacket<'_>) -> Result<&'_ [u8], ErrorCode> {
         todo!()
     }
 }
+struct NoOpAuthorizer;
 
-struct HostBackendImpl;
-
-impl HostBackend for HostBackendImpl {
-    fn invoke_msg(
-        &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        todo!()
-    }
-
-    fn invoke_query(
-        &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+impl AuthorizationMiddleware for NoOpAuthorizer {
+    fn authorize(&self, real_caller: AccountID, msg: &MessagePacket) -> Result<(), ErrorCode> {
         todo!()
     }
 }
@@ -138,7 +115,5 @@ impl HostBackend for HostBackendImpl {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_stf() {
-
-    }
+    fn test_stf() {}
 }
