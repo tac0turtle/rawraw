@@ -9,6 +9,8 @@ use salsa::{Accumulator, Database};
 
 mod file;
 mod state;
+mod typ;
+mod map;
 
 #[salsa::tracked]
 pub fn parse(db: &dyn Database, src: FileSource) -> ParsedAST<'_> {

@@ -1,7 +1,9 @@
 use crate::ast;
 use crate::lexer::Token;
 use crate::lexer::Token::*;
+use crate::parser::map::map_collection;
 use crate::parser::state::{MarkClosed, Parser};
+use crate::parser::typ::typ;
 
 pub fn file(p: &mut Parser) {
     let m = p.open();
@@ -31,7 +33,7 @@ fn interface(p: &mut Parser) {
 fn interface_item(p: &mut Parser) {
     let cur = p.cur();
     if FN_TYPES.contains(&cur) {
-        fn_sig(p);
+        fn_sig(p, Semicolon);
         p.expect(Semicolon);
     } else if cur == StructKw {
         struct_(p);
@@ -42,7 +44,7 @@ fn interface_item(p: &mut Parser) {
     }
 }
 
-fn fn_sig(p: &mut Parser) {
+fn fn_sig(p: &mut Parser, rhs: Token) {
     let m = p.open();
     p.expect_any(FN_TYPES);
     expect_ident(p);
@@ -52,12 +54,11 @@ fn fn_sig(p: &mut Parser) {
         fn_events(p);
     }
     // return type
-    if !p.at(Semicolon) {
-        let m = p.open();
-        expect_ident(p);
-        p.close::<ast::FnRet>(m);
+    if !p.at(rhs) {
+        let n = p.open();
+        typ(p);
+        p.close::<ast::FnRet>(n);
     }
-    p.expect(Semicolon);
     p.close::<ast::FnSignature>(m);
 }
 
@@ -97,19 +98,6 @@ fn fn_events(p: &mut Parser) {
     }
     p.expect(RParen);
     p.close::<ast::FnEvents>(m);
-}
-
-fn typ(p: &mut Parser) {
-    if p.at(LCurly) {
-        let m = p.open();
-        p.expect(LCurly);
-        p.expect(RCurly);
-        typ(p);
-        p.close::<ast::TypeArray>(m);
-    }
-    let m = p.open();
-    expect_ident(p);
-    p.close::<ast::TypeIdent>(m);
 }
 
 fn expect_ident(parser: &mut Parser) {
@@ -175,58 +163,6 @@ fn handler_item(p: &mut Parser) {
     }
 }
 
-fn map_collection(p: &mut Parser) {
-    let m = p.open();
-    p.expect(MapKw);
-    map_key_fields(p);
-    if p.at(RArrow) {
-        map_value_fields(p);
-    }
-    p.expect(Semicolon);
-    p.close::<ast::MapCollection>(m);
-}
-
-fn map_key_fields(p: &mut Parser) {
-    let m = p.open();
-    p.expect(LSquare);
-    while !p.at(RSquare) && !p.eof() {
-        map_key_field(p);
-    }
-    p.expect(RSquare);
-    p.close::<ast::MapKeyFields>(m);
-}
-
-fn map_key_field(p: &mut Parser) {
-    let m = p.open();
-    expect_ident(p);
-    p.expect(Colon);
-    typ(p);
-    if !p.at(RSquare) {
-        p.expect(Comma);
-    }
-    p.close::<ast::MapField>(m);
-}
-
-fn map_value_fields(p: &mut Parser) {
-    let m = p.open();
-    p.expect(RArrow);
-    while !p.at(Semicolon) && !p.eof() {
-        map_value_field(p);
-    }
-    p.close::<ast::MapValueFields>(m);
-}
-
-fn map_value_field(p: &mut Parser) {
-    let m = p.open();
-    expect_ident(p);
-    p.expect(Colon);
-    typ(p);
-    if !p.at(Semicolon) {
-        p.expect(Comma);
-    }
-    p.close::<ast::MapField>(m);
-}
-
 fn client(p: &mut Parser) {
     let m = p.open();
     p.expect(ClientKw);
@@ -283,7 +219,7 @@ fn impl_item(p: &mut Parser) {
 
 fn impl_fn(p: &mut Parser) {
     let m = p.open();
-    fn_sig(p);
+    fn_sig(p, LCurly);
     fn_block(p);
     p.close::<ast::ImplFn>(m);
 }

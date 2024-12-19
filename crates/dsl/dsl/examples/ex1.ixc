@@ -11,7 +11,9 @@ interface BankAPI {
        denom: Str,
        amount: u128,
    }
+
    tx send(key to: AccountID, coins: []Coin) emits(EventTransfer);
+
    query get_balance(account: AccountID, denom: Str) u128;
 }
 
@@ -24,7 +26,7 @@ handler Bank {
 
 // an implementation of the Bank API for the Bank handler
 impl BankAPI for Bank {
-   tx send(to: AccountID, coins: Coin[]) {
+   tx send(to: AccountID, coins: []Coin) {
        from = msg.sender;
        for coin in coins {
            denom = coin.denom;

@@ -2,7 +2,7 @@
 
 use crate::syntax::SyntaxKind;
 use logos::Logos;
-#[derive(Logos, Debug, PartialEq, Eq, Clone)]
+#[derive(Logos, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token {
     Error,
     Eof,
