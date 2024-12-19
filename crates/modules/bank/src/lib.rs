@@ -33,6 +33,9 @@ pub mod bank {
         /// The denom burn hooks.
         #[state(prefix = 6)]
         denom_burn_hooks: Map<Str, AccountID>,
+        /// The denom recieve hooks.
+        #[state(prefix = 7)]
+        denom_recieve_hooks: Map<Str, AccountID>,
     }
 
     /// A coin is a token with a denom and an amount.
@@ -196,6 +199,24 @@ pub mod bank {
             Ok(())
         }
 
+        /// Set the denom recieve hook.
+        #[publish]
+        pub fn set_denom_recieve_hook(
+            &self,
+            ctx: &mut Context,
+            denom: &str,
+            hook: AccountID,
+        ) -> Result<()> {
+            // Only denom admin can set send hooks
+            let admin = self
+                .denom_admins
+                .get(ctx, denom)?
+                .ok_or(error!("denom not defined"))?;
+            ensure!(admin == ctx.caller(), "not authorized");
+            self.denom_recieve_hooks.set(ctx, denom, hook)?;
+            Ok(())
+        }
+
         /// Set the denom burn hook.
         #[publish]
         pub fn set_denom_burn_hook(
@@ -276,6 +297,11 @@ pub mod bank {
             ensure!(admin == ctx.caller(), "not authorized");
             self.supply.add(ctx, denom, amount)?;
             self.balances.add(ctx, (to, denom), amount)?;
+
+            if let Some(hook) = self.denom_recieve_hooks.get(ctx, denom)? {
+                let hook_client = <dyn ReceiveHook>::new_client(hook);
+                hook_client.on_receive(ctx, to, denom, amount)?;
+            }
             evt.emit(
                 ctx,
                 &EventMint {
@@ -427,21 +453,6 @@ mod tests {
         let mut bob = app.new_client_context().unwrap();
         let bob_id = bob.self_account_id();
         bank_client.mint(&mut alice, bob_id, "foo", 1000).unwrap();
-
-        // Set up burn hook
-        let mut mock_burn_hook = MockBurnHook::new();
-        mock_burn_hook
-            .expect_on_burn()
-            .times(1)
-            .returning(|_, _, _, _| Ok(()));
-        let mut mock = MockHandler::new();
-        mock.add_handler::<dyn BurnHook>(Box::new(mock_burn_hook));
-        let mock_id = app.add_mock(mock).unwrap();
-
-        // Set burn hook
-        bank_client
-            .set_denom_burn_hook(&mut alice, "foo", mock_id)
-            .unwrap();
 
         // Test burn by token holder
         bank_client.burn(&mut bob, bob_id, "foo", 300).unwrap();
@@ -660,7 +671,7 @@ mod tests {
         let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
 
         // Set up Alice as denom admin
-        let alice = app.new_client_context().unwrap();
+        let mut alice = app.new_client_context().unwrap();
         let alice_id = alice.self_account_id();
         bank_client
             .create_denom(&mut root, "foo", alice_id)
@@ -672,8 +683,8 @@ mod tests {
 
         // Capture and verify mint event
         app.exec_in(&bank_client, |bank, mut ctx| {
-            let events = EventBus::<EventMint>::default();
-            bank.mint(&mut ctx, bob_id, "foo", 1000, events.clone())
+            let mut events = EventBus::<EventMint>::default();
+            bank.mint(&mut alice, bob_id, "foo", 1000, events.clone())
                 .unwrap();
 
             let emitted_events = events.get_events();

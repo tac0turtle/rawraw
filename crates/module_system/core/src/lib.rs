@@ -1,5 +1,5 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
-#![no_std]
+// #![no_std]
 
 #[cfg(feature = "std")]
 extern crate alloc;
