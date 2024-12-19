@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Mutex;
 use dashmap::DashMap;
 use rowan::GreenNode;
@@ -8,6 +10,7 @@ use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use crate::db::{Db, FileSource};
+use crate::lsp_server::semantic_tokens::LEGEND_TYPE;
 
 pub struct LSPServer {
     pub client: Client,
@@ -55,31 +58,31 @@ impl LanguageServer for LSPServer {
                 //     }),
                 //     file_operations: None,
                 // }),
-                // semantic_tokens_provider: Some(
-                //     SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(
-                //         SemanticTokensRegistrationOptions {
-                //             text_document_registration_options: {
-                //                 TextDocumentRegistrationOptions {
-                //                     document_selector: Some(vec![DocumentFilter {
-                //                         language: Some("nrs".to_string()),
-                //                         scheme: Some("file".to_string()),
-                //                         pattern: None,
-                //                     }]),
-                //                 }
-                //             },
-                //             semantic_tokens_options: SemanticTokensOptions {
-                //                 work_done_progress_options: WorkDoneProgressOptions::default(),
-                //                 legend: SemanticTokensLegend {
-                //                     token_types: LEGEND_TYPE.into(),
-                //                     token_modifiers: vec![],
-                //                 },
-                //                 range: Some(true),
-                //                 full: Some(SemanticTokensFullOptions::Bool(true)),
-                //             },
-                //             static_registration_options: StaticRegistrationOptions::default(),
-                //         },
-                //     ),
-                // ),
+                semantic_tokens_provider: Some(
+                    SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(
+                        SemanticTokensRegistrationOptions {
+                            text_document_registration_options: {
+                                TextDocumentRegistrationOptions {
+                                    document_selector: Some(vec![DocumentFilter {
+                                        language: Some("ixc".to_string()),
+                                        scheme: Some("file".to_string()),
+                                        pattern: None,
+                                    }]),
+                                }
+                            },
+                            semantic_tokens_options: SemanticTokensOptions {
+                                work_done_progress_options: WorkDoneProgressOptions::default(),
+                                legend: SemanticTokensLegend {
+                                    token_types: LEGEND_TYPE.into(),
+                                    token_modifiers: vec![],
+                                },
+                                range: Some(true),
+                                full: Some(SemanticTokensFullOptions::Bool(true)),
+                            },
+                            static_registration_options: StaticRegistrationOptions::default(),
+                        },
+                    ),
+                ),
                 // // definition: Some(GotoCapability::default()),
                 // definition_provider: Some(OneOf::Left(true)),
                 // references_provider: Some(OneOf::Left(true)),
@@ -120,6 +123,11 @@ impl LanguageServer for LSPServer {
         self.client
             .log_message(MessageType::INFO, "Did Close Called!")
             .await;
+    }
+
+    async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
+        // self.on_semantic_tokens_full(params).await
+        Ok(None)
     }
 }
 

@@ -5,7 +5,7 @@ use salsa::Database;
 use tower_lsp::lsp_types;
 
 #[salsa::tracked(return_ref)]
-pub fn line_col_index(db: &dyn Database, source: FileSource) -> LineIndex {
+pub fn build_line_index(db: &dyn Database, source: FileSource) -> LineIndex {
     LineIndex::new(source.text(db))
 }
 

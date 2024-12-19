@@ -10,5 +10,6 @@ mod document_symbol;
 mod did_change;
 mod diagnostic;
 mod line_col;
+mod semantic_tokens;
 
 pub use server::main;
