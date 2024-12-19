@@ -1,5 +1,5 @@
 use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::handler::HostBackend;
+use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 

@@ -4,7 +4,6 @@ extern crate alloc;
 
 mod call_stack;
 mod exec_ctx;
-pub mod gas;
 pub mod id_generator;
 pub mod native_vm;
 mod query_ctx;
@@ -12,11 +11,11 @@ pub mod state_handler;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
-use crate::gas::GasMeter;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::StateHandler;
 use ixc_message_api::code::ErrorCode;
+use ixc_message_api::gas::Gas;
 use ixc_message_api::handler::{Allocator, HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Response};
 use ixc_message_api::AccountID;
@@ -58,7 +57,7 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         message_packet: &Message,
         allocator: &InvokeParams<'b>,
     ) -> Result<Response<'b>, ErrorCode> {
-        let call_stack = CallStack::new(AccountID::EMPTY);
+        let call_stack = CallStack::new(AccountID::EMPTY, None);
         let query_ctx = QueryContext::new(self, state_handler, &call_stack);
         query_ctx.invoke_query(message_packet, allocator)
     }
@@ -67,11 +66,11 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
 struct ReadOnlyStoreWrapper<'a, S: StateHandler> {
     state_handler: &'a S,
     allocator: &'a dyn Allocator,
-    gas: &'a GasMeter,
+    gas: &'a Gas,
 }
 
 impl<'a, S: StateHandler> ReadOnlyStoreWrapper<'a, S> {
-    fn wrap(state_handler: &'a S, gas: &'a GasMeter, allocator: &'a dyn Allocator) -> Self {
+    fn wrap(state_handler: &'a S, gas: &'a Gas, allocator: &'a dyn Allocator) -> Self {
         Self {
             state_handler,
             gas,

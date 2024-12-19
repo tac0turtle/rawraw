@@ -44,7 +44,7 @@ pub fn dynamic_invoke_query_packet<'a>(
     ctx: &Context<'a>,
     msg: &ixc_message_api::message::Message,
 ) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.mem);
+    let invoke_params = InvokeParams::new(ctx.mem, &None);
     ctx.with_backend(|backend| backend.invoke_query(msg, &invoke_params))
 }
 
@@ -53,7 +53,7 @@ pub fn dynamic_invoke_msg_packet<'a>(
     ctx: &mut Context<'a>,
     msg: &ixc_message_api::message::Message,
 ) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.mem);
+    let invoke_params = InvokeParams::new(ctx.mem, &None);
     let res = ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?;
     res
 }

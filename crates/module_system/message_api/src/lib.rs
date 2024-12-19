@@ -6,6 +6,7 @@
 mod account_id;
 pub mod alloc_util;
 pub mod code;
+pub mod gas;
 pub mod handler;
 pub mod message;
 

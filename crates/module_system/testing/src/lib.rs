@@ -5,7 +5,6 @@ mod store;
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 use crate::store::VersionedMultiStore;
 use allocator_api2::alloc::Allocator;
-use ixc_account_manager::gas::GasMeter;
 use ixc_account_manager::id_generator::IncrementingIDGenerator;
 use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
 use ixc_account_manager::state_handler::std::StdStateHandler;
@@ -20,6 +19,7 @@ use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::gas::Gas;
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
@@ -201,7 +201,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         let res = state.handle_exec(
             self.account,
             req,
-            &GasMeter::Unlimited,
+            &Gas::unlimited(),
             invoke_params.allocator,
         )?;
         backend
@@ -222,7 +222,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         state.handle_query(
             self.account,
             req,
-            &GasMeter::Unlimited,
+            &Gas::unlimited(),
             invoke_params.allocator,
         )
     }

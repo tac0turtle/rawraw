@@ -1,5 +1,6 @@
 //! The raw handler and host backend interfaces.
 use crate::code::{ErrorCode, SystemCode};
+use crate::gas::Gas;
 use crate::message::{Message, Request, Response};
 use crate::AccountID;
 pub use allocator_api2::alloc::Allocator;
@@ -78,11 +79,22 @@ pub trait HostBackend {
 pub struct InvokeParams<'a> {
     /// The allocator used to allocate responses.
     pub allocator: &'a dyn Allocator,
+
+    /// An optional gas limit to set for the message.
+    ///
+    /// The amount of gas consumed will be updated based on how
+    /// much gas was used during message execution.
+    /// The message will fail if the gas limit is exceeded.
+    /// If the gas limit set is greater than the parent gas limit,
+    /// then the parent gas limit will be used.
+    /// If an unlimited gas meter is provided, then gas consumption can be monitored
+    /// without setting a limit.
+    pub gas: &'a Option<Gas>,
 }
 
 impl<'a> InvokeParams<'a> {
     /// Create a new InvokeParams.
-    pub fn new(allocator: &'a dyn Allocator) -> Self {
-        Self { allocator }
+    pub fn new(allocator: &'a dyn Allocator, gas: &'a Option<Gas>) -> Self {
+        Self { allocator, gas }
     }
 }

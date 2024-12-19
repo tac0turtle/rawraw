@@ -43,7 +43,7 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usi
             account_manager,
             state_handler,
             id_generator,
-            call_stack: CallStack::new(account),
+            call_stack: CallStack::new(account, None),
         }
     }
 }
@@ -70,7 +70,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
             self.handle_system_message(&message.request(), allocator)
         } else {
             // push onto the call stack when we're calling a non-system account
-            self.call_stack.push(target_account)?;
+            self.call_stack.push(target_account, None)?;
 
             // find the account's handler ID
             let handler_id = get_account_handler_id(
@@ -144,7 +144,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        self.call_stack.gas.consume_gas(gas)
+        self.call_stack.gas.consume(gas)
     }
 }
 
@@ -212,7 +212,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         )?;
 
         // push a frame onto the call stack
-        self.call_stack.push(id)?;
+        self.call_stack.push(id, None)?;
 
         let caller = self.call_stack.caller()?;
         let res = handler.handle_system(&caller, &on_create, self, allocator);

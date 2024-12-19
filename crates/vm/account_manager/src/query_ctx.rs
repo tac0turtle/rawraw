@@ -67,7 +67,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
                 .ok_or(SystemCode(AccountNotFound))?;
 
         // create a nested execution frame for the target account
-        self.call_stack.push(target_account)?;
+        self.call_stack.push(target_account, None)?;
 
         // run the handler
         let handler = self.account_manager.code_manager.resolve_handler(
@@ -106,7 +106,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        self.call_stack.gas.consume_gas(gas)
+        self.call_stack.gas.consume(gas)
     }
 }
 
