@@ -21,8 +21,8 @@ pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    let mut packet = encode_message_packet(context.memory_manager(), account, message)?;
-    let res = dynamic_invoke_msg_packet(context, &mut packet);
+    let packet = encode_message_packet(context.memory_manager(), account, message)?;
+    let res = dynamic_invoke_msg_packet(context, &packet);
     decode_message_response::<M>(context, &res)
 }
 
@@ -55,6 +55,7 @@ pub fn dynamic_invoke_msg_packet<'a>(
 ) -> Result<Response<'a>, ErrorCode> {
     let invoke_params = InvokeParams::new(ctx.mem, &None);
     let res = ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?;
+    #[allow(clippy::let_and_return)]
     res
 }
 
@@ -81,7 +82,7 @@ fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
     match res {
         Ok(res) => {
             let cdc = M::Codec::default();
-            let res = M::Response::<'a>::decode_value(&cdc, &res.out1(), context.memory_manager())?;
+            let res = M::Response::<'a>::decode_value(&cdc, res.out1(), context.memory_manager())?;
             Ok(res)
         }
         Err(e) => {

@@ -29,7 +29,7 @@ impl<'a> Context<'a> {
         mem: &'a MemoryManager,
     ) -> Self {
         Self {
-            account_id: account_id.clone(),
+            account_id: *account_id,
             caller_id: AccountID::EMPTY,
             mem,
             backend: BackendHandle::Immutable(host_callbacks),
@@ -44,8 +44,8 @@ impl<'a> Context<'a> {
         mem: &'a MemoryManager,
     ) -> Self {
         Self {
-            account_id: account_id.clone(),
-            caller_id: caller_id.clone(),
+            account_id: *account_id,
+            caller_id: *caller_id,
             mem,
             backend: BackendHandle::Mut(host_callbacks),
         }
@@ -61,8 +61,8 @@ impl<'a> Context<'a> {
         mem: &'a MemoryManager,
     ) -> Self {
         Self {
-            account_id: account_id.clone(),
-            caller_id: caller_id.clone(),
+            account_id: *account_id,
+            caller_id: *caller_id,
             mem,
             backend: BackendHandle::Boxed(host_callbacks),
         }
