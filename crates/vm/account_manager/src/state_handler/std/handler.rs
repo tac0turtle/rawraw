@@ -1,13 +1,12 @@
 use crate::state_handler::std::manager::StdStateManager;
-use crate::state_handler::{GasMeter, StateHandler};
+use crate::state_handler::StateHandler;
 use allocator_api2::alloc::Allocator;
-use core::alloc::Layout;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
-use ixc_message_api::header::MessageSelector;
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::gas::Gas;
+use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
 
 /// The standard state handler.
@@ -42,16 +41,16 @@ impl<'a, S: StdStateManager> StdStateHandler<'a, S> {
 }
 
 impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
-    fn kv_get<A: Allocator>(
+    fn kv_get<'a>(
         &self,
         account_id: AccountID,
         key: &[u8],
-        _gas: &mut GasMeter,
-        allocator: A,
-    ) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, ErrorCode> {
+        _gas: &Gas,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, ErrorCode> {
         self.state
             .kv_get(account_id, None, key, allocator)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 
     fn kv_set(
@@ -59,119 +58,95 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         account_id: AccountID,
         key: &[u8],
         value: &[u8],
-        _gas: &mut GasMeter,
+        _gas: &Gas,
     ) -> Result<(), ErrorCode> {
         self.state
             .kv_set(account_id, None, key, value)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 
     fn kv_delete(
         &mut self,
         account_id: AccountID,
         key: &[u8],
-        _gas: &mut GasMeter,
+        _gas: &Gas,
     ) -> Result<(), ErrorCode> {
         self.state
             .kv_delete(account_id, None, key)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 
-    fn begin_tx(&mut self, _gas: &mut GasMeter) -> Result<(), ErrorCode> {
+    fn begin_tx(&mut self, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .begin_tx()
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 
-    fn commit_tx(&mut self, _gas: &mut GasMeter) -> Result<(), ErrorCode> {
+    fn commit_tx(&mut self, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .commit_tx()
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 
-    fn rollback_tx(&mut self, _gas: &mut GasMeter) -> Result<(), ErrorCode> {
+    fn rollback_tx(&mut self, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .rollback_tx()
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 
-    fn handle_exec(
+    fn handle_exec<'a>(
         &mut self,
-        packet: &mut MessagePacket,
-        _allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        unsafe {
-            let header = packet.header();
-            match header.message_selector {
-                SET_SELECTOR => {
-                    let key = header.in_pointer1.get(packet);
-                    let value = header.in_pointer2.get(packet);
-                    let mut gas = GasMeter::new(header.gas_left);
-                    self.kv_set(header.account, key, value, &mut gas)?;
-                    packet.header_mut().gas_left = gas.get();
-                    Ok(())
-                }
-                DELETE_SELECTOR => {
-                    let key = header.in_pointer1.get(packet);
-                    let mut gas = GasMeter::new(header.gas_left);
-                    self.kv_delete(header.account, key, &mut gas)?;
-                    packet.header_mut().gas_left = gas.get();
-                    Ok(())
-                }
-                _ => Err(ErrorCode::SystemCode(MessageNotHandled)),
+        account_id: AccountID,
+        request: &Request,
+        gas: &Gas,
+        _allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
+        match request.message_selector() {
+            SET_SELECTOR => {
+                let key = request.in1().expect_bytes()?;
+                let value = request.in2().expect_bytes()?;
+                self.kv_set(account_id, key, value, gas)?;
+                Ok(Default::default())
             }
+            DELETE_SELECTOR => {
+                let key = request.in1().expect_bytes()?;
+                self.kv_delete(account_id, key, gas)?;
+                Ok(Default::default())
+            }
+            _ => Err(SystemCode(MessageNotHandled)),
         }
     }
 
-    fn handle_query(
+    fn handle_query<'a>(
         &self,
-        packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        unsafe {
-            let header = packet.header();
-            match header.message_selector {
-                GET_SELECTOR => {
-                    let key = header.in_pointer1.get(packet);
-                    let mut gas = GasMeter::new(header.gas_left);
-                    let value = self.kv_get(header.account, key, &mut gas, allocator)?;
-                    packet.header_mut().gas_left = gas.get();
-                    if let Some(value) = value {
-                        let out = allocator
-                            .allocate(Layout::from_size_align_unchecked(value.len(), 16))
-                            .map_err(|_| SystemCode(FatalExecutionError))?;
-                        let out_slice =
-                            core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
-                        out_slice.copy_from_slice(value.as_slice());
-                        packet.header_mut().out_pointer1.set_slice(out_slice);
-                        Ok(())
-                    } else {
-                        Err(ErrorCode::HandlerCode(0)) // KV-stores should use handler code 0 to indicate not found
-                    }
+        account_id: AccountID,
+        request: &Request,
+        gas: &Gas,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
+        match request.message_selector() {
+            GET_SELECTOR => {
+                let key = request.in1().expect_bytes()?;
+                let value = self.kv_get(account_id, key, gas, allocator)?;
+                match value {
+                    Some(value) => Ok(Response::new1(value.into())),
+                    _ => Ok(Default::default()),
                 }
-                _ => Err(SystemCode(MessageNotHandled)),
             }
+            _ => Err(SystemCode(MessageNotHandled)),
         }
     }
 
-    fn create_account_storage(
-        &mut self,
-        account: AccountID,
-        _gas: &mut GasMeter,
-    ) -> Result<(), ErrorCode> {
+    fn create_account_storage(&mut self, account: AccountID, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .create_account_storage(account)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 
-    fn delete_account_storage(
-        &mut self,
-        account: AccountID,
-        _gas: &mut GasMeter,
-    ) -> Result<(), ErrorCode> {
+    fn delete_account_storage(&mut self, account: AccountID, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .delete_account_storage(account)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| SystemCode(FatalExecutionError))
     }
 }
 

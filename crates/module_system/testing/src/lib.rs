@@ -8,6 +8,7 @@ use allocator_api2::alloc::Allocator;
 use ixc_account_manager::id_generator::IncrementingIDGenerator;
 use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
 use ixc_account_manager::state_handler::std::StdStateHandler;
+use ixc_account_manager::state_handler::StateHandler;
 use ixc_account_manager::AccountManager;
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
@@ -18,24 +19,27 @@ use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::handler::{HostBackend, RawHandler};
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::gas::Gas;
+use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
+use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::sync::Mutex;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
     mem: MemoryManager,
     mock_id: Cell<u64>,
-    backend: RefCell<Backend<V>>,
+    backend: Rc<Mutex<Backend<V>>>,
 }
 
 impl Default for TestApp<NativeVMImpl> {
     fn default() -> Self {
         let test_app = Self {
-            backend: RefCell::new(Default::default()),
+            backend: Rc::new(Mutex::new(Default::default())),
             mem: Default::default(),
             mock_id: Cell::new(0),
         };
@@ -48,7 +52,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
     pub fn register_handler<H: Handler>(&self) -> core::result::Result<(), InitializationError> {
         let scope = ResourceScope::default();
-        let mut backend = self.backend.borrow_mut();
+        let mut backend = self.backend.lock().unwrap();
         unsafe {
             backend
                 .vm
@@ -64,7 +68,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
         client_bindings: &[(&'static str, AccountID)],
     ) -> core::result::Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
-        let mut backend = self.backend.borrow_mut();
+        let mut backend = self.backend.lock().unwrap();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
         scope.account_resolver = Some(&binding_map);
         unsafe {
@@ -90,7 +94,11 @@ impl<V: NativeVM + 'static> TestApp<V> {
 
     /// Creates a new client for the given account.
     pub fn client_context_for(&self, account_id: AccountID) -> Context {
-        let ctx = Context::new_ref_cell(account_id, account_id, 0, &self.backend, &self.mem);
+        let backend = BackendWrapper {
+            account: account_id,
+            backend: self.backend.clone(),
+        };
+        let ctx = Context::new_boxed(&account_id, &account_id, Box::new(backend), &self.mem);
         ctx
     }
 
@@ -104,10 +112,8 @@ impl<V: NativeVM + 'static> TestApp<V> {
             // we need a scope here because we borrow the backend mutably
             // and we want to release the borrow before we call create_account_raw
             // because that will mutably borrow the backend again
-            let mut backend = self.backend.borrow_mut();
-            backend
-                .vm
-                .register_handler(&handler_id, std::boxed::Box::new(mock));
+            let mut backend = self.backend.lock().unwrap();
+            backend.vm.register_handler(&handler_id, Box::new(mock));
         }
         create_account_raw(&mut root, &handler_id, &[])
     }
@@ -127,54 +133,109 @@ impl<V: NativeVM + 'static> TestApp<V> {
     }
 }
 
-#[derive(Default)]
 struct Backend<V> {
     vm: V,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
 }
 
-impl<V: ixc_vm_api::VM> HostBackend for Backend<V> {
-    fn invoke_msg(
+struct BackendWrapper<V> {
+    account: AccountID,
+    backend: Rc<Mutex<Backend<V>>>,
+}
+
+impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
+    fn default() -> Self {
+        Self {
+            vm: V::default(),
+            state: VersionedMultiStore::default(),
+            id_gen: IncrementingIDGenerator::default(),
+        }
+    }
+}
+
+impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
+    fn invoke_msg<'a>(
         &mut self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-        let mut tx = self.state.new_transaction();
-
-        let mut state_handler = StdStateHandler::new(&mut tx, Default::default());
-
-        account_manager.invoke_msg(
-            &mut state_handler,
-            &mut self.id_gen,
-            &(),
-            message_packet,
-            allocator,
+        message: &Message,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let mut backend = self.backend.lock().unwrap();
+        let mut tx = backend.state.new_transaction();
+        let mut state = StdStateHandler::new(&mut tx, Default::default());
+        let account_manager: AccountManager<V> = AccountManager::new(&backend.vm);
+        let res = account_manager.invoke_msg(
+            &mut state,
+            &backend.id_gen,
+            self.account,
+            message,
+            invoke_params,
         )?;
-
-        self.state
+        backend
+            .state
             .commit(tx)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        Ok(res)
     }
 
-    fn invoke_query(
+    fn invoke_query<'a>(
         &self,
-        message_packet: &mut MessagePacket,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        let account_manager: AccountManager<V> = AccountManager::new(&self.vm);
-        let mut tx = self.state.new_transaction();
+        message: &Message,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
+        // TODO add a read only state handler impl for query
+        let backend = self.backend.lock().unwrap();
+        let mut tx = backend.state.new_transaction();
+        let state = StdStateHandler::new(&mut tx, Default::default());
+        let account_manager: AccountManager<V> = AccountManager::new(&backend.vm);
+        account_manager.invoke_query(&state, message, invoke_params)
+    }
 
-        let state_handler = StdStateHandler::new(&mut tx, Default::default());
+    fn update_state<'a>(
+        &mut self,
+        req: &Request,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let mut backend = self.backend.lock().unwrap();
+        let mut tx = backend.state.new_transaction();
+        let mut state = StdStateHandler::new(&mut tx, Default::default());
+        let res = state.handle_exec(
+            self.account,
+            req,
+            &Gas::unlimited(),
+            invoke_params.allocator,
+        )?;
+        backend
+            .state
+            .commit(tx)
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        Ok(res)
+    }
 
-        account_manager.invoke_query(&state_handler, message_packet, allocator)
+    fn query_state<'a>(
+        &self,
+        req: &Request,
+        invoke_params: &InvokeParams<'a>,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let backend = self.backend.lock().unwrap();
+        let mut tx = backend.state.new_transaction();
+        let state = StdStateHandler::new(&mut tx, Default::default());
+        state.handle_query(
+            self.account,
+            req,
+            &Gas::unlimited(),
+            invoke_params.allocator,
+        )
+    }
+
+    fn consume_gas(&self, _gas: u64) -> Result<(), ErrorCode> {
+        Ok(())
     }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.
 pub struct MockHandler {
-    mocks: Vec<std::boxed::Box<dyn RawHandler>>,
+    mocks: Vec<Box<dyn RawHandler>>,
 }
 
 impl Default for MockHandler {
@@ -190,12 +251,12 @@ impl MockHandler {
     }
 
     /// Adds a mock handler API trait implementation to the mock handler.
-    pub fn add_handler<T: RawHandler + ?Sized + 'static>(&mut self, mock: std::boxed::Box<T>) {
+    pub fn add_handler<T: RawHandler + ?Sized + 'static>(&mut self, mock: Box<T>) {
         self.mocks.push(Box::new(MockWrapper::<T>(mock)));
     }
 
     /// Creates a mock handler for one mock handler API trait implementation.
-    pub fn of<T: RawHandler + ?Sized + 'static>(mock: std::boxed::Box<T>) -> Self {
+    pub fn of<T: RawHandler + ?Sized + 'static>(mock: Box<T>) -> Self {
         let mut mocks = MockHandler::new();
         mocks.add_handler(Box::new(MockWrapper::<T>(mock)));
         mocks
@@ -203,14 +264,15 @@ impl MockHandler {
 }
 
 impl RawHandler for MockHandler {
-    fn handle_msg(
+    fn handle_msg<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        caller: &AccountID,
+        message: &Message,
         callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         for mock in &self.mocks {
-            let res = mock.handle_msg(message_packet, callbacks, allocator);
+            let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
                 Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
                 _ => return res,
@@ -219,14 +281,14 @@ impl RawHandler for MockHandler {
         Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
     }
 
-    fn handle_query(
+    fn handle_query<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        message: &Message,
         callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         for mock in &self.mocks {
-            let res = mock.handle_query(message_packet, callbacks, allocator);
+            let res = mock.handle_query(message, callbacks, allocator);
             match res {
                 Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
                 _ => return res,
@@ -236,33 +298,37 @@ impl RawHandler for MockHandler {
     }
 }
 
-struct MockWrapper<T: RawHandler + ?Sized>(std::boxed::Box<T>);
+struct MockWrapper<T: RawHandler + ?Sized>(Box<T>);
 impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
-    fn handle_query(
+    fn handle_query<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        message_packet: &Message,
         callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
         self.0.handle_query(message_packet, callbacks, allocator)
     }
 
-    fn handle_msg(
+    fn handle_msg<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        caller: &AccountID,
+        message_packet: &Message,
         callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        self.0.handle_msg(message_packet, callbacks, allocator)
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
+        self.0
+            .handle_msg(caller, message_packet, callbacks, allocator)
     }
 
-    fn handle_system(
+    fn handle_system<'a>(
         &self,
-        message_packet: &mut MessagePacket,
+        caller: &AccountID,
+        message_packet: &Message,
         callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode> {
-        self.0.handle_system(message_packet, callbacks, allocator)
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
+        self.0
+            .handle_system(caller, message_packet, callbacks, allocator)
     }
 }
 

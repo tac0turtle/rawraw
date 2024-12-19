@@ -3,9 +3,10 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use alloc::collections::btree_map::BTreeMap;
+use alloc::string::String;
 use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use core::borrow::Borrow;
+use ixc_message_api::alloc_util;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::RawHandler;
 use ixc_vm_api::{ReadonlyStore, VM};
@@ -13,7 +14,7 @@ use ixc_vm_api::{ReadonlyStore, VM};
 /// The native Rust virtual machine implementation.
 #[derive(Default)]
 pub struct NativeVMImpl {
-    handlers: BTreeMap<alloc::vec::Vec<u8>, Box<dyn RawHandler>>,
+    handlers: BTreeMap<String, Box<dyn RawHandler>>,
 }
 
 /// The trait that VMs which support native execution must implement to be used with the test harness.
@@ -32,13 +33,11 @@ impl VM for NativeVMImpl {
     fn resolve_handler_id<'a>(
         &self,
         _store: &dyn ReadonlyStore,
-        handler_id: &[u8],
+        handler_id: &str,
         allocator: &'a dyn Allocator,
-    ) -> Result<Option<allocator_api2::vec::Vec<u8, &'a dyn Allocator>>, ErrorCode> {
+    ) -> Result<Option<&'a str>, ErrorCode> {
         if self.handlers.contains_key(handler_id) {
-            let mut res = Vec::new_in(allocator);
-            res.extend_from_slice(handler_id);
-            Ok(Some(res))
+            unsafe { Ok(Some(alloc_util::copy_str(allocator, handler_id)?)) }
         } else {
             Ok(None)
         }
@@ -47,7 +46,7 @@ impl VM for NativeVMImpl {
     fn resolve_handler<'b, 'a: 'b>(
         &'a self,
         _store: &dyn ReadonlyStore,
-        handler_id: &[u8],
+        handler_id: &str,
         _allocator: &'b dyn Allocator,
     ) -> Result<&'b dyn RawHandler, ErrorCode> {
         if let Some(handler) = self.handlers.get(handler_id) {
