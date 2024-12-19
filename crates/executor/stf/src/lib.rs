@@ -7,7 +7,6 @@ use std::marker::PhantomData;
 use allocator_api2::alloc::Allocator;
 use ixc_account_manager::authz::AuthorizationMiddleware;
 use ixc_account_manager::id_generator::IDGenerator;
-use ixc_account_manager::state_handler::gas::GasMeter;
 use ixc_account_manager::state_handler::StateHandler;
 use ixc_account_manager::AccountManager;
 use ixc_message_api::handler::{HostBackend, RawHandler};
@@ -117,7 +116,9 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply, Bb: BeginBlocker, Eb: EndBlocker>
         todo!()
     }
 
-    fn response_from_message_packet<'a>(packet: &'a MessagePacket<'a>) -> Result<&'a [u8], ErrorCode> {
+    fn response_from_message_packet<'a>(
+        packet: &'a MessagePacket<'a>,
+    ) -> Result<&'a [u8], ErrorCode> {
         todo!()
     }
 }
