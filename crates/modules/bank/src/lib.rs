@@ -5,7 +5,6 @@
 #[ixc::handler(Bank)]
 pub mod bank {
     use ixc::*;
-    use ixc_core::error::unimplemented_ok;
     use ixc_core::handler::Service;
     use mockall::automock;
 
@@ -35,7 +34,7 @@ pub mod bank {
         denom_burn_hooks: Map<Str, AccountID>,
         /// The denom recieve hooks.
         #[state(prefix = 7)]
-        denom_recieve_hooks: Map<Str, AccountID>,
+        denom_recieve_hooks: Map<AccountID, AccountID>,
     }
 
     /// A coin is a token with a denom and an amount.
@@ -201,19 +200,10 @@ pub mod bank {
 
         /// Set the denom recieve hook.
         #[publish]
-        pub fn set_denom_recieve_hook(
-            &self,
-            ctx: &mut Context,
-            denom: &str,
-            hook: AccountID,
-        ) -> Result<()> {
-            // Only denom admin can set send hooks
-            let admin = self
-                .denom_admins
-                .get(ctx, denom)?
-                .ok_or(error!("denom not defined"))?;
-            ensure!(admin == ctx.caller(), "not authorized");
-            self.denom_recieve_hooks.set(ctx, denom, hook)?;
+        pub fn set_denom_recieve_hook(&self, ctx: &mut Context, hook: AccountID) -> Result<()> {
+            // Only denom admin can set recieve hooks
+            let caller = ctx.caller();
+            self.denom_recieve_hooks.set(ctx, caller, hook)?;
             Ok(())
         }
 
@@ -264,8 +254,13 @@ pub mod bank {
                     hook_client.on_send(ctx, ctx.caller(), to, coin.denom, coin.amount)?;
                 }
                 let from = ctx.caller();
-                let receive_hook = <dyn ReceiveHook>::new_client(to);
-                unimplemented_ok(receive_hook.on_receive(ctx, from, coin.denom, coin.amount))?;
+
+                if let Some(hook) = self.denom_recieve_hooks.get(ctx, ctx.caller())? {
+                    println!("on_receive");
+                    let hook_client = <dyn ReceiveHook>::new_client(hook);
+                    hook_client.on_receive(ctx, to, &coin.denom, coin.amount)?;
+                }
+
                 self.balances
                     .safe_sub(ctx, (from, coin.denom), coin.amount)?;
                 self.balances.add(ctx, (to, coin.denom), coin.amount)?;
@@ -298,7 +293,8 @@ pub mod bank {
             self.supply.add(ctx, denom, amount)?;
             self.balances.add(ctx, (to, denom), amount)?;
 
-            if let Some(hook) = self.denom_recieve_hooks.get(ctx, denom)? {
+            if let Some(hook) = self.denom_recieve_hooks.get(ctx, ctx.caller())? {
+                println!("on_receive");
                 let hook_client = <dyn ReceiveHook>::new_client(hook);
                 hook_client.on_receive(ctx, to, denom, amount)?;
             }
@@ -505,6 +501,7 @@ mod tests {
         let result = bank_client.burn(&mut charlie, bob_id, "foo", 100);
         assert!(result.is_err());
     }
+
     #[test]
     fn test_mint_with_hooks() {
         let app = TestApp::default();
