@@ -54,9 +54,7 @@ pub fn dynamic_invoke_msg_packet<'a>(
     msg: &ixc_message_api::message::Message,
 ) -> Result<Response<'a>, ErrorCode> {
     let invoke_params = InvokeParams::new(ctx.mem, &None);
-    let res = ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?;
-    #[allow(clippy::let_and_return)]
-    res
+    ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?
 }
 
 fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(

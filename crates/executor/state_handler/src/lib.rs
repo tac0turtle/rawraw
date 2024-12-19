@@ -135,7 +135,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         match self.snapshot_state.get(&constructed_key, &Global)? {
             Some(value) => {
                 let mut data = [0u8; 16];
-                data.copy_from_slice(&value);
+                data.copy_from_slice(value);
                 Ok(u128::from_le_bytes(data))
             }
             None => Ok(0),
@@ -152,15 +152,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
 
         let bz = self.snapshot_state.get(&constructed_key, &Global)?;
-        let old_value: u128 = match bz {
-            Some(value) => {
-                let mut data = [0u8; 16];
-                data.copy_from_slice(&value);
-                let ov: u128 = u128::from_le_bytes(data);
-                ov
-            }
-            None => 0,
-        };
+        let old_value: u128 = to_u128(bz)?;
 
         let new_value = old_value
             .checked_add(value)
@@ -182,15 +174,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
         let bz = self.snapshot_state.get(&constructed_key, &Global)?;
 
-        let old_value: u128 = match bz {
-            Some(value) => {
-                let mut data = [0u8; 16];
-                data.copy_from_slice(&value);
-                let ov: u128 = u128::from_le_bytes(data);
-                ov
-            }
-            None => 0,
-        };
+        let old_value: u128 = to_u128(bz)?;
 
         let new_value = old_value
             .checked_sub(value)
@@ -359,4 +343,15 @@ mod tests {
             Err(StdStateError::ExecutionErrorCode(ErrorCode::HandlerCode(0)))
         );
     }
+}
+
+fn to_u128(bz: Option<&[u8]>) -> Result<u128, StdStateError> {
+    Ok(match bz {
+        Some(value) => u128::from_le_bytes(
+            value
+                .try_into()
+                .map_err(|_| StdStateError::FatalExecutionError)?,
+        ),
+        None => 0u128,
+    })
 }
