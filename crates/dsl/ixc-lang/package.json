@@ -14,7 +14,7 @@
   "contributes": {
     "languages": [
       {
-        "id":"ixc",
+        "id": "ixc",
         "extensions": [
           ".ixc"
         ]
@@ -27,12 +27,33 @@
         "path": "./ixc.tmGrammar.json"
       }
     ],
-    "commands": [
-      {
-        "command": "ixc-lang.helloWorld",
-        "title": "Hello World"
+    "commands": [{
+      "title": "Hello World",
+      "command": "ixc-lang.helloWorld"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "ixc-language-server",
+      "properties": {
+        "ixc-language-server.trace.server": {
+          "type": "string",
+          "scope": "window",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "enumDescriptions": [
+            "No traces",
+            "Error only",
+            "Full log"
+          ],
+          "default": "verbose",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
@@ -52,5 +73,8 @@
     "typescript": "^5.7.2",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }
