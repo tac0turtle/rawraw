@@ -7,6 +7,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{FnArg, ImplItemFn, Type};
 
+/// Collects the information from the #[on_migrate] attribute.
 pub(crate) fn collect_on_migrate_info(
     item_fn: &mut ImplItemFn,
     attr: OnMigrateAttr,
