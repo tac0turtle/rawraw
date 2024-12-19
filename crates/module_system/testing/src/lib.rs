@@ -26,19 +26,19 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::Cell;
 use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
     mem: MemoryManager,
     mock_id: Cell<u64>,
-    backend: Arc<RwLock<Backend<V>>>,
+    backend: Arc<Mutex<Backend<V>>>,
 }
 
 impl Default for TestApp<NativeVMImpl> {
     fn default() -> Self {
         let test_app = Self {
-            backend: Arc::new(RwLock::new(Default::default())),
+            backend: Arc::new(Mutex::new(Default::default())),
             mem: Default::default(),
             mock_id: Cell::new(0),
         };
@@ -51,7 +51,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
     pub fn register_handler<H: Handler>(&self) -> core::result::Result<(), InitializationError> {
         let scope = ResourceScope::default();
-        let mut backend = self.backend.write().unwrap();
+        let mut backend = self.backend.lock().unwrap();
         unsafe {
             backend
                 .vm
@@ -67,7 +67,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
         client_bindings: &[(&'static str, AccountID)],
     ) -> core::result::Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
-        let mut backend = self.backend.write().unwrap();
+        let mut backend = self.backend.lock().unwrap();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
         scope.account_resolver = Some(&binding_map);
         unsafe {
@@ -111,7 +111,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
             // we need a scope here because we borrow the backend mutably
             // and we want to release the borrow before we call create_account_raw
             // because that will mutably borrow the backend again
-            let mut backend = self.backend.write().unwrap();
+            let mut backend = self.backend.lock().unwrap();
             backend.vm.register_handler(&handler_id, Box::new(mock));
         }
         create_account_raw(&mut root, &handler_id, &[])
@@ -140,7 +140,7 @@ struct Backend<V> {
 
 struct BackendWrapper<V> {
     account: AccountID,
-    backend: Arc<RwLock<Backend<V>>>,
+    backend: Arc<Mutex<Backend<V>>>,
 }
 
 impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
@@ -159,7 +159,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         message: &Message,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
-        let mut backend = self.backend.write().unwrap();
+        let mut backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
         let mut state = StdStateHandler::new(&mut tx, Default::default());
         let account_manager: AccountManager<V> = AccountManager::new(&backend.vm);
@@ -183,7 +183,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
         // TODO add a read only state handler impl for query
-        let backend = self.backend.write().unwrap();
+        let backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
         let state = StdStateHandler::new(&mut tx, Default::default());
         let account_manager: AccountManager<V> = AccountManager::new(&backend.vm);
@@ -195,7 +195,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         req: &Request,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
-        let mut backend = self.backend.write().unwrap();
+        let mut backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
         let mut state = StdStateHandler::new(&mut tx, Default::default());
         let res = state.handle_exec(
@@ -216,7 +216,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         req: &Request,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
-        let backend = self.backend.write().unwrap();
+        let backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
         let state = StdStateHandler::new(&mut tx, Default::default());
         state.handle_query(

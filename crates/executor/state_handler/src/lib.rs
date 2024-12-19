@@ -229,6 +229,17 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     }
 }
 
+fn to_u128(bz: Option<&[u8]>) -> Result<u128, StdStateError> {
+    Ok(match bz {
+        Some(value) => u128::from_le_bytes(
+            value
+                .try_into()
+                .map_err(|_| StdStateError::FatalExecutionError)?,
+        ),
+        None => 0u128,
+    })
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -343,15 +354,4 @@ mod tests {
             Err(StdStateError::ExecutionErrorCode(ErrorCode::HandlerCode(0)))
         );
     }
-}
-
-fn to_u128(bz: Option<&[u8]>) -> Result<u128, StdStateError> {
-    Ok(match bz {
-        Some(value) => u128::from_le_bytes(
-            value
-                .try_into()
-                .map_err(|_| StdStateError::FatalExecutionError)?,
-        ),
-        None => 0u128,
-    })
 }
