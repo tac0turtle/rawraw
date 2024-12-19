@@ -72,11 +72,11 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         // run the handler
         let handler = self.account_manager.code_manager.resolve_handler(
             &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
-            &handler_id,
+            handler_id,
             allocator,
         )?;
 
-        let res = handler.handle_query(&message, self, allocator);
+        let res = handler.handle_query(message, self, allocator);
 
         // pop the call stack
         self.call_stack.pop();

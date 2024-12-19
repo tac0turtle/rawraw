@@ -67,7 +67,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
 
         let res = if target_account == ROOT_ACCOUNT {
             // if the target account is the root account, we can just run the system message
-            self.handle_system_message(&message.request(), allocator)
+            self.handle_system_message(message.request(), allocator)
         } else {
             // push onto the call stack when we're calling a non-system account
             self.call_stack.push(target_account, None)?;
@@ -84,11 +84,11 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
             // run the handler
             let handler = self.account_manager.code_manager.resolve_handler(
                 &ReadOnlyStoreWrapper::wrap(self.state_handler, &self.call_stack.gas, allocator),
-                &handler_id,
+                handler_id,
                 allocator,
             )?;
             let caller = self.call_stack.caller()?;
-            let res = handler.handle_msg(&caller, &message, self, allocator);
+            let res = handler.handle_msg(&caller, message, self, allocator);
 
             // pop the call stack
             self.call_stack.pop();
@@ -195,7 +195,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         let id = init_next_account(
             self.id_generator,
             self.state_handler,
-            &handler_id,
+            handler_id,
             allocator,
             gas,
         )
@@ -207,7 +207,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         // run the on_create handler
         let handler = self.account_manager.code_manager.resolve_handler(
             &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
-            &handler_id,
+            handler_id,
             allocator,
         )?;
 
@@ -263,7 +263,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             .ok_or(SystemCode(HandlerNotFound))?;
 
         // update the handler ID
-        set_handler_id(self.state_handler, active_account, &new_handler_id, gas)
+        set_handler_id(self.state_handler, active_account, new_handler_id, gas)
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create

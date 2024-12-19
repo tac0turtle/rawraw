@@ -19,9 +19,7 @@ pub(crate) struct Frame {
 
 impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
     pub(crate) fn new(active_account: AccountID, gas_limit: Option<u64>) -> Self {
-        let gas_meter = gas_limit
-            .map(|gas_limit| Gas::limited(gas_limit))
-            .unwrap_or_default();
+        let gas_meter = Gas::limited(gas_limit.unwrap_or(0));
         let res = Self {
             call_stack: RefCell::new(Default::default()),
             gas: gas_meter,
