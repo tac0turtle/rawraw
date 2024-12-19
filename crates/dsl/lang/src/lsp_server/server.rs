@@ -21,10 +21,6 @@ pub struct LSPServer {
 #[tower_lsp::async_trait]
 impl LanguageServer for LSPServer {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        debug!("server initialized!");
-        self.client
-            .log_message(MessageType::INFO, "Initialize Called!")
-            .await;
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
@@ -93,9 +89,7 @@ impl LanguageServer for LSPServer {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.client
-            .log_message(MessageType::INFO, "Initialized Called!")
-            .await;
+        info!("LSP server initialized!");
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -108,26 +102,21 @@ impl LanguageServer for LSPServer {
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         self.on_did_change(params).await;
-        self.client
-            .log_message(MessageType::INFO, "Did Change Called!")
-            .await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "Did Save Called!")
-            .await;
     }
 
     async fn did_close(&self, _: DidCloseTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "Did Close Called!")
-            .await;
     }
 
     async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
         // self.on_semantic_tokens_full(params).await
         Ok(None)
+    }
+
+    async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
+        self.on_document_symbol(params).await
     }
 }
 

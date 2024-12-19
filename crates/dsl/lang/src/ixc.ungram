@@ -1,6 +1,6 @@
 File = items:Item*
 
-Item = Interface | Handler
+Item = Interface | Object | Impl
 
 Interface = 'interface' name:'#ident' '{'
     items:InterfaceItem*
@@ -10,11 +10,11 @@ InterfaceItem = InterfaceFn | Struct | Event
 
 InterfaceFn = sig:FnSignature ';'
 
-Handler = 'handler' name:'#ident' '{'
-    // items:HandlerItem*
+Object = 'object' name:'#ident' '{'
+    items:ObjectItem*
 '}'
 
-// HandlerItem = HandlerFn
+ObjectItem = MapCollection | Client
 
 FnSignature = typ:FnType name:'#ident' '(' args:FnParamList ')' events:FnEvents? ret:FnRet?
 
@@ -40,7 +40,7 @@ StructField = name:'#ident' ':' typ:Type ','
 
 Event = 'event' name:'#ident' '{' fields:StructField* '}'
 
-MapCollection = 'map' name:'#ident' key_fields:MapKeyFields value_fields:MapValueFields? ';'
+MapCollection = scoped:'scoped'? 'map' name:'#ident' key_fields:MapKeyFields value_fields:MapValueFields? ';'
 MapKeyFields = '[' fields:MapField* ']'
 MapValueFields = '=>' fields:MapField*
 MapField = name:'#ident' ':' typ:Type ','
@@ -54,7 +54,8 @@ ImplFor = 'for' name:'#ident'
 ImplItem = ImplFn
 ImplFn = sig:FnSignature block:FnBlock
 FnBlock = '{' statements:Stmt* '}'
-Stmt = Expr
+Stmt = StmtExpr
+StmtExpr = expr:Expr
 
 Expr = ExprParen |
     NameExpr |

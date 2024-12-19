@@ -20,8 +20,8 @@ pub enum Token {
     RCurly,
     #[token(";")]
     Semicolon,
-    #[token("handler")]
-    HandlerKw,
+    #[token("object")]
+    ObjectKw,
     #[token("(")]
     LParen,
     #[token(")")]
@@ -48,6 +48,8 @@ pub enum Token {
     StructKw,
     #[token("event")]
     EventKw,
+    #[token("scoped")]
+    ScopedKw,
     #[token("map")]
     MapKw,
     #[token("=>")]
@@ -77,7 +79,7 @@ impl Token {
             Token::LCurly => SyntaxKind::L_CURLY,
             Token::RCurly => SyntaxKind::R_CURLY,
             Token::Semicolon => SyntaxKind::SEMICOLON,
-            Token::HandlerKw => SyntaxKind::HANDLER_KW,
+            Token::ObjectKw => SyntaxKind::OBJECT_KW,
             Token::LParen => SyntaxKind::L_PAREN,
             Token::RParen => SyntaxKind::R_PAREN,
             Token::TxKw => SyntaxKind::TX_KW,
@@ -91,6 +93,7 @@ impl Token {
             Token::RSquare => SyntaxKind::R_SQUARE,
             Token::StructKw => SyntaxKind::STRUCT_KW,
             Token::EventKw => SyntaxKind::EVENT_KW,
+            Token::ScopedKw => SyntaxKind::SCOPED_KW,
             Token::MapKw => SyntaxKind::MAP_KW,
             Token::RArrow => SyntaxKind::R_ARROW,
             Token::ClientKw => SyntaxKind::CLIENT_KW,

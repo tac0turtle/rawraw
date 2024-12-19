@@ -4,23 +4,22 @@ use crate::frontend::parser::map::map_collection;
 use crate::frontend::parser::state::Parser;
 use crate::frontend::parser::type_::type_;
 
-pub fn handler(p: &mut Parser) {
+pub fn object(p: &mut Parser) {
     let m = p.open();
-    p.expect(HandlerKw);
+    p.expect(ObjectKw);
     p.expect(Ident);
     p.expect(LCurly);
     while !p.at(RCurly) && !p.eof() {
-        handler_item(p);
+        object_item(p);
     }
     p.expect(RCurly);
-    p.close::<ast::Handler>(m);
+    p.close::<ast::Object>(m);
 }
 
-fn handler_item(p: &mut Parser) {
-    let cur = p.cur();
-    if cur == MapKw {
+fn object_item(p: &mut Parser) {
+    if p.at_any(&[MapKw, ScopedKw]) {
         map_collection(p);
-    } else if cur == ClientKw {
+    } else if p.at(ClientKw) {
         client(p);
     } else {
         p.advance_with_error("expected handler item");

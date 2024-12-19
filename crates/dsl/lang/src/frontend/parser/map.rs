@@ -5,6 +5,7 @@ use crate::frontend::parser::type_::type_;
 
 pub fn map_collection(p: &mut Parser) {
     let m = p.open();
+    p.eat(ScopedKw);
     p.expect(MapKw);
     p.expect(Ident);
     map_key_fields(p);

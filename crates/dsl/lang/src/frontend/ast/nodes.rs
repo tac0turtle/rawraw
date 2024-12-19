@@ -23,21 +23,50 @@ impl File {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for File {
+impl crate::frontend::ast::ConcreteNode for File {
     const KIND: SyntaxKind = SyntaxKind::FILE;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Item {}
+pub enum Item {
+    Interface(Interface),
+    Object(Object),
+    Impl(Impl),
+}
 impl rowan::ast::AstNode for Item {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        matches!(kind, SyntaxKind::INTERFACE | SyntaxKind::OBJECT | SyntaxKind::IMPL)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        let res = match syntax.kind() {
+            SyntaxKind::INTERFACE => Item::Interface(Interface { syntax }),
+            SyntaxKind::OBJECT => Item::Object(Object { syntax }),
+            SyntaxKind::IMPL => Item::Impl(Impl { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        match self {
+            Item::Interface(it) => &it.syntax,
+            Item::Object(it) => &it.syntax,
+            Item::Impl(it) => &it.syntax,
+        }
+    }
+}
+impl From<Interface> for Item {
+    fn from(node: Interface) -> Self {
+        Self::Interface(node)
+    }
+}
+impl From<Object> for Item {
+    fn from(node: Object) -> Self {
+        Self::Object(node)
+    }
+}
+impl From<Impl> for Item {
+    fn from(node: Impl) -> Self {
+        Self::Impl(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -66,17 +95,17 @@ impl Interface {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for Interface {
+impl crate::frontend::ast::ConcreteNode for Interface {
     const KIND: SyntaxKind = SyntaxKind::INTERFACE;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Handler {
+pub struct Object {
     syntax: SyntaxNode,
 }
-impl rowan::ast::AstNode for Handler {
+impl rowan::ast::AstNode for Object {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::HANDLER
+        kind == SyntaxKind::OBJECT
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
@@ -85,27 +114,95 @@ impl rowan::ast::AstNode for Handler {
         &self.syntax
     }
 }
-impl Handler {
+impl Object {
     #[inline]
     pub fn name(&self) -> Option<SyntaxToken> {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
+    #[inline]
+    pub fn items(&self) -> rowan::ast::AstChildren<ObjectItem> {
+        rowan::ast::support::children(&self.syntax)
+    }
 }
-impl crate::frontend::ast::AstStruct for Handler {
-    const KIND: SyntaxKind = SyntaxKind::HANDLER;
+impl crate::frontend::ast::ConcreteNode for Object {
+    const KIND: SyntaxKind = SyntaxKind::OBJECT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum InterfaceItem {}
+pub struct Impl {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for Impl {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::IMPL
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl Impl {
+    #[inline]
+    pub fn name(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    }
+    #[inline]
+    pub fn for_(&self) -> Option<ImplFor> {
+        rowan::ast::support::child(&self.syntax)
+    }
+    #[inline]
+    pub fn items(&self) -> rowan::ast::AstChildren<ImplItem> {
+        rowan::ast::support::children(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for Impl {
+    const KIND: SyntaxKind = SyntaxKind::IMPL;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InterfaceItem {
+    InterfaceFn(InterfaceFn),
+    Struct(Struct),
+    Event(Event),
+}
 impl rowan::ast::AstNode for InterfaceItem {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        matches!(kind, SyntaxKind::INTERFACE_FN | SyntaxKind::STRUCT | SyntaxKind::EVENT)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        let res = match syntax.kind() {
+            SyntaxKind::INTERFACE_FN => {
+                InterfaceItem::InterfaceFn(InterfaceFn { syntax })
+            }
+            SyntaxKind::STRUCT => InterfaceItem::Struct(Struct { syntax }),
+            SyntaxKind::EVENT => InterfaceItem::Event(Event { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        match self {
+            InterfaceItem::InterfaceFn(it) => &it.syntax,
+            InterfaceItem::Struct(it) => &it.syntax,
+            InterfaceItem::Event(it) => &it.syntax,
+        }
+    }
+}
+impl From<InterfaceFn> for InterfaceItem {
+    fn from(node: InterfaceFn) -> Self {
+        Self::InterfaceFn(node)
+    }
+}
+impl From<Struct> for InterfaceItem {
+    fn from(node: Struct) -> Self {
+        Self::Struct(node)
+    }
+}
+impl From<Event> for InterfaceItem {
+    fn from(node: Event) -> Self {
+        Self::Event(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -130,7 +227,7 @@ impl InterfaceFn {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for InterfaceFn {
+impl crate::frontend::ast::ConcreteNode for InterfaceFn {
     const KIND: SyntaxKind = SyntaxKind::INTERFACE_FN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -159,7 +256,7 @@ impl Struct {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for Struct {
+impl crate::frontend::ast::ConcreteNode for Struct {
     const KIND: SyntaxKind = SyntaxKind::STRUCT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -188,7 +285,7 @@ impl Event {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for Event {
+impl crate::frontend::ast::ConcreteNode for Event {
     const KIND: SyntaxKind = SyntaxKind::EVENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -229,8 +326,111 @@ impl FnSignature {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for FnSignature {
+impl crate::frontend::ast::ConcreteNode for FnSignature {
     const KIND: SyntaxKind = SyntaxKind::FN_SIGNATURE;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ObjectItem {
+    MapCollection(MapCollection),
+    Client(Client),
+}
+impl rowan::ast::AstNode for ObjectItem {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, SyntaxKind::MAP_COLLECTION | SyntaxKind::CLIENT)
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            SyntaxKind::MAP_COLLECTION => {
+                ObjectItem::MapCollection(MapCollection { syntax })
+            }
+            SyntaxKind::CLIENT => ObjectItem::Client(Client { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            ObjectItem::MapCollection(it) => &it.syntax,
+            ObjectItem::Client(it) => &it.syntax,
+        }
+    }
+}
+impl From<MapCollection> for ObjectItem {
+    fn from(node: MapCollection) -> Self {
+        Self::MapCollection(node)
+    }
+}
+impl From<Client> for ObjectItem {
+    fn from(node: Client) -> Self {
+        Self::Client(node)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MapCollection {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for MapCollection {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::MAP_COLLECTION
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl MapCollection {
+    #[inline]
+    pub fn scoped(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::SCOPED_KW)
+    }
+    #[inline]
+    pub fn name(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    }
+    #[inline]
+    pub fn key_fields(&self) -> Option<MapKeyFields> {
+        rowan::ast::support::child(&self.syntax)
+    }
+    #[inline]
+    pub fn value_fields(&self) -> Option<MapValueFields> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for MapCollection {
+    const KIND: SyntaxKind = SyntaxKind::MAP_COLLECTION;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Client {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for Client {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::CLIENT
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl Client {
+    #[inline]
+    pub fn name(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    }
+    #[inline]
+    pub fn types(&self) -> Option<ClientTypes> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for Client {
+    const KIND: SyntaxKind = SyntaxKind::CLIENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FnType {}
@@ -268,7 +468,7 @@ impl FnParamList {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for FnParamList {
+impl crate::frontend::ast::ConcreteNode for FnParamList {
     const KIND: SyntaxKind = SyntaxKind::FN_PARAM_LIST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -293,7 +493,7 @@ impl FnEvents {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for FnEvents {
+impl crate::frontend::ast::ConcreteNode for FnEvents {
     const KIND: SyntaxKind = SyntaxKind::FN_EVENTS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -318,7 +518,7 @@ impl FnRet {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::frontend::ast::AstStruct for FnRet {
+impl crate::frontend::ast::ConcreteNode for FnRet {
     const KIND: SyntaxKind = SyntaxKind::FN_RET;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -351,21 +551,42 @@ impl FnParam {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for FnParam {
+impl crate::frontend::ast::ConcreteNode for FnParam {
     const KIND: SyntaxKind = SyntaxKind::FN_PARAM;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Type {}
+pub enum Type {
+    TypeIdent(TypeIdent),
+    TypeArray(TypeArray),
+}
 impl rowan::ast::AstNode for Type {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        matches!(kind, SyntaxKind::TYPE_IDENT | SyntaxKind::TYPE_ARRAY)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        let res = match syntax.kind() {
+            SyntaxKind::TYPE_IDENT => Type::TypeIdent(TypeIdent { syntax }),
+            SyntaxKind::TYPE_ARRAY => Type::TypeArray(TypeArray { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        match self {
+            Type::TypeIdent(it) => &it.syntax,
+            Type::TypeArray(it) => &it.syntax,
+        }
+    }
+}
+impl From<TypeIdent> for Type {
+    fn from(node: TypeIdent) -> Self {
+        Self::TypeIdent(node)
+    }
+}
+impl From<TypeArray> for Type {
+    fn from(node: TypeArray) -> Self {
+        Self::TypeArray(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -390,7 +611,7 @@ impl TypeIdent {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::frontend::ast::AstStruct for TypeIdent {
+impl crate::frontend::ast::ConcreteNode for TypeIdent {
     const KIND: SyntaxKind = SyntaxKind::TYPE_IDENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -415,7 +636,7 @@ impl TypeArray {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for TypeArray {
+impl crate::frontend::ast::ConcreteNode for TypeArray {
     const KIND: SyntaxKind = SyntaxKind::TYPE_ARRAY;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -444,41 +665,8 @@ impl StructField {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for StructField {
+impl crate::frontend::ast::ConcreteNode for StructField {
     const KIND: SyntaxKind = SyntaxKind::STRUCT_FIELD;
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MapCollection {
-    syntax: SyntaxNode,
-}
-impl rowan::ast::AstNode for MapCollection {
-    type Language = IXCLanguage;
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::MAP_COLLECTION
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl MapCollection {
-    #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
-    }
-    #[inline]
-    pub fn key_fields(&self) -> Option<MapKeyFields> {
-        rowan::ast::support::child(&self.syntax)
-    }
-    #[inline]
-    pub fn value_fields(&self) -> Option<MapValueFields> {
-        rowan::ast::support::child(&self.syntax)
-    }
-}
-impl crate::frontend::ast::AstStruct for MapCollection {
-    const KIND: SyntaxKind = SyntaxKind::MAP_COLLECTION;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MapKeyFields {
@@ -502,7 +690,7 @@ impl MapKeyFields {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for MapKeyFields {
+impl crate::frontend::ast::ConcreteNode for MapKeyFields {
     const KIND: SyntaxKind = SyntaxKind::MAP_KEY_FIELDS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -527,7 +715,7 @@ impl MapValueFields {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for MapValueFields {
+impl crate::frontend::ast::ConcreteNode for MapValueFields {
     const KIND: SyntaxKind = SyntaxKind::MAP_VALUE_FIELDS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -556,37 +744,8 @@ impl MapField {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for MapField {
+impl crate::frontend::ast::ConcreteNode for MapField {
     const KIND: SyntaxKind = SyntaxKind::MAP_FIELD;
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Client {
-    syntax: SyntaxNode,
-}
-impl rowan::ast::AstNode for Client {
-    type Language = IXCLanguage;
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::CLIENT
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl Client {
-    #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
-    }
-    #[inline]
-    pub fn types(&self) -> Option<ClientTypes> {
-        rowan::ast::support::child(&self.syntax)
-    }
-}
-impl crate::frontend::ast::AstStruct for Client {
-    const KIND: SyntaxKind = SyntaxKind::CLIENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClientTypes {
@@ -610,7 +769,7 @@ impl ClientTypes {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ClientTypes {
+impl crate::frontend::ast::ConcreteNode for ClientTypes {
     const KIND: SyntaxKind = SyntaxKind::CLIENT_TYPES;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -635,41 +794,8 @@ impl ClientType {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ClientType {
+impl crate::frontend::ast::ConcreteNode for ClientType {
     const KIND: SyntaxKind = SyntaxKind::CLIENT_TYPE;
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Impl {
-    syntax: SyntaxNode,
-}
-impl rowan::ast::AstNode for Impl {
-    type Language = IXCLanguage;
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::IMPL
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl Impl {
-    #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
-    }
-    #[inline]
-    pub fn for_(&self) -> Option<ImplFor> {
-        rowan::ast::support::child(&self.syntax)
-    }
-    #[inline]
-    pub fn items(&self) -> rowan::ast::AstChildren<ImplItem> {
-        rowan::ast::support::children(&self.syntax)
-    }
-}
-impl crate::frontend::ast::AstStruct for Impl {
-    const KIND: SyntaxKind = SyntaxKind::IMPL;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplFor {
@@ -693,21 +819,34 @@ impl ImplFor {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::frontend::ast::AstStruct for ImplFor {
+impl crate::frontend::ast::ConcreteNode for ImplFor {
     const KIND: SyntaxKind = SyntaxKind::IMPL_FOR;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ImplItem {}
+pub enum ImplItem {
+    ImplFn(ImplFn),
+}
 impl rowan::ast::AstNode for ImplItem {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        matches!(kind, SyntaxKind::IMPL_FN)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        let res = match syntax.kind() {
+            SyntaxKind::IMPL_FN => ImplItem::ImplFn(ImplFn { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        match self {
+            ImplItem::ImplFn(it) => &it.syntax,
+        }
+    }
+}
+impl From<ImplFn> for ImplItem {
+    fn from(node: ImplFn) -> Self {
+        Self::ImplFn(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -736,7 +875,7 @@ impl ImplFn {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ImplFn {
+impl crate::frontend::ast::ConcreteNode for ImplFn {
     const KIND: SyntaxKind = SyntaxKind::IMPL_FN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -761,35 +900,104 @@ impl FnBlock {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for FnBlock {
+impl crate::frontend::ast::ConcreteNode for FnBlock {
     const KIND: SyntaxKind = SyntaxKind::FN_BLOCK;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Stmt {}
+pub enum Stmt {
+    StmtExpr(StmtExpr),
+}
 impl rowan::ast::AstNode for Stmt {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        matches!(kind, SyntaxKind::STMT_EXPR)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        let res = match syntax.kind() {
+            SyntaxKind::STMT_EXPR => Stmt::StmtExpr(StmtExpr { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        match self {
+            Stmt::StmtExpr(it) => &it.syntax,
+        }
+    }
+}
+impl From<StmtExpr> for Stmt {
+    fn from(node: StmtExpr) -> Self {
+        Self::StmtExpr(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Expr {}
+pub struct StmtExpr {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for StmtExpr {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::STMT_EXPR
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl StmtExpr {
+    #[inline]
+    pub fn expr(&self) -> Option<Expr> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for StmtExpr {
+    const KIND: SyntaxKind = SyntaxKind::STMT_EXPR;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Expr {
+    ExprParen(ExprParen),
+    NameExpr(NameExpr),
+    ExprCall(ExprCall),
+}
 impl rowan::ast::AstNode for Expr {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        matches!(
+            kind, SyntaxKind::EXPR_PAREN | SyntaxKind::NAME_EXPR | SyntaxKind::EXPR_CALL
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        let res = match syntax.kind() {
+            SyntaxKind::EXPR_PAREN => Expr::ExprParen(ExprParen { syntax }),
+            SyntaxKind::NAME_EXPR => Expr::NameExpr(NameExpr { syntax }),
+            SyntaxKind::EXPR_CALL => Expr::ExprCall(ExprCall { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        match self {
+            Expr::ExprParen(it) => &it.syntax,
+            Expr::NameExpr(it) => &it.syntax,
+            Expr::ExprCall(it) => &it.syntax,
+        }
+    }
+}
+impl From<ExprParen> for Expr {
+    fn from(node: ExprParen) -> Self {
+        Self::ExprParen(node)
+    }
+}
+impl From<NameExpr> for Expr {
+    fn from(node: NameExpr) -> Self {
+        Self::NameExpr(node)
+    }
+}
+impl From<ExprCall> for Expr {
+    fn from(node: ExprCall) -> Self {
+        Self::ExprCall(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -814,7 +1022,7 @@ impl ExprParen {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ExprParen {
+impl crate::frontend::ast::ConcreteNode for ExprParen {
     const KIND: SyntaxKind = SyntaxKind::EXPR_PAREN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -839,7 +1047,7 @@ impl NameExpr {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::frontend::ast::AstStruct for NameExpr {
+impl crate::frontend::ast::ConcreteNode for NameExpr {
     const KIND: SyntaxKind = SyntaxKind::NAME_EXPR;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -868,7 +1076,7 @@ impl ExprCall {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ExprCall {
+impl crate::frontend::ast::ConcreteNode for ExprCall {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CALL;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -897,7 +1105,7 @@ impl FieldExpr {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
-impl crate::frontend::ast::AstStruct for FieldExpr {
+impl crate::frontend::ast::ConcreteNode for FieldExpr {
     const KIND: SyntaxKind = SyntaxKind::FIELD_EXPR;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -922,7 +1130,7 @@ impl ArgList {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ArgList {
+impl crate::frontend::ast::ConcreteNode for ArgList {
     const KIND: SyntaxKind = SyntaxKind::ARG_LIST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -951,7 +1159,7 @@ impl ExprBinary {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ExprBinary {
+impl crate::frontend::ast::ConcreteNode for ExprBinary {
     const KIND: SyntaxKind = SyntaxKind::EXPR_BINARY;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -990,7 +1198,7 @@ impl Rhs {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for Rhs {
+impl crate::frontend::ast::ConcreteNode for Rhs {
     const KIND: SyntaxKind = SyntaxKind::RHS;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1015,7 +1223,7 @@ impl Arg {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for Arg {
+impl crate::frontend::ast::ConcreteNode for Arg {
     const KIND: SyntaxKind = SyntaxKind::ARG;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1044,7 +1252,7 @@ impl ExprConstruct {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ExprConstruct {
+impl crate::frontend::ast::ConcreteNode for ExprConstruct {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CONSTRUCT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1069,7 +1277,7 @@ impl ExprConstructFieldList {
         rowan::ast::support::children(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ExprConstructFieldList {
+impl crate::frontend::ast::ConcreteNode for ExprConstructFieldList {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CONSTRUCT_FIELD_LIST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1098,7 +1306,7 @@ impl ExprConstructField {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ExprConstructField {
+impl crate::frontend::ast::ConcreteNode for ExprConstructField {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CONSTRUCT_FIELD;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1131,6 +1339,6 @@ impl ForStmt {
         rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::AstStruct for ForStmt {
+impl crate::frontend::ast::ConcreteNode for ForStmt {
     const KIND: SyntaxKind = SyntaxKind::FOR_STMT;
 }

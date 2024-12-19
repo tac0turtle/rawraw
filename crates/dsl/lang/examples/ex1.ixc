@@ -17,7 +17,7 @@ interface BankAPI {
    query get_balance(account: AccountID, denom: Str) u128;
 }
 
-handler Bank {
+object Bank {
    map balances[account: AccountID, denom: Str] => amount: U128Accumulator;
    map supply[denom: Str] => amount: U128Accumulator;
    map denom_admins[denom: Str] => admin: AccountID;
@@ -33,7 +33,7 @@ impl BankAPI for Bank {
            amount = coin.amount;
            balances.safe_sub(from, denom, amount);
            balances.add(to, denom, amount);
-           emit(EventTransfer { from, to, denom, amount });
+           // emit(EventTransfer { from, to, denom, amount }); // TODO support struct/event constructors
        }
    }
 
@@ -42,3 +42,17 @@ impl BankAPI for Bank {
    }
 }
 
+interface IXC20 {
+    query name() Str;
+    query symbol() Str;
+    query decimals() u8;
+    query total_supply() u128;
+    query balance_of(account: AccountID) u128;
+    tx transfer(to: AccountID, amount: u128);
+    tx transferFrom(from: AccountID, to: AccountID, amount: u128);
+    tx approve(spender: AccountID, amount: u128);
+}
+
+object SimpleToken {
+    map balances[account: AccountID] => amount: u128;
+}

@@ -9,6 +9,7 @@ pub mod parser;
 pub mod syntax;
 pub mod lexer;
 pub mod diagnostic;
+mod type_checker;
 
 #[salsa::tracked]
 pub fn compile(db: &dyn Database, src: FileSource) {

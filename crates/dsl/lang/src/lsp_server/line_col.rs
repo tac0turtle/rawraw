@@ -9,13 +9,13 @@ pub fn build_line_index(db: &dyn Database, source: FileSource) -> LineIndex {
     LineIndex::new(source.text(db))
 }
 
-pub fn to_lsp_range(index: &LineIndex, text_range: rowan::TextRange) -> lsp_types::Range {
+pub fn to_lsp_range(index: &LineIndex, text_range: &rowan::TextRange) -> lsp_types::Range {
     let start = to_lsp_position(index, text_range.start());
     let end = to_lsp_position(index, text_range.end());
     lsp_types::Range::new(start, end)
 }
 
-pub fn from_lsp_range(index: &LineIndex, range: lsp_types::Range) -> rowan::TextRange {
+pub fn from_lsp_range(index: &LineIndex, range: &lsp_types::Range) -> rowan::TextRange {
     let start = from_lsp_position(index, range.start);
     let end = from_lsp_position(index, range.end);
     rowan::TextRange::new(start, end)

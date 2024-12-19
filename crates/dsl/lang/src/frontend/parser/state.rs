@@ -1,4 +1,4 @@
-use crate::frontend::ast::{AstStruct, ErrorNode};
+use crate::frontend::ast::{ConcreteNode, ErrorNode};
 use crate::frontend::diagnostic::{text_range_from_span, Diagnostic, Severity};
 use crate::frontend::lexer::Token;
 use crate::frontend::syntax::SyntaxKind;
@@ -58,7 +58,7 @@ impl <'a> Parser<'a> {
         mark
     }
 
-    pub fn close<T: AstStruct>(&mut self, m: MarkOpened) -> MarkClosed {
+    pub fn close<T: ConcreteNode>(&mut self, m: MarkOpened) -> MarkClosed {
         self.events[m.index] = Event::Open { kind: T::KIND };
         self.events.push(Event::Close);
         MarkClosed { index: m.index }
@@ -184,7 +184,15 @@ impl <'a> Parser<'a> {
     }
 
     fn emit_error(&mut self, message: String) {
-        let span = &self.tokens[self.pos].1;
+        let pos = self.pos;
+        let len = self.tokens.len();
+        let span = if pos >= len {
+            // end of file
+            let span = &self.tokens[len - 1].1;
+            &(span.len()..span.len())
+        } else {
+           &self.tokens[pos].1
+        };
         self.diagnostics.push(Diagnostic {
             message,
             range: text_range_from_span(span),
