@@ -2,7 +2,7 @@
 #![no_std]
 extern crate alloc;
 
-mod authz;
+pub mod authz;
 pub mod id_generator;
 pub mod native_vm;
 pub mod state_handler;
@@ -47,13 +47,13 @@ impl<'a, CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'a, CM, CALL_STAC
 
 impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LIMIT> {
     /// Invokes a message packet in the context of the provided state handler.
-    pub fn invoke_msg<'b, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
-        &'b self,
-        state_handler: &'b mut ST,
-        id_generator: &'b mut IDG,
-        authz: &'b AUTHZ,
+    pub fn invoke_msg<'a, ST: StateHandler, IDG: IDGenerator, AUTHZ: AuthorizationMiddleware>(
+        &'a self,
+        state_handler: &'a mut ST,
+        id_generator: &'a mut IDG,
+        authz: &'a AUTHZ,
         message_packet: &mut MessagePacket,
-        allocator: &'b dyn Allocator,
+        allocator: &'a dyn Allocator,
     ) -> Result<(), ErrorCode> {
         let mut exec_context = ExecContext {
             account_manager: self,
