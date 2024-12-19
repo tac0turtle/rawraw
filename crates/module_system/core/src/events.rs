@@ -4,6 +4,7 @@ use crate::Context;
 use allocator_api2::vec::Vec;
 
 /// An event bus that can be used to emit events.
+#[derive(Clone)]
 pub struct EventBus<T> {
     events: Vec<T>,
 }

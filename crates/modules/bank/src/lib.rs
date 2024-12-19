@@ -1,4 +1,5 @@
 //! Bank moduleodule that allows for the transfer of tokens between accounts.
+#![allow(missing_docs)] //TODO remove when docs are added to macros
 #![allow(clippy::needless_lifetimes)]
 /// The bank module used for transfering tokens between accounts.
 #[ixc::handler(Bank)]
@@ -333,6 +334,7 @@ pub mod bank {
 #[cfg(test)]
 mod tests {
     use super::bank::*;
+    use ixc::EventBus;
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_testing::*;
 
@@ -511,7 +513,6 @@ mod tests {
 
         // Set up Bob's account for receiving mints
         let bob = app.new_client_context().unwrap();
-        let bob_id = bob.self_account_id();
 
         // Set up a mock receive hook for Bob
         let mut mock_receive_hook = MockReceiveHook::new();
@@ -659,7 +660,7 @@ mod tests {
         let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
 
         // Set up Alice as denom admin
-        let mut alice = app.new_client_context().unwrap();
+        let alice = app.new_client_context().unwrap();
         let alice_id = alice.self_account_id();
         bank_client
             .create_denom(&mut root, "foo", alice_id)
@@ -671,7 +672,7 @@ mod tests {
 
         // Capture and verify mint event
         app.exec_in(&bank_client, |bank, mut ctx| {
-            let mut events = EventBus::<EventMint>::default();
+            let events = EventBus::<EventMint>::default();
             bank.mint(&mut ctx, bob_id, "foo", 1000, events.clone())
                 .unwrap();
 
