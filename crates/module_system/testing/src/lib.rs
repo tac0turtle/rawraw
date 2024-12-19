@@ -27,7 +27,7 @@ use ixc_schema::mem::MemoryManager;
 use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use std::sync::{Mutex};
+use std::sync::Mutex;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
