@@ -5,7 +5,7 @@ use core::borrow::Borrow;
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{Attribute, FnArg, ImplItemFn, Item, ItemMod, Signature, Type};
+use syn::{Attribute, FnArg, ImplItemFn, Item, ItemMod, LitStr, Signature, Type};
 
 /// HandlerArgs is the argument to the #[handler] attribute.
 #[derive(deluxe::ParseMetaItem)]
@@ -233,6 +233,28 @@ fn collect_publish_targets(
                             signature: impl_fn.sig.clone(),
                             attrs: impl_fn.attrs.clone(),
                             ty,
+                            docs: impl_fn
+                                .attrs
+                                .iter()
+                                .filter_map(|attr| {
+                                    if attr.path().is_ident("doc") {
+                                        match &attr.meta {
+                                            syn::Meta::NameValue(meta) => {
+                                                if let syn::Expr::Lit(expr_lit) = &meta.value {
+                                                    if let syn::Lit::Str(lit_str) = &expr_lit.lit {
+                                                        return Some(LitStr::new(
+                                                            &lit_str.value(),
+                                                            lit_str.span(),
+                                                        ));
+                                                    }
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    None
+                                })
+                                .collect::<Vec<_>>(),
                         });
                     }
                 }
@@ -278,6 +300,8 @@ pub(crate) struct PublishedFnInfo {
     pub(crate) attrs: Vec<Attribute>,
     /// The type of the function.
     pub(crate) ty: PublishedFnType,
+    /// docs for the function
+    pub(crate) docs: Vec<LitStr>,
 }
 
 #[derive(Debug)]
