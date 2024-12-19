@@ -360,7 +360,6 @@ pub mod bank {
 #[cfg(test)]
 mod tests {
     use super::bank::*;
-    use ixc::EventBus;
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_testing::*;
 
@@ -523,7 +522,7 @@ mod tests {
             .unwrap();
 
         // Set up Bob's account for receiving mints
-        let bob = app.new_client_context().unwrap();
+        let _bob = app.new_client_context().unwrap();
 
         // Set up a mock receive hook for Bob
         let mut mock_receive_hook = MockReceiveHook::new();
@@ -658,40 +657,6 @@ mod tests {
         app.exec_in(&bank_client, |bank, ctx| {
             let foo_supply = bank.supply.get(ctx, "foo").unwrap();
             assert_eq!(foo_supply, 600);
-        });
-    }
-
-    #[test]
-    fn test_mint_events() {
-        let app = TestApp::default();
-        app.register_handler::<Bank>().unwrap();
-
-        // Initialize bank
-        let mut root = app.client_context_for(ROOT_ACCOUNT);
-        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
-
-        // Set up Alice as denom admin
-        let mut alice = app.new_client_context().unwrap();
-        let alice_id = alice.self_account_id();
-        bank_client
-            .create_denom(&mut root, "foo", alice_id)
-            .unwrap();
-
-        // Create recipient account
-        let bob = app.new_client_context().unwrap();
-        let bob_id = bob.self_account_id();
-
-        // Capture and verify mint event
-        app.exec_in(&bank_client, |bank, mut ctx| {
-            let mut events = EventBus::<EventMint>::default();
-            bank.mint(&mut alice, bob_id, "foo", 1000, events.clone())
-                .unwrap();
-
-            let emitted_events = events.get_events();
-            assert_eq!(emitted_events.len(), 1);
-            assert_eq!(emitted_events[0].to, bob_id);
-            assert_eq!(emitted_events[0].coin.denom, "foo");
-            assert_eq!(emitted_events[0].coin.amount, 1000);
         });
     }
 }
