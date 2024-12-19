@@ -26,19 +26,20 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::Cell;
 use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::sync::{Mutex};
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
     mem: MemoryManager,
     mock_id: Cell<u64>,
-    backend: Arc<Mutex<Backend<V>>>,
+    backend: Rc<Mutex<Backend<V>>>,
 }
 
 impl Default for TestApp<NativeVMImpl> {
     fn default() -> Self {
         let test_app = Self {
-            backend: Arc::new(Mutex::new(Default::default())),
+            backend: Rc::new(Mutex::new(Default::default())),
             mem: Default::default(),
             mock_id: Cell::new(0),
         };
@@ -140,7 +141,7 @@ struct Backend<V> {
 
 struct BackendWrapper<V> {
     account: AccountID,
-    backend: Arc<Mutex<Backend<V>>>,
+    backend: Rc<Mutex<Backend<V>>>,
 }
 
 impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
