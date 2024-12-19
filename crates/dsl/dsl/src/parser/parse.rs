@@ -4,6 +4,7 @@ use crate::lexer::Token::*;
 use crate::parser::state::{MarkClosed, Parser};
 
 pub fn file(p: &mut Parser) {
+    let m = p.open();
     while !p.eof() {
         match p.cur() {
             InterfaceKw => interface(p),
@@ -12,6 +13,7 @@ pub fn file(p: &mut Parser) {
             _ => p.advance_with_error("expected interface, handler or impl"),
         }
     }
+    p.close::<ast::File>(m);
 }
 
 fn interface(p: &mut Parser) {

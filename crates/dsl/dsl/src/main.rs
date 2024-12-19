@@ -5,6 +5,8 @@ mod codegen;
 mod parser;
 mod syntax;
 mod lexer;
+mod lsp;
+mod db;
 
 use crate::lexer::{lex};
 use crate::syntax::{SyntaxKind, SyntaxNode};
@@ -31,5 +33,7 @@ fn compile() -> anyhow::Result<()> {
 }
 
 fn main() {
-    compile().unwrap();
+    //
+    // compile().unwrap();
+    lsp::main()
 }

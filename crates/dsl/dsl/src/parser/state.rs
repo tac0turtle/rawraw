@@ -3,7 +3,7 @@ use crate::lexer::Token;
 use crate::syntax::{SyntaxKind, SyntaxNode};
 use std::cell::Cell;
 use std::ops::Range;
-use rowan::GreenNodeBuilder;
+use rowan::{GreenNode, GreenNodeBuilder};
 
 pub struct Parser<'a> {
     input: &'a str,
@@ -189,7 +189,7 @@ impl <'a> Parser<'a> {
         }
     }
 
-    pub fn finish(self, mut builder: GreenNodeBuilder) -> SyntaxNode {
+    pub fn finish(self, mut builder: GreenNodeBuilder) -> GreenNode {
         builder.start_node(SyntaxKind::ROOT.into());
         let mut i = 0;
         for event in self.events {
@@ -205,8 +205,7 @@ impl <'a> Parser<'a> {
             }
         }
         builder.finish_node();
-        let node = builder.finish();
-        SyntaxNode::new_root(node)
+        builder.finish()
     }
 }
 
