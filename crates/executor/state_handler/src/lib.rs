@@ -6,7 +6,8 @@ use crate::event::EventState;
 use crate::snapshot_state::{Snapshot, SnapshotState};
 use allocator_api2::alloc::{Allocator, Global};
 use allocator_api2::vec::Vec;
-use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
+use ixc_account_manager::state_handler::std::StdStateManager;
+use ixc_message_api::code::SystemCode;
 use ixc_message_api::{code::ErrorCode, AccountID};
 
 /// A store that can be used to store and retrieve state.
@@ -16,7 +17,7 @@ pub trait Store {
         &self,
         key: &Vec<u8>,
         allocator: &'a dyn Allocator,
-    ) -> Result<Option<&'a [u8]>, StdStateError>;
+    ) -> Result<Option<&'a [u8]>, ErrorCode>;
 }
 
 /// StateHandler is a cache-based state handler that can be used to store and retrieve state.
@@ -90,7 +91,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         scope: Option<AccountID>,
         key: &[u8],
         allocator: &'a dyn Allocator,
-    ) -> Result<Option<&'a [u8]>, StdStateError> {
+    ) -> Result<Option<&'a [u8]>, ErrorCode> {
         let constructed_key = Self::construct_key(account_id, scope, key, false);
 
         match self.snapshot_state.get(&constructed_key, allocator)? {
@@ -105,7 +106,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         scope: Option<AccountID>,
         key: &[u8],
         value: &[u8],
-    ) -> Result<(), StdStateError> {
+    ) -> Result<(), ErrorCode> {
         let constructed_key = Self::construct_key(account_id, scope, key, false);
         let mut vec = Vec::new(); //TODO allocations occur here
         vec.extend_from_slice(value);
@@ -118,7 +119,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-    ) -> Result<(), StdStateError> {
+    ) -> Result<(), ErrorCode> {
         let constructed_key = Self::construct_key(account_id, scope, key, false);
         self.snapshot_state.delete(&constructed_key)?;
         Ok(())
@@ -129,7 +130,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-    ) -> Result<u128, StdStateError> {
+    ) -> Result<u128, ErrorCode> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
 
         match self.snapshot_state.get(&constructed_key, &Global)? {
@@ -148,7 +149,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         scope: Option<AccountID>,
         key: &[u8],
         value: u128,
-    ) -> Result<(), StdStateError> {
+    ) -> Result<(), ErrorCode> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
 
         let bz = self.snapshot_state.get(&constructed_key, &Global)?;
@@ -156,7 +157,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
 
         let new_value = old_value
             .checked_add(value)
-            .ok_or(StdStateError::from(ErrorCode::HandlerCode(0)))?;
+            .ok_or(ErrorCode::HandlerCode(0))?;
 
         let mut vec = Vec::new();
         vec.extend_from_slice(&new_value.to_le_bytes());
@@ -170,7 +171,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
         scope: Option<AccountID>,
         key: &[u8],
         value: u128,
-    ) -> Result<bool, StdStateError> {
+    ) -> Result<bool, ErrorCode> {
         let constructed_key = Self::construct_key(account_id, scope, key, true);
         let bz = self.snapshot_state.get(&constructed_key, &Global)?;
 
@@ -178,7 +179,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
 
         let new_value = old_value
             .checked_sub(value)
-            .ok_or(StdStateError::from(ErrorCode::HandlerCode(0)))?;
+            .ok_or(ErrorCode::HandlerCode(0))?;
 
         let mut vec = Vec::new();
         vec.extend_from_slice(&new_value.to_le_bytes());
@@ -187,54 +188,59 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     }
 
     /// Begins a new transaction.
-    fn begin_tx(&mut self) -> Result<(), StdStateError> {
+    fn begin_tx(&mut self) -> Result<(), ErrorCode> {
         self.checkpoints.push(self.snapshot_state.snapshot());
         self.event_state.snapshot();
         Ok(())
     }
 
     /// Commits the current transaction.
-    fn commit_tx(&mut self) -> Result<(), StdStateError> {
+    fn commit_tx(&mut self) -> Result<(), ErrorCode> {
         self.checkpoints.pop();
         self.event_state.commit();
         Ok(())
     }
 
     /// Rolls back the current transaction.
-    fn rollback_tx(&mut self) -> Result<(), StdStateError> {
+    fn rollback_tx(&mut self) -> Result<(), ErrorCode> {
         let snapshot = self
             .checkpoints
             .pop()
-            .ok_or(StdStateError::FatalExecutionError)?;
+            .ok_or(ErrorCode::SystemCode(SystemCode::FatalExecutionError))?;
         let _ = self.snapshot_state.revert_to_snapshot(snapshot);
         self.event_state.revert_to_snapshot(self.checkpoints.len());
         Ok(())
     }
 
     /// Create storage for a new account.
-    fn create_account_storage(&mut self, _account: AccountID) -> Result<(), StdStateError> {
+    fn create_account_storage(&mut self, _account: AccountID) -> Result<(), ErrorCode> {
         Ok(())
     }
 
     /// Delete all of an account's storage.
-    fn delete_account_storage(&mut self, _account: AccountID) -> Result<(), StdStateError> {
+    fn delete_account_storage(&mut self, _account: AccountID) -> Result<(), ErrorCode> {
         Ok(())
     }
 
     /// Emit an event.
-    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError> {
+    fn emit_event(
+        &mut self,
+        sender: AccountID,
+        type_selector: u64,
+        data: &[u8],
+    ) -> Result<(), ErrorCode> {
         let data_vec = Vec::from(data);
-        self.event_state.emit_event(sender, data_vec);
+        self.event_state.emit_event(sender, type_selector, data_vec);
         Ok(())
     }
 }
 
-fn to_u128(bz: Option<&[u8]>) -> Result<u128, StdStateError> {
+fn to_u128(bz: Option<&[u8]>) -> Result<u128, ErrorCode> {
     Ok(match bz {
         Some(value) => u128::from_le_bytes(
             value
                 .try_into()
-                .map_err(|_| StdStateError::FatalExecutionError)?,
+                .map_err(|_| ErrorCode::SystemCode(SystemCode::FatalExecutionError))?,
         ),
         None => 0u128,
     })
@@ -351,7 +357,7 @@ mod tests {
         );
         assert_eq!(
             state_handler.accumulator_safe_sub(AccountID::new(1), None, b"key1", 50),
-            Err(StdStateError::ExecutionErrorCode(ErrorCode::HandlerCode(0)))
+            Err(ErrorCode::HandlerCode(0))
         );
     }
 }

@@ -3,8 +3,8 @@ use allocator_api2::{
     alloc::{Allocator, Global},
     vec::Vec,
 };
-use ixc_account_manager::state_handler::std::StdStateError;
 use ixc_message_api::alloc_util;
+use ixc_message_api::code::{ErrorCode, SystemCode};
 use std::collections::HashMap;
 
 pub struct Snapshot {
@@ -32,7 +32,7 @@ impl<S: Store> SnapshotState<S> {
         &self,
         key: &Vec<u8>,
         allocator: &'a dyn Allocator,
-    ) -> Result<Option<&'a [u8]>, StdStateError> {
+    ) -> Result<Option<&'a [u8]>, ErrorCode> {
         // try to get from values
         unsafe {
             match self.changes.get(key) {
@@ -43,7 +43,7 @@ impl<S: Store> SnapshotState<S> {
                 Some(value) => match value {
                     Value::Updated(data) => Ok(Some(
                         alloc_util::copy_bytes(allocator, data.as_slice())
-                            .map_err(|_| StdStateError::FatalExecutionError)?,
+                            .map_err(|_| ErrorCode::SystemCode(SystemCode::FatalExecutionError))?,
                     )),
                     Value::Deleted => Ok(None),
                 },
@@ -62,7 +62,7 @@ impl<S: Store> SnapshotState<S> {
         });
     }
 
-    pub fn delete(&mut self, key: &Vec<u8>) -> Result<(), StdStateError> {
+    pub fn delete(&mut self, key: &Vec<u8>) -> Result<(), ErrorCode> {
         let value = self.get(key, &Global)?; //TODO: change from global allocator
         self.changes.insert(key.clone(), Value::Deleted);
         self.changelog.push(StateChange::Delete {
@@ -161,13 +161,13 @@ mod tests {
             &self,
             key: &Vec<u8>,
             allocator: &'a dyn Allocator,
-        ) -> Result<Option<&'a [u8]>, StdStateError> {
+        ) -> Result<Option<&'a [u8]>, ErrorCode> {
             let value = Self::get(self, key);
             unsafe {
                 Ok(match value {
                     Some(value) => Some(
                         alloc_util::copy_bytes(allocator, value.as_slice())
-                            .map_err(|_| StdStateError::FatalExecutionError)?,
+                            .map_err(|_| ErrorCode::SystemCode(SystemCode::FatalExecutionError))?,
                     ),
                     None => None,
                 })
