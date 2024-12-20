@@ -74,6 +74,8 @@ pub enum Token {
     Eq,
     #[token("in")]
     InKw,
+    #[token("test")]
+    TestKw,
 }
 impl Token {
     pub fn kind(&self) -> SyntaxKind {
@@ -114,6 +116,7 @@ impl Token {
             Token::Dot => SyntaxKind::DOT,
             Token::Eq => SyntaxKind::EQ,
             Token::InKw => SyntaxKind::IN_KW,
+            Token::TestKw => SyntaxKind::TEST_KW,
         }
     }
 }

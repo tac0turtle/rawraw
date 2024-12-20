@@ -14,6 +14,7 @@ mod object;
 mod impl_;
 mod fn_;
 mod struct_;
+mod test;
 
 #[salsa::tracked]
 pub fn parse(db: &dyn Database, src: FileSource) -> ParsedAST<'_> {

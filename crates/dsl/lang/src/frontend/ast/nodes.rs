@@ -31,17 +31,22 @@ pub enum Item {
     Interface(Interface),
     Object(Object),
     Impl(Impl),
+    Test(Test),
 }
 impl rowan::ast::AstNode for Item {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, SyntaxKind::INTERFACE | SyntaxKind::OBJECT | SyntaxKind::IMPL)
+        matches!(
+            kind, SyntaxKind::INTERFACE | SyntaxKind::OBJECT | SyntaxKind::IMPL |
+            SyntaxKind::TEST
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             SyntaxKind::INTERFACE => Item::Interface(Interface { syntax }),
             SyntaxKind::OBJECT => Item::Object(Object { syntax }),
             SyntaxKind::IMPL => Item::Impl(Impl { syntax }),
+            SyntaxKind::TEST => Item::Test(Test { syntax }),
             _ => return None,
         };
         Some(res)
@@ -51,6 +56,7 @@ impl rowan::ast::AstNode for Item {
             Item::Interface(it) => &it.syntax,
             Item::Object(it) => &it.syntax,
             Item::Impl(it) => &it.syntax,
+            Item::Test(it) => &it.syntax,
         }
     }
 }
@@ -67,6 +73,11 @@ impl From<Object> for Item {
 impl From<Impl> for Item {
     fn from(node: Impl) -> Self {
         Self::Impl(node)
+    }
+}
+impl From<Test> for Item {
+    fn from(node: Test) -> Self {
+        Self::Test(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -159,6 +170,35 @@ impl Impl {
 }
 impl crate::frontend::ast::ConcreteNode for Impl {
     const KIND: SyntaxKind = SyntaxKind::IMPL;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Test {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for Test {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::TEST
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl Test {
+    #[inline]
+    pub fn name(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    }
+    #[inline]
+    pub fn block(&self) -> Option<FnBlock> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for Test {
+    const KIND: SyntaxKind = SyntaxKind::TEST;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InterfaceItem {

@@ -53,11 +53,13 @@ pub enum SyntaxKind {
     DOT,
     EQ,
     IN_KW,
+    TEST_KW,
     FILE,
     ITEM,
     INTERFACE,
     OBJECT,
     IMPL,
+    TEST,
     INTERFACE_ITEM,
     INTERFACE_FN,
     STRUCT,
@@ -125,6 +127,7 @@ impl SyntaxKind {
             SyntaxKind::IMPL_KW => true,
             SyntaxKind::FOR_KW => true,
             SyntaxKind::IN_KW => true,
+            SyntaxKind::TEST_KW => true,
             _ => false,
         }
     }

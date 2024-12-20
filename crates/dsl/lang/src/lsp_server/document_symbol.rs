@@ -43,6 +43,7 @@ impl<'a> SymbolBuilder<'a> {
                 Item::Interface(it) => children.push(self.interface(&it)),
                 Item::Object(it) => children.push(self.object(&it)),
                 Item::Impl(it) => children.push(self.impl_(&it)),
+                Item::Test(it) => children.push(self.test(&it)),
             }
         }
         children
@@ -160,6 +161,10 @@ impl<'a> SymbolBuilder<'a> {
 
     fn client(&self, node: &Client) -> DocumentSymbol {
         self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
+    }
+
+    fn test(&self, node: &Test) -> DocumentSymbol {
+        self.symbol(SymbolKind::FUNCTION, node.syntax(), node.name(), None)
     }
 
     fn symbol(

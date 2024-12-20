@@ -1,6 +1,6 @@
 File = items:Item*
 
-Item = Interface | Object | Impl
+Item = Interface | Object | Impl | Test
 
 Interface = 'interface' name:'#ident' '{'
     items:InterfaceItem*
@@ -76,3 +76,5 @@ ExprConstructFieldList = '{' fields:ExprConstructField* '}'
 ExprConstructField = name:'#ident' ':' expr:Expr? ','
 
 ForStmt = 'for' pat:'#ident' 'in' iterable:Expr block:FnBlock
+
+Test = 'test' name:'#ident' block:FnBlock
