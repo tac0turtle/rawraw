@@ -23,16 +23,16 @@ use ixc_message_api::gas::Gas;
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
+use ixc_schema::binary::NativeBinaryCodec;
+use ixc_schema::codec::{decode_value, Codec};
 use ixc_schema::mem::MemoryManager;
+use ixc_schema::structs::StructSchema;
+use ixc_schema::SchemaValue;
 use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::sync::Mutex;
-use ixc_schema::binary::NativeBinaryCodec;
-use ixc_schema::codec::{decode_value, Codec};
-use ixc_schema::SchemaValue;
-use ixc_schema::structs::StructSchema;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -55,7 +55,7 @@ impl Default for TestApp<NativeVMImpl> {
 
 impl<V: NativeVM + 'static> TestApp<V> {
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
-    pub fn register_handler<H: Handler>(&self) -> core::result::Result<(), InitializationError> {
+    pub fn register_handler<H: Handler>(&self) -> Result<(), InitializationError> {
         let scope = ResourceScope::default();
         let mut backend = self.backend.lock().unwrap();
         unsafe {
@@ -71,7 +71,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
     pub fn register_handler_with_bindings<H: Handler>(
         &self,
         client_bindings: &[(&'static str, AccountID)],
-    ) -> core::result::Result<(), InitializationError> {
+    ) -> Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
         let mut backend = self.backend.lock().unwrap();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
@@ -88,7 +88,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
     pub fn new_client_account(&self) -> ClientResult<AccountID> {
         let mut ctx = self.client_context_for(ROOT_ACCOUNT);
         let client = create_account::<DefaultAccount>(&mut ctx, DefaultAccountCreate {})?;
-        Ok(client.account_id())
+        Ok(client.target_account())
     }
 
     /// Creates a new random client account that can be used in calls and wraps it in a context.
@@ -133,14 +133,17 @@ impl<V: NativeVM + 'static> TestApp<V> {
         // TODO lookup handler ID to make sure this is the correct handler
         let scope = ResourceScope::default();
         let h = unsafe { HC::Handler::new(&scope) }.unwrap();
-        let mut ctx = self.client_context_for(client.account_id());
+        let mut ctx = self.client_context_for(client.target_account());
         f(&h, &mut ctx)
     }
 
     /// Get the events emitted during the last message execution.
     pub fn last_events(&self) -> EventLog {
         let backend = self.backend.lock().unwrap();
-        backend.last_events.clone()
+        EventLog {
+            mem: &self.mem,
+            events: backend.last_events.clone(),
+        }
     }
 }
 
@@ -149,7 +152,7 @@ struct Backend<V> {
     vm: V,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
-    last_events: EventLog,
+    last_events: imbl::Vector<EventData>,
 }
 
 struct BackendWrapper<V> {
@@ -178,7 +181,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
             .state
             .commit(tx)
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
-        backend.last_events = EventLog { events };
+        backend.last_events = events;
         Ok(res)
     }
 
@@ -351,19 +354,20 @@ mod default_account {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 /// The events captured by the test harness.
-pub struct EventLog {
+pub struct EventLog<'a> {
+    mem: &'a MemoryManager,
     events: imbl::Vector<EventData>,
 }
 
-impl Debug for EventLog {
+impl<'a> Debug for EventLog<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.events.iter()).finish()
     }
 }
 
-impl Iterator for EventLog {
+impl<'a> Iterator for EventLog<'a> {
     type Item = EventData;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -371,10 +375,23 @@ impl Iterator for EventLog {
     }
 }
 
-impl EventLog {
+impl<'a> EventLog<'a> {
     /// Get the number of events in the log.
     pub fn len(&self) -> usize {
         self.events.len()
+    }
+
+    /// Select all events of a specific type emitted by a specific account.
+    pub fn select<T: SchemaValue<'a> + StructSchema>(&'a self, sender: AccountID) -> Vec<T> {
+        let mut res = vec![];
+        for event in self.events.iter() {
+            if event.sender == sender {
+                if let Some(data) = event.try_decode::<T>(self.mem) {
+                    res.push(data);
+                }
+            }
+        }
+        res
     }
 }
 
@@ -391,12 +408,14 @@ pub struct EventData {
 
 impl EventData {
     /// Try to decode the event data as a struct.
-    pub fn try_decode<'a, E: StructSchema + SchemaValue<'a>>(&'a self, mem: &'a MemoryManager) -> ClientResult<E> {
+    pub fn try_decode<'a, E: StructSchema + SchemaValue<'a>>(
+        &'a self,
+        mem: &'a MemoryManager,
+    ) -> Option<E> {
         if self.type_selector != E::TYPE_SELECTOR {
-            return Err(ErrorCode::SystemCode(SystemCode::EncodingError).into());
+            return None;
         }
         let cdc = NativeBinaryCodec::default();
-        let res = decode_value(&cdc, self.data.as_slice(), mem)?;
-        Ok(res)
+        decode_value(&cdc, self.data.as_slice(), mem).unwrap_or(None)
     }
 }

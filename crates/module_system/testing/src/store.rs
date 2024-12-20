@@ -1,14 +1,15 @@
 #![allow(unused)]
+use crate::EventData;
 use allocator_api2::alloc::Allocator;
 use imbl::{HashMap, OrdMap, Vector};
-use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
+use ixc_account_manager::state_handler::std::StdStateManager;
 use ixc_account_manager::state_handler::StateHandler;
 use ixc_core_macros::message_selector;
+use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::{alloc_util, AccountID};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
-use crate::EventData;
 
 #[derive(Default, Clone)]
 pub struct VersionedMultiStore {
@@ -19,7 +20,10 @@ impl VersionedMultiStore {
     pub fn new_transaction(&self) -> Tx {
         let latest = self.versions.last().cloned().unwrap_or_default();
         Tx {
-            call_stack: vec![Frame { store: latest , events: Default::default() }],
+            call_stack: vec![Frame {
+                store: latest,
+                events: Default::default(),
+            }],
         }
     }
 
@@ -49,16 +53,16 @@ pub struct Tx {
 }
 
 impl Tx {
-    fn current_frame(&self) -> Result<&Frame, StdStateError> {
+    fn current_frame(&self) -> Result<&Frame, ErrorCode> {
         self.call_stack
             .last()
-            .ok_or(StdStateError::FatalExecutionError)
+            .ok_or(ErrorCode::SystemCode(SystemCode::FatalExecutionError))
     }
 
-    fn current_frame_mut(&mut self) -> Result<&mut Frame, StdStateError> {
+    fn current_frame_mut(&mut self) -> Result<&mut Frame, ErrorCode> {
         self.call_stack
             .last_mut()
-            .ok_or(StdStateError::FatalExecutionError)
+            .ok_or(ErrorCode::SystemCode(SystemCode::FatalExecutionError))
     }
 }
 
@@ -69,7 +73,7 @@ impl StdStateManager for Tx {
         scope: Option<AccountID>,
         key: &[u8],
         allocator: &'a dyn Allocator,
-    ) -> Result<Option<&'a [u8]>, StdStateError> {
+    ) -> Result<Option<&'a [u8]>, ErrorCode> {
         if scope.is_some() {
             todo!("scoped kv_get")
         }
@@ -90,7 +94,7 @@ impl StdStateManager for Tx {
         scope: Option<AccountID>,
         key: &[u8],
         value: &[u8],
-    ) -> Result<(), StdStateError> {
+    ) -> Result<(), ErrorCode> {
         if scope.is_some() {
             todo!("scoped kv_set")
         }
@@ -110,7 +114,7 @@ impl StdStateManager for Tx {
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-    ) -> Result<(), StdStateError> {
+    ) -> Result<(), ErrorCode> {
         if scope.is_some() {
             todo!("scoped kv_delete")
         }
@@ -124,7 +128,7 @@ impl StdStateManager for Tx {
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-    ) -> Result<u128, StdStateError> {
+    ) -> Result<u128, ErrorCode> {
         todo!("accumulator_get")
     }
 
@@ -134,7 +138,7 @@ impl StdStateManager for Tx {
         scope: Option<AccountID>,
         key: &[u8],
         value: u128,
-    ) -> Result<(), StdStateError> {
+    ) -> Result<(), ErrorCode> {
         todo!("accumulator_add")
     }
 
@@ -144,11 +148,11 @@ impl StdStateManager for Tx {
         scope: Option<AccountID>,
         key: &[u8],
         value: u128,
-    ) -> Result<bool, StdStateError> {
+    ) -> Result<bool, ErrorCode> {
         todo!("accumulator_safe_sub")
     }
 
-    fn begin_tx(&mut self) -> Result<(), StdStateError> {
+    fn begin_tx(&mut self) -> Result<(), ErrorCode> {
         self.call_stack.push(Frame {
             store: self.current_frame()?.store.clone(),
             events: Default::default(),
@@ -156,7 +160,7 @@ impl StdStateManager for Tx {
         Ok(())
     }
 
-    fn commit_tx(&mut self) -> Result<(), StdStateError> {
+    fn commit_tx(&mut self) -> Result<(), ErrorCode> {
         // when we commit, we pop the current frame and set the store in the next frame to the current frame's store
         let current_frame = self.current_frame()?;
         let new_multi_store = current_frame.store.clone();
@@ -168,30 +172,38 @@ impl StdStateManager for Tx {
         Ok(())
     }
 
-    fn rollback_tx(&mut self) -> Result<(), StdStateError> {
+    fn rollback_tx(&mut self) -> Result<(), ErrorCode> {
         // when we rollback we simply pop the current frame
         self.call_stack.pop();
         Ok(())
     }
 
-    fn create_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError> {
+    fn create_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode> {
         let mut current_frame = self.current_frame_mut()?;
         current_frame.store.stores.insert(account, Store::default());
         Ok(())
     }
 
-    fn delete_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError> {
+    fn delete_account_storage(&mut self, account: AccountID) -> Result<(), ErrorCode> {
         let mut current_frame = self.current_frame_mut()?;
         current_frame.store.stores.remove(&account);
         Ok(())
     }
 
-    fn emit_event(&mut self, sender: AccountID, type_selector: u64, data: &[u8]) -> Result<(), StdStateError> {
+    fn emit_event(
+        &mut self,
+        sender: AccountID,
+        type_selector: u64,
+        data: &[u8],
+    ) -> Result<(), ErrorCode> {
         let mut current_frame = self.current_frame_mut()?;
-        current_frame.events.push_back(EventData { sender, type_selector, data: data.to_vec() });
+        current_frame.events.push_back(EventData {
+            sender,
+            type_selector,
+            data: data.to_vec(),
+        });
         Ok(())
     }
-
 }
 
 #[derive(Debug, Error)]

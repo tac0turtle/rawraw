@@ -42,7 +42,11 @@ impl EventState {
             .events
             .last_mut()
             .expect("Events vector cannot be empty");
-        current_level.push(EventData { data, type_selector, sender });
+        current_level.push(EventData {
+            data,
+            type_selector,
+            sender,
+        });
     }
 
     /// Reverts the state to a previous snapshot level

@@ -1,6 +1,6 @@
-use ixc_schema::SchemaValue;
 use crate::result::ClientResult;
 use crate::{low_level, Context};
+use ixc_schema::SchemaValue;
 
 use ixc_schema::structs::StructSchema;
 
@@ -16,4 +16,3 @@ impl<'a, E: StructSchema + SchemaValue<'a>> EventBus<E> {
         low_level::emit_event(ctx, event)
     }
 }
-

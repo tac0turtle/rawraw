@@ -3,11 +3,11 @@
 
 mod mesage_selector;
 
+use crate::mesage_selector::type_selector_from_str;
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Attribute, Data, DataStruct, Lifetime};
-use crate::mesage_selector::type_selector_from_str;
 
 /// This derives a struct codec. The struct must implement Default.
 #[manyhow]

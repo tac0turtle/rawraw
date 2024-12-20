@@ -38,7 +38,7 @@ impl APIBuilder {
                         Self(account_id)
                     }
 
-                    fn account_id(&self) -> ::ixc::message_api::AccountID {
+                    fn target_account(&self) -> ::ixc::message_api::AccountID {
                         self.0
                     }
                 }
@@ -304,7 +304,7 @@ impl APIBuilder {
             self.client_methods.push(quote! {
                 # signature {
                     let _msg = # msg_struct_name { # ( # msg_fields_init) * };
-                    let _acct_id =::ixc::core::handler::Client::account_id( self );
+                    let _acct_id =::ixc::core::handler::Client::target_account( self );
                     unsafe { # dynamic_invoke }
                 }
             });
