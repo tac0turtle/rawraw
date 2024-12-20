@@ -24,7 +24,7 @@ use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
 use ixc_schema::binary::NativeBinaryCodec;
-use ixc_schema::codec::{decode_value};
+use ixc_schema::codec::decode_value;
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::SchemaValue;
@@ -361,13 +361,13 @@ pub struct EventLog<'a> {
     events: imbl::Vector<EventData>,
 }
 
-impl<'a> Debug for EventLog<'a> {
+impl Debug for EventLog<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.events.iter()).finish()
     }
 }
 
-impl<'a> Iterator for EventLog<'a> {
+impl Iterator for EventLog<'_> {
     type Item = EventData;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -379,6 +379,11 @@ impl<'a> EventLog<'a> {
     /// Get the number of events in the log.
     pub fn len(&self) -> usize {
         self.events.len()
+    }
+
+    /// Check if the log is empty.
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
     }
 
     /// Select all events of a specific type emitted by a specific account.
@@ -415,7 +420,7 @@ impl EventData {
         if self.type_selector != E::TYPE_SELECTOR {
             return None;
         }
-        let cdc = NativeBinaryCodec::default();
+        let cdc = NativeBinaryCodec;
         decode_value(&cdc, self.data.as_slice(), mem).unwrap_or(None)
     }
 }
