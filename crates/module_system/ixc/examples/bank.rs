@@ -262,7 +262,7 @@ mod tests {
             .unwrap();
         bank_client.mint(&mut alice, alice_id, "foo", 1000).unwrap();
         assert_eq!(
-            app.last_events()
+            app.last_message_events()
                 .select::<EventMint>(bank_client.target_account()),
             vec![EventMint {
                 to: alice_id,
@@ -290,7 +290,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(
-            app.last_events()
+            app.last_message_events()
                 .select::<EventSend>(bank_client.target_account()),
             vec![EventSend {
                 from: alice_id,

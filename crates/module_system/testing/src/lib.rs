@@ -138,7 +138,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
     }
 
     /// Get the events emitted during the last message execution.
-    pub fn last_events(&self) -> EventLog {
+    pub fn last_message_events(&self) -> EventLog {
         let backend = self.backend.lock().unwrap();
         EventLog {
             mem: &self.mem,
