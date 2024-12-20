@@ -8,7 +8,7 @@ use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::SystemCode;
+use ixc_message_api::code::ErrorCode::System;
 use ixc_message_api::code::SystemCode::{
     AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled,
 };
@@ -63,7 +63,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
         // begin a transaction
         self.state_handler
             .begin_tx(&self.call_stack.gas)
-            .map_err(|_| SystemCode(InvalidHandler))?;
+            .map_err(|_| System(InvalidHandler))?;
 
         let res = if target_account == ROOT_ACCOUNT {
             // if the target account is the root account, we can just run the system message
@@ -79,7 +79,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
                 &self.call_stack.gas,
                 allocator,
             )?
-            .ok_or(SystemCode(AccountNotFound))?;
+            .ok_or(System(AccountNotFound))?;
 
             // run the handler
             let handler = self.account_manager.code_manager.resolve_handler(
@@ -100,11 +100,11 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
         if res.is_ok() {
             self.state_handler
                 .commit_tx(&self.call_stack.gas)
-                .map_err(|_| SystemCode(InvalidHandler))?;
+                .map_err(|_| System(InvalidHandler))?;
         } else {
             self.state_handler
                 .rollback_tx(&self.call_stack.gas)
-                .map_err(|_| SystemCode(InvalidHandler))?;
+                .map_err(|_| System(InvalidHandler))?;
         }
 
         res
@@ -164,7 +164,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
                     self.handle_self_destruct()?;
                     Ok(Default::default())
                 }
-                _ => Err(SystemCode(MessageNotHandled)),
+                _ => Err(System(MessageNotHandled)),
             }
         }
     }
@@ -189,7 +189,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
                 handler_id,
                 allocator,
             )?
-            .ok_or(SystemCode(HandlerNotFound))?;
+            .ok_or(System(HandlerNotFound))?;
 
         // get the next account ID and initialize the account storage
         let id = init_next_account(
@@ -199,7 +199,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             allocator,
             gas,
         )
-        .map_err(|_| SystemCode(InvalidHandler))?;
+        .map_err(|_| System(InvalidHandler))?;
 
         // create a packet for calling on_create
         let on_create = Message::new(id, Request::new1(ON_CREATE_SELECTOR, init_data.into()));
@@ -223,7 +223,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         let is_ok = match res {
             Ok(_) => true,
             // we accept the case where the handler doesn't have an on_create method
-            Err(SystemCode(MessageNotHandled)) => true,
+            Err(System(MessageNotHandled)) => true,
             Err(_) => false,
         };
 
@@ -249,7 +249,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         // get the old handler id
         let old_handler_id =
             get_account_handler_id(self.state_handler, active_account, gas, allocator)?
-                .ok_or(SystemCode(AccountNotFound))?;
+                .ok_or(System(AccountNotFound))?;
 
         // resolve the handler ID and retrieve the VM
         let new_handler_id = self
@@ -260,11 +260,11 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
                 new_handler_id,
                 allocator,
             )?
-            .ok_or(SystemCode(HandlerNotFound))?;
+            .ok_or(System(HandlerNotFound))?;
 
         // update the handler ID
         set_handler_id(self.state_handler, active_account, new_handler_id, gas)
-            .map_err(|_| SystemCode(InvalidHandler))?;
+            .map_err(|_| System(InvalidHandler))?;
 
         // create a packet for calling on_create
         let on_migrate = Message::new(
@@ -289,7 +289,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             self.call_stack.active_account()?,
             &self.call_stack.gas,
         )
-        .map_err(|_| SystemCode(FatalExecutionError))?;
+        .map_err(|_| System(FatalExecutionError))?;
         Ok(())
     }
 }

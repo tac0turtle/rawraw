@@ -100,7 +100,7 @@ impl Error for DecodeError {}
 
 impl From<DecodeError> for ErrorCode {
     fn from(_value: DecodeError) -> Self {
-        ErrorCode::SystemCode(SystemCode::EncodingError)
+        ErrorCode::System(SystemCode::EncodingError)
     }
 }
 

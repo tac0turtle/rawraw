@@ -131,7 +131,7 @@ pub fn encode_handler_error<'b, E: HandlerCode>(
     err: HandlerError<E>,
 ) -> Result<Response<'b>, ErrorCode> {
     Err(match err.code {
-        None => ErrorCode::SystemCode(SystemCode::Other),
-        Some(c) => ErrorCode::HandlerCode(c.into()),
+        None => ErrorCode::System(SystemCode::Other),
+        Some(c) => ErrorCode::CustomError(c.into()),
     })
 }

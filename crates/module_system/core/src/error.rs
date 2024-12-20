@@ -156,7 +156,7 @@ impl<E: HandlerCode> From<ErrorCode> for ClientError<E> {
 impl<E: HandlerCode> From<EncodeError> for ClientError<E> {
     fn from(_: EncodeError) -> Self {
         ClientError {
-            code: ErrorCode::SystemCode(SystemCode::EncodingError),
+            code: ErrorCode::System(SystemCode::EncodingError),
         }
     }
 }
@@ -164,7 +164,7 @@ impl<E: HandlerCode> From<EncodeError> for ClientError<E> {
 impl<E: HandlerCode> From<DecodeError> for ClientError<E> {
     fn from(_: DecodeError) -> Self {
         ClientError {
-            code: ErrorCode::SystemCode(SystemCode::EncodingError),
+            code: ErrorCode::System(SystemCode::EncodingError),
         }
     }
 }
@@ -172,7 +172,7 @@ impl<E: HandlerCode> From<DecodeError> for ClientError<E> {
 impl<E: HandlerCode> From<allocator_api2::alloc::AllocError> for ClientError<E> {
     fn from(_: allocator_api2::alloc::AllocError) -> Self {
         ClientError {
-            code: ErrorCode::SystemCode(SystemCode::EncodingError),
+            code: ErrorCode::System(SystemCode::EncodingError),
         }
     }
 }
@@ -195,7 +195,7 @@ pub fn unimplemented_ok<R: Default, E: HandlerCode>(res: ClientResult<R, E>) -> 
     match res {
         Ok(r) => Ok(r),
         Err(e) => match e.code {
-            ErrorCode::SystemCode(SystemCode::MessageNotHandled) => Ok(Default::default()),
+            ErrorCode::System(SystemCode::MessageNotHandled) => Ok(Default::default()),
             _ => Err(e),
         },
     }

@@ -156,7 +156,7 @@ mod tests {
     use super::vesting::*;
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_core::handler::{Client, Service};
-    use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
+    use ixc_message_api::code::ErrorCode::{CustomError, System};
     use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;
     use simple_time::{Duration, Time};
@@ -224,7 +224,7 @@ mod tests {
         assert!(res.is_err());
         assert_eq!(
             res.unwrap_err().code,
-            HandlerCode(UnlockError::FundsNotReceivedYet)
+            CustomError(UnlockError::FundsNotReceivedYet)
         );
 
         // pretend to be bank and deposit the initial funds
@@ -257,7 +257,7 @@ mod tests {
         cur_time.write().unwrap().sub_assign(Duration::DAY * 6);
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().code, HandlerCode(UnlockError::NotTimeYet));
+        assert_eq!(res.unwrap_err().code, CustomError(UnlockError::NotTimeYet));
         // try unlocking after the unlock time
         cur_time.write().unwrap().add_assign(Duration::DAY * 6);
         vesting_acct.unlock(&mut root).unwrap();
@@ -266,7 +266,7 @@ mod tests {
         // because the account self-destructed
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().code, SystemCode(AccountNotFound));
+        assert_eq!(res.unwrap_err().code, System(AccountNotFound));
     }
 }
 

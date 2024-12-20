@@ -4,7 +4,7 @@ use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::SystemCode;
+use ixc_message_api::code::ErrorCode::System;
 use ixc_message_api::code::SystemCode::{AccountNotFound, MessageNotHandled};
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
@@ -42,7 +42,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         _message: &Message,
         _invoke_params: &InvokeParams<'c>,
     ) -> Result<Response<'c>, ErrorCode> {
-        Err(SystemCode(
+        Err(System(
             ixc_message_api::code::SystemCode::VolatileAccessError,
         ))
     }
@@ -64,7 +64,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         // find the account's handler ID
         let handler_id =
             get_account_handler_id(self.state_handler, target_account, gas, allocator)?
-                .ok_or(SystemCode(AccountNotFound))?;
+                .ok_or(System(AccountNotFound))?;
 
         // create a nested execution frame for the target account
         self.call_stack.push(target_account, None)?;
@@ -89,7 +89,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         _req: &Request,
         _invoke_params: &InvokeParams<'c>,
     ) -> Result<Response<'c>, ErrorCode> {
-        Err(SystemCode(
+        Err(System(
             ixc_message_api::code::SystemCode::VolatileAccessError,
         ))
     }
@@ -121,7 +121,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
         unsafe {
             match req.message_selector() {
                 GET_HANDLER_ID_SELECTOR => self.handle_get_handler_id(req, allocator),
-                _ => Err(SystemCode(MessageNotHandled)),
+                _ => Err(System(MessageNotHandled)),
             }
         }
     }
@@ -137,7 +137,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
         // look up the handler ID
         let gas = &self.call_stack.gas;
         let handler_id = get_account_handler_id(self.state_handler, account_id, gas, allocator)?
-            .ok_or(SystemCode(AccountNotFound))?;
+            .ok_or(System(AccountNotFound))?;
 
         // copy the handler ID to the out pointer
 

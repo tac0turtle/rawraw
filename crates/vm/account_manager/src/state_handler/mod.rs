@@ -74,7 +74,7 @@ pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
     let value = state_handler.kv_get(ROOT_ACCOUNT, key.as_bytes(), gas, allocator)?;
     if let Some(value) = value {
         let handler_id =
-            core::str::from_utf8(value).map_err(|_| ErrorCode::SystemCode(EncodingError))?;
+            core::str::from_utf8(value).map_err(|_| ErrorCode::System(EncodingError))?;
         Ok(Some(handler_id))
     } else {
         Ok(None)

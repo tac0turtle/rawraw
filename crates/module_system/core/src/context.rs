@@ -112,7 +112,7 @@ impl<'a> Context<'a> {
             BackendHandle::Mut(ref mut backend) => Ok(f(*backend)),
             BackendHandle::Boxed(ref mut backend) => Ok(f(&mut **backend)),
             BackendHandle::Immutable(_) => {
-                Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError))
+                Err(ErrorCode::System(SystemCode::VolatileAccessError))
             }
         }
     }

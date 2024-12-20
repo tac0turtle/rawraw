@@ -56,7 +56,7 @@ pub fn exec_route<'a, R: Router + ?Sized>(
 ) -> Result<Response<'a>, ErrorCode> {
     match find_route(R::SORTED_MSG_ROUTES, req.request().message_selector()) {
         Some(rt) => rt(rtr, caller, req, callbacks, allocator),
-        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+        None => Err(ErrorCode::System(SystemCode::MessageNotHandled)),
     }
 }
 
@@ -69,7 +69,7 @@ pub fn exec_query_route<'a, R: Router + ?Sized>(
 ) -> Result<Response<'a>, ErrorCode> {
     match find_route(R::SORTED_QUERY_ROUTES, req.request().message_selector()) {
         Some(rt) => rt(rtr, req, callbacks, allocator),
-        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+        None => Err(ErrorCode::System(SystemCode::MessageNotHandled)),
     }
 }
 

@@ -1,5 +1,5 @@
 //! Gas metering utility.
-use crate::code::{ErrorCode, SystemCode};
+use crate::code::{ErrorCode, StdCode, SystemCode};
 use core::cell::Cell;
 
 /// A wrapper for gas.
@@ -50,7 +50,7 @@ impl Gas {
         let consumed = self.consumed.get().saturating_add(amount);
         self.consumed.set(consumed);
         if self.limit > 0 && consumed > self.limit {
-            Err(ErrorCode::SystemCode(SystemCode::OutOfGas))
+            Err(ErrorCode::Std(StdCode::OutOfGas))
         } else {
             Ok(())
         }

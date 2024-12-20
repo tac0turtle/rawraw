@@ -15,7 +15,7 @@ pub trait RawHandler {
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+        Err(ErrorCode::System(SystemCode::MessageNotHandled))
     }
 
     /// Handle a query message.
@@ -25,7 +25,7 @@ pub trait RawHandler {
         _callbacks: &dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+        Err(ErrorCode::System(SystemCode::MessageNotHandled))
     }
 
     /// Handle a system message.
@@ -36,7 +36,7 @@ pub trait RawHandler {
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+        Err(ErrorCode::System(SystemCode::MessageNotHandled))
     }
 }
 

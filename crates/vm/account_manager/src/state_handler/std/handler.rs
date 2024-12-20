@@ -3,7 +3,7 @@ use crate::state_handler::StateHandler;
 use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::SystemCode;
+use ixc_message_api::code::ErrorCode::System;
 use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
 use ixc_message_api::gas::Gas;
 use ixc_message_api::message::{MessageSelector, Request, Response};
@@ -50,7 +50,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
     ) -> Result<Option<&'a [u8]>, ErrorCode> {
         self.state
             .kv_get(account_id, None, key, allocator)
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 
     fn kv_set(
@@ -62,7 +62,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
     ) -> Result<(), ErrorCode> {
         self.state
             .kv_set(account_id, None, key, value)
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 
     fn kv_delete(
@@ -73,25 +73,25 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
     ) -> Result<(), ErrorCode> {
         self.state
             .kv_delete(account_id, None, key)
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 
     fn begin_tx(&mut self, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .begin_tx()
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 
     fn commit_tx(&mut self, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .commit_tx()
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 
     fn rollback_tx(&mut self, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .rollback_tx()
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 
     fn handle_exec<'a>(
@@ -113,7 +113,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
                 self.kv_delete(account_id, key, gas)?;
                 Ok(Default::default())
             }
-            _ => Err(SystemCode(MessageNotHandled)),
+            _ => Err(System(MessageNotHandled)),
         }
     }
 
@@ -133,20 +133,20 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
                     _ => Ok(Default::default()),
                 }
             }
-            _ => Err(SystemCode(MessageNotHandled)),
+            _ => Err(System(MessageNotHandled)),
         }
     }
 
     fn create_account_storage(&mut self, account: AccountID, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .create_account_storage(account)
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 
     fn delete_account_storage(&mut self, account: AccountID, _gas: &Gas) -> Result<(), ErrorCode> {
         self.state
             .delete_account_storage(account)
-            .map_err(|_| SystemCode(FatalExecutionError))
+            .map_err(|_| System(FatalExecutionError))
     }
 }
 

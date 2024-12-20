@@ -174,7 +174,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         backend
             .state
             .commit(tx)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+            .map_err(|_| ErrorCode::System(FatalExecutionError))?;
         Ok(res)
     }
 
@@ -208,7 +208,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         backend
             .state
             .commit(tx)
-            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+            .map_err(|_| ErrorCode::System(FatalExecutionError))?;
         Ok(res)
     }
 
@@ -274,11 +274,11 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
-                Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
+                Err(ErrorCode::System(SystemCode::MessageNotHandled)) => continue,
                 _ => return res,
             }
         }
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+        Err(ErrorCode::System(SystemCode::MessageNotHandled))
     }
 
     fn handle_query<'a>(
@@ -290,11 +290,11 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_query(message, callbacks, allocator);
             match res {
-                Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
+                Err(ErrorCode::System(SystemCode::MessageNotHandled)) => continue,
                 _ => return res,
             }
         }
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+        Err(ErrorCode::System(SystemCode::MessageNotHandled))
     }
 }
 

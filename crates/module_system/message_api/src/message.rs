@@ -170,7 +170,7 @@ impl<'a> Param<'a> {
     pub fn expect_bytes(&self) -> Result<&'a [u8], ErrorCode> {
         match self {
             Param::Slice(slice) => Ok(slice),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+            _ => Err(ErrorCode::System(SystemCode::EncodingError)),
         }
     }
 
@@ -178,7 +178,7 @@ impl<'a> Param<'a> {
     pub fn expect_string(&self) -> Result<&'a str, ErrorCode> {
         match self {
             Param::String(string) => Ok(string),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+            _ => Err(ErrorCode::System(SystemCode::EncodingError)),
         }
     }
 
@@ -186,7 +186,7 @@ impl<'a> Param<'a> {
     pub fn expect_u128(&self) -> Result<u128, ErrorCode> {
         match self {
             Param::U128(u128) => Ok(*u128),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+            _ => Err(ErrorCode::System(SystemCode::EncodingError)),
         }
     }
 
@@ -194,7 +194,7 @@ impl<'a> Param<'a> {
     pub fn expect_account_id(&self) -> Result<AccountID, ErrorCode> {
         match self {
             Param::AccountID(account_id) => Ok(*account_id),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+            _ => Err(ErrorCode::System(SystemCode::EncodingError)),
         }
     }
 }
