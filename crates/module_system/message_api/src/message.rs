@@ -84,6 +84,27 @@ impl<'a> Request<'a> {
         }
     }
 
+    pub fn new1_g(message_selector: MessageSelector, in1: impl Into<Param<'a>>) -> Self {
+        Self::new1(message_selector, in1.into())
+    }
+
+    pub fn new2_g(
+        message_selector: MessageSelector,
+        in1: impl Into<Param<'a>>,
+        in2: impl Into<Param<'a>>,
+    ) -> Self {
+        Self::new2(message_selector, in1.into(), in2.into())
+    }
+
+    pub fn new3_g(
+        message_selector: MessageSelector,
+        in1: impl Into<Param<'a>>,
+        in2: impl Into<Param<'a>>,
+        in3: impl Into<Param<'a>>,
+    ) -> Self {
+        Self::new3(message_selector, in1.into(), in2.into(), in3.into())
+    }
+
     /// Create a new request with one input.
     pub fn new1(message_selector: MessageSelector, in1: Param<'a>) -> Self {
         Self {
@@ -131,6 +152,10 @@ impl<'a> Request<'a> {
     /// Get the third input parameter.
     pub fn in3(&self) -> &Param<'a> {
         &self.inputs[2]
+    }
+
+    pub fn in1_g<T: From<Param<'a>>>(&self) -> Result<Option<T>, ErrorCode> {
+       todo!("decode")
     }
 }
 
@@ -220,5 +245,15 @@ impl From<u128> for Param<'_> {
 impl From<AccountID> for Param<'_> {
     fn from(account_id: AccountID) -> Self {
         Param::AccountID(account_id)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_xx() {
+        let msg = Request::new1_g(MessageSelector::default(), AccountID::new(1));
     }
 }
