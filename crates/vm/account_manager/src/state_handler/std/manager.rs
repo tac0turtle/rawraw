@@ -70,7 +70,7 @@ pub trait StdStateManager {
     /// by another account, however, must not be deleted.
     fn delete_account_storage(&mut self, account: AccountID) -> Result<(), StdStateError>;
     /// Emit an event. The sender of the event is the account that emitted it.
-    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError>;
+    fn emit_event(&mut self, sender: AccountID, type_selector: u64, data: &[u8]) -> Result<(), StdStateError>;
 }
 
 /// An error that can occur when interacting with the storage layer.

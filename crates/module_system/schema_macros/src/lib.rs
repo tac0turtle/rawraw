@@ -1,10 +1,13 @@
 //! **WARNING: This is an API preview! Most code won't work or even type check properly!**
 //! Macros for generating code for the schema crate.
 
+mod mesage_selector;
+
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Attribute, Data, DataStruct, Lifetime};
+use crate::mesage_selector::type_selector_from_str;
 
 /// This derives a struct codec. The struct must implement Default.
 #[manyhow]
@@ -76,6 +79,8 @@ fn derive_struct_schema(
             #index => <#field_type as #ixc_schema_path::value::ValueCodec< #lifetime >>::decode(&mut self.#field_name, decoder),
         }
     });
+
+    let type_selector = type_selector_from_str(&struct_name.to_string());
     Ok(quote! {
         unsafe impl #impl_generics #ixc_schema_path::structs::StructSchema for #struct_name #ty_generics #where_clause {
             const STRUCT_TYPE: #ixc_schema_path::structs::StructType<'static> = #ixc_schema_path::structs::StructType {
@@ -83,6 +88,8 @@ fn derive_struct_schema(
                 fields: &[#(#fields)*],
                 sealed: #sealed,
             };
+
+            const TYPE_SELECTOR: u64 = #type_selector;
         }
 
         unsafe impl #impl_generics #ixc_schema_path::types::ReferenceableType for #struct_name #ty_generics #where_clause {

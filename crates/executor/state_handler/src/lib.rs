@@ -222,9 +222,9 @@ impl<S: Store> StdStateManager for StateHandler<S> {
     }
 
     /// Emit an event.
-    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError> {
+    fn emit_event(&mut self, sender: AccountID, type_selector: u64, data: &[u8]) -> Result<(), StdStateError> {
         let data_vec = Vec::from(data);
-        self.event_state.emit_event(sender, data_vec);
+        self.event_state.emit_event(sender, type_selector, data_vec);
         Ok(())
     }
 }

@@ -8,8 +8,6 @@ use ixc_schema::value::{OptionalValue, SchemaValue};
 
 /// The MessageBase trait for invoking messages dynamically.
 pub trait MessageBase<'a>: SchemaValue<'a> + StructSchema {
-    /// The message selector.
-    const SELECTOR: MessageSelector;
     /// The optional response type.
     type Response<'b>: OptionalValue<'b>;
     /// The optional error type.

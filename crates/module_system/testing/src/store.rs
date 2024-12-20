@@ -8,6 +8,7 @@ use ixc_message_api::{alloc_util, AccountID};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
+use crate::EventData;
 
 #[derive(Default, Clone)]
 pub struct VersionedMultiStore {
@@ -18,32 +19,33 @@ impl VersionedMultiStore {
     pub fn new_transaction(&self) -> Tx {
         let latest = self.versions.last().cloned().unwrap_or_default();
         Tx {
-            call_stack: vec![Frame { store: latest }],
+            call_stack: vec![Frame { store: latest , events: Default::default() }],
         }
     }
 
-    pub fn commit(&mut self, tx: Tx) -> Result<(), ()> {
+    pub fn commit(&mut self, tx: Tx) -> Result<Vector<EventData>, ()> {
         if tx.call_stack.len() != 1 {
             return Err(());
         }
         let current_frame = tx.current_frame().map_err(|_| ())?;
         self.versions.push_back(current_frame.store.clone());
-        Ok(())
+        Ok(current_frame.events.clone())
     }
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct MultiStore {
     stores: HashMap<AccountID, Store>,
+    events: Vec<EventData>,
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct Store {
-    kv_store: OrdMap<std::vec::Vec<u8>, std::vec::Vec<u8>>,
+    kv_store: OrdMap<Vec<u8>, Vec<u8>>,
 }
 
 pub struct Tx {
-    call_stack: std::vec::Vec<Frame>,
+    call_stack: Vec<Frame>,
 }
 
 impl Tx {
@@ -149,16 +151,20 @@ impl StdStateManager for Tx {
     fn begin_tx(&mut self) -> Result<(), StdStateError> {
         self.call_stack.push(Frame {
             store: self.current_frame()?.store.clone(),
+            events: Default::default(),
         });
         Ok(())
     }
 
     fn commit_tx(&mut self) -> Result<(), StdStateError> {
         // when we commit, we pop the current frame and set the store in the next frame to the current frame's store
-        let new_multi_store = self.current_frame()?.store.clone();
+        let current_frame = self.current_frame()?;
+        let new_multi_store = current_frame.store.clone();
+        let events = current_frame.events.clone();
         self.call_stack.pop();
         let next_frame = self.current_frame_mut()?;
         next_frame.store = new_multi_store;
+        next_frame.events = events;
         Ok(())
     }
 
@@ -180,93 +186,12 @@ impl StdStateManager for Tx {
         Ok(())
     }
 
-    fn emit_event(&mut self, sender: AccountID, data: &[u8]) -> Result<(), StdStateError> {
-        todo!("emit_event")
+    fn emit_event(&mut self, sender: AccountID, type_selector: u64, data: &[u8]) -> Result<(), StdStateError> {
+        let mut current_frame = self.current_frame_mut()?;
+        current_frame.events.push_back(EventData { sender, type_selector, data: data.to_vec() });
+        Ok(())
     }
 
-    // fn handle(
-    //     &self,
-    //     message_packet: &mut MessagePacket,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     unsafe {
-    //         let header = message_packet.header();
-    //         match header.message_selector {
-    //             GET_SELECTOR => self.get(message_packet, allocator),
-    //             SET_SELECTOR => self.set(message_packet),
-    //             DELETE_SELECTOR => self.delete(message_packet),
-    //             _ => Err(ErrorCode::SystemCode(InvalidHandler)),
-    //         }
-    //     }
-    // }
-}
-
-impl Tx {
-    // unsafe fn get(
-    //     &self,
-    //     packet: &mut MessagePacket,
-    //     allocator: &dyn Allocator,
-    // ) -> Result<(), ErrorCode> {
-    //     let key = packet.header().in_pointer1.get(packet);
-    //     self.track_access(key, Access::Read)
-    //         .map_err(|_| SystemCode(InvalidHandler))?;
-    //     let mut current_frame = self.current_frame.borrow_mut();
-    //     let account = current_frame.account;
-    //     let current_store = current_frame.get_kv_store(account);
-    //     match current_store.kv_store.get(key) {
-    //         None => {
-    //             return Err(HandlerCode(0)); // KV-stores should use handler code 0 to indicate not found
-    //         }
-    //         Some(value) => unsafe {
-    //             let out = allocator
-    //                 .allocate(Layout::from_size_align_unchecked(value.len(), 16))
-    //                 .map_err(|_| SystemCode(FatalExecutionError))?;
-    //             let out_slice =
-    //                 core::slice::from_raw_parts_mut(out.as_ptr() as *mut u8, value.len());
-    //             out_slice.copy_from_slice(value.as_slice());
-    //             packet.header_mut().out_pointer1.set_slice(out_slice);
-    //         },
-    //     }
-    //     Ok(())
-    // }
-    //
-    // unsafe fn set(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
-    //     let key = packet.header().in_pointer1.get(packet);
-    //     let value = packet.header().in_pointer2.get(packet);
-    //     self.track_access(key, Access::Write)
-    //         .map_err(|_| SystemCode(InvalidHandler))?;
-    //     let mut current_frame = self.current_frame.borrow_mut();
-    //     let account = current_frame.account;
-    //     let current_store = current_frame.get_kv_store(account);
-    //     current_store.kv_store.insert(key.to_vec(), value.to_vec());
-    //     current_frame.changes.push(Update {
-    //         account,
-    //         key: key.to_vec(),
-    //         operation: Operation::Set(value.to_vec()),
-    //     });
-    //     Ok(())
-    // }
-    //
-    // unsafe fn delete(&self, packet: &mut MessagePacket) -> Result<(), ErrorCode> {
-    //     let key = packet.header().in_pointer1.get(packet);
-    //     self.track_access(key, Access::Write)
-    //         .map_err(|_| SystemCode(InvalidHandler))?;
-    //     let mut current_frame = self.current_frame.borrow_mut();
-    //     let account = current_frame.account;
-    //     let current_store = current_frame.get_kv_store(account);
-    //     current_store.kv_store.remove(key);
-    //     current_frame.changes.push(Update {
-    //         account,
-    //         key: key.to_vec(),
-    //         operation: Operation::Remove,
-    //     });
-    //     Ok(())
-    // }
-    //
-    // fn track_access(&self, key: &[u8], access: Access) -> Result<(), AccessError> {
-    //     // TODO track reads and writes for parallel execution
-    //     Ok(())
-    // }
 }
 
 #[derive(Debug, Error)]
@@ -284,4 +209,5 @@ struct AccessError;
 #[derive(Clone)]
 pub struct Frame {
     store: MultiStore,
+    events: Vector<EventData>,
 }

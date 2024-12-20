@@ -26,8 +26,13 @@ use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
 use std::cell::Cell;
 use std::collections::BTreeMap;
+use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::sync::Mutex;
+use ixc_schema::binary::NativeBinaryCodec;
+use ixc_schema::codec::{decode_value, Codec};
+use ixc_schema::SchemaValue;
+use ixc_schema::structs::StructSchema;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -131,27 +136,25 @@ impl<V: NativeVM + 'static> TestApp<V> {
         let mut ctx = self.client_context_for(client.account_id());
         f(&h, &mut ctx)
     }
+
+    /// Get the events emitted during the last message execution.
+    pub fn last_events(&self) -> EventLog {
+        let backend = self.backend.lock().unwrap();
+        backend.last_events.clone()
+    }
 }
 
+#[derive(Default)]
 struct Backend<V> {
     vm: V,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
+    last_events: EventLog,
 }
 
 struct BackendWrapper<V> {
     account: AccountID,
     backend: Rc<Mutex<Backend<V>>>,
-}
-
-impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
-    fn default() -> Self {
-        Self {
-            vm: V::default(),
-            state: VersionedMultiStore::default(),
-            id_gen: IncrementingIDGenerator::default(),
-        }
-    }
 }
 
 impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
@@ -171,10 +174,11 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
             message,
             invoke_params,
         )?;
-        backend
+        let events = backend
             .state
             .commit(tx)
             .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
+        backend.last_events = EventLog { events };
         Ok(res)
     }
 
@@ -344,5 +348,55 @@ mod default_account {
         pub fn create(&self, _ctx: &mut Context) -> Result<()> {
             Ok(())
         }
+    }
+}
+
+#[derive(Default, Clone)]
+/// The events captured by the test harness.
+pub struct EventLog {
+    events: imbl::Vector<EventData>,
+}
+
+impl Debug for EventLog {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.events.iter()).finish()
+    }
+}
+
+impl Iterator for EventLog {
+    type Item = EventData;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.events.pop_front()
+    }
+}
+
+impl EventLog {
+    /// Get the number of events in the log.
+    pub fn len(&self) -> usize {
+        self.events.len()
+    }
+}
+
+/// The event data captured by the test harness.
+#[derive(Default, Clone, Debug)]
+pub struct EventData {
+    /// The account that emitted the event.
+    pub sender: AccountID,
+    /// The type selector of the event.
+    pub type_selector: u64,
+    /// The event data.
+    pub data: Vec<u8>,
+}
+
+impl EventData {
+    /// Try to decode the event data as a struct.
+    pub fn try_decode<'a, E: StructSchema + SchemaValue<'a>>(&'a self, mem: &'a MemoryManager) -> ClientResult<E> {
+        if self.type_selector != E::TYPE_SELECTOR {
+            return Err(ErrorCode::SystemCode(SystemCode::EncodingError).into());
+        }
+        let cdc = NativeBinaryCodec::default();
+        let res = decode_value(&cdc, self.data.as_slice(), mem)?;
+        Ok(res)
     }
 }

@@ -237,7 +237,6 @@ impl APIBuilder {
         )?;
 
         // calculate the message selector
-        let selector = message_selector_from_str(msg_struct_name.to_string().as_str());
         let return_type = match &signature.output {
             ReturnType::Type(_, ty) => ty,
             ReturnType::Default => {
@@ -249,7 +248,6 @@ impl APIBuilder {
                 &mut self.items,
                 quote! {
                     impl < 'a >::ixc::core::message::MessageBase < 'a > for # msg_struct_name # opt_lifetime {
-                        const SELECTOR: ::ixc::message_api::message::MessageSelector = # selector;
                         type Response < 'b > = < # return_type as::ixc::core::message::ExtractResponseTypes >::Response;
                         type Error = < # return_type as::ixc::core::message::ExtractResponseTypes >::Error;
                         type Codec =::ixc::schema::binary::NativeBinaryCodec;
@@ -277,7 +275,7 @@ impl APIBuilder {
                 quote! { caller, }
             };
             let route = quote! {
-            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, #maybe_caller packet, cb, allocator| {
+            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::schema::structs::StructSchema>::TYPE_SELECTOR, |h: & Self, #maybe_caller packet, cb, allocator| {
                 unsafe {
                     let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
                     let in1 = packet.request().in1().expect_bytes()?;
