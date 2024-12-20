@@ -27,7 +27,7 @@
       "keywords": {
         "patterns": [
           {
-            "match": "\\b(interface|struct|event|tx|query|object|impl|for|in|map|client|return|emits|key|transfer|ref|mut|account_scoped|var)\\b",
+            "match": "\\b(interface|struct|event|tx|query|objecAt|impl|for|in|map|client|return|emits|key|transfer|ref|mut|account_scoped|var|test)\\b",
             "name": "keyword.control.ixc"
           }
         ]
