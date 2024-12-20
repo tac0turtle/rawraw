@@ -5,7 +5,8 @@ use alloc::format;
 use alloc::string::String;
 use core::error::Error;
 use core::fmt::{Debug, Display, Formatter};
-use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
+use ixc_message_api::code::StdCode::EncodingError;
+use ixc_message_api::code::{ErrorCode, HandlerCode, StdCode};
 use ixc_schema::decoder::DecodeError;
 use ixc_schema::encoder::EncodeError;
 
@@ -156,7 +157,7 @@ impl<E: HandlerCode> From<ErrorCode> for ClientError<E> {
 impl<E: HandlerCode> From<EncodeError> for ClientError<E> {
     fn from(_: EncodeError) -> Self {
         ClientError {
-            code: ErrorCode::System(SystemCode::EncodingError),
+            code: EncodingError.into(),
         }
     }
 }
@@ -164,7 +165,7 @@ impl<E: HandlerCode> From<EncodeError> for ClientError<E> {
 impl<E: HandlerCode> From<DecodeError> for ClientError<E> {
     fn from(_: DecodeError) -> Self {
         ClientError {
-            code: ErrorCode::System(SystemCode::EncodingError),
+            code: EncodingError.into(),
         }
     }
 }
@@ -172,7 +173,7 @@ impl<E: HandlerCode> From<DecodeError> for ClientError<E> {
 impl<E: HandlerCode> From<allocator_api2::alloc::AllocError> for ClientError<E> {
     fn from(_: allocator_api2::alloc::AllocError) -> Self {
         ClientError {
-            code: ErrorCode::System(SystemCode::EncodingError),
+            code: EncodingError.into(),
         }
     }
 }
@@ -195,7 +196,7 @@ pub fn unimplemented_ok<R: Default, E: HandlerCode>(res: ClientResult<R, E>) -> 
     match res {
         Ok(r) => Ok(r),
         Err(e) => match e.code {
-            ErrorCode::System(SystemCode::MessageNotHandled) => Ok(Default::default()),
+            ErrorCode::Std(StdCode::MessageNotHandled) => Ok(Default::default()),
             _ => Err(e),
         },
     }

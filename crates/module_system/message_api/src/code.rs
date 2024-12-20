@@ -60,6 +60,8 @@ pub enum StdCode {
     EncodingError = 130,
     /// Out of gas error.
     OutOfGas = 131,
+    /// Unexpected error. This is used for errors that are not expected to occur, possibly indicating a bug.
+    Unexpected = 132,
 }
 
 impl<E: HandlerCode> From<u16> for ErrorCode<E> {

@@ -105,7 +105,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
 
                     #(#trait_msg_routers)*
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    Err(::ixc::message_api::code::ErrorCode::Std(::ixc::message_api::code::StdCode::MessageNotHandled))
                 }
 
                 fn handle_query<'a>(&self, message_packet: &::ixc::message_api::message::Message, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
@@ -116,7 +116,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
 
                     #(#trait_query_routers)*
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    Err(::ixc::message_api::code::ErrorCode::Std(::ixc::message_api::code::StdCode::MessageNotHandled))
                 }
 
                 fn handle_system<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
@@ -125,7 +125,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
                         return rt(self, caller, message_packet, callbacks, allocator)
                     }
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    Err(::ixc::message_api::code::ErrorCode::Std(::ixc::message_api::code::StdCode::MessageNotHandled))
                 }
             }
         },

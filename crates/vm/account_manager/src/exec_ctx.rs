@@ -10,11 +10,12 @@ use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::System;
 use ixc_message_api::code::SystemCode::{
-    AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler, MessageNotHandled,
+    AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler,
 };
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
+use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_vm_api::VM;
 
 pub(crate) struct ExecContext<
@@ -164,7 +165,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
                     self.handle_self_destruct()?;
                     Ok(Default::default())
                 }
-                _ => Err(System(MessageNotHandled)),
+                _ => Err(MessageNotHandled.into()),
             }
         }
     }
@@ -223,7 +224,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         let is_ok = match res {
             Ok(_) => true,
             // we accept the case where the handler doesn't have an on_create method
-            Err(System(MessageNotHandled)) => true,
+            Err(ErrorCode::Std(MessageNotHandled)) => true,
             Err(_) => false,
         };
 

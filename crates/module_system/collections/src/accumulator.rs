@@ -48,7 +48,7 @@ impl Accumulator {
         let current = self.item.get(ctx).map_err(convert_client_error)?;
         let new_value = current
             .checked_sub(value)
-            .ok_or_else(|| ClientError::new(ErrorCode::CustomError(SafeSubError::Underflow)))?;
+            .ok_or_else(|| ClientError::new(ErrorCode::Custom(SafeSubError::Underflow)))?;
         self.item
             .set(ctx, &new_value)
             .map_err(convert_client_error)?;
@@ -91,7 +91,7 @@ impl<K: ObjectKey> AccumulatorMap<K> {
         let current = self.get(ctx, key.borrow()).map_err(convert_client_error)?;
         let new_value = current
             .checked_sub(value)
-            .ok_or_else(|| ClientError::new(ErrorCode::CustomError(SafeSubError::Underflow)))?;
+            .ok_or_else(|| ClientError::new(ErrorCode::Custom(SafeSubError::Underflow)))?;
         self.map
             .set(ctx, key.borrow(), &new_value)
             .map_err(convert_client_error)?;

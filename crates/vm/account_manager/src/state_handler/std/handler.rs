@@ -4,10 +4,11 @@ use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::System;
-use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
+use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::gas::Gas;
 use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
+use ixc_message_api::code::StdCode::MessageNotHandled;
 
 /// The standard state handler.
 pub struct StdStateHandler<'a, S: StdStateManager> {
@@ -113,7 +114,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
                 self.kv_delete(account_id, key, gas)?;
                 Ok(Default::default())
             }
-            _ => Err(System(MessageNotHandled)),
+            _ => Err(MessageNotHandled.into()),
         }
     }
 
@@ -133,7 +134,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
                     _ => Ok(Default::default()),
                 }
             }
-            _ => Err(System(MessageNotHandled)),
+            _ => Err(MessageNotHandled.into()),
         }
     }
 

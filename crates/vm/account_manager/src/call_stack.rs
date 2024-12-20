@@ -3,6 +3,7 @@ use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::gas::Gas;
 use ixc_message_api::AccountID;
+use ixc_message_api::code::StdCode::OutOfGas;
 
 #[derive(Debug)]
 pub(crate) struct CallStack<const CALL_STACK_LIMIT: usize> {
@@ -73,9 +74,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
         let consumed = self.gas.consumed();
         if let Some(Some(gas_max)) = self.call_stack.borrow().last().map(|f| f.gas_max) {
             if consumed > gas_max {
-                return Err(ErrorCode::System(
-                    ixc_message_api::code::SystemCode::OutOfGas,
-                ));
+                return Err(OutOfGas.into());
             }
         }
         Ok(())

@@ -17,8 +17,9 @@ use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
+use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::code::{ErrorCode, StdCode};
 use ixc_message_api::gas::Gas;
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
@@ -50,7 +51,7 @@ impl Default for TestApp<NativeVMImpl> {
 
 impl<V: NativeVM + 'static> TestApp<V> {
     /// Registers a handler with the test harness so that accounts backed by this handler can be created.
-    pub fn register_handler<H: Handler>(&self) -> core::result::Result<(), InitializationError> {
+    pub fn register_handler<H: Handler>(&self) -> Result<(), InitializationError> {
         let scope = ResourceScope::default();
         let mut backend = self.backend.lock().unwrap();
         unsafe {
@@ -66,7 +67,7 @@ impl<V: NativeVM + 'static> TestApp<V> {
     pub fn register_handler_with_bindings<H: Handler>(
         &self,
         client_bindings: &[(&'static str, AccountID)],
-    ) -> core::result::Result<(), InitializationError> {
+    ) -> Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
         let mut backend = self.backend.lock().unwrap();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
@@ -274,11 +275,11 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
-                Err(ErrorCode::System(SystemCode::MessageNotHandled)) => continue,
+                Err(ErrorCode::Std(MessageNotHandled)) => continue,
                 _ => return res,
             }
         }
-        Err(ErrorCode::System(SystemCode::MessageNotHandled))
+        Err(MessageNotHandled.into())
     }
 
     fn handle_query<'a>(
@@ -290,11 +291,11 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_query(message, callbacks, allocator);
             match res {
-                Err(ErrorCode::System(SystemCode::MessageNotHandled)) => continue,
+                Err(ErrorCode::Std(StdCode::MessageNotHandled)) => continue,
                 _ => return res,
             }
         }
-        Err(ErrorCode::System(SystemCode::MessageNotHandled))
+        Err(MessageNotHandled.into())
     }
 }
 

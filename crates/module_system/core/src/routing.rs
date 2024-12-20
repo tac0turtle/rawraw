@@ -5,6 +5,7 @@ use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::message::{Message, MessageSelector, Response};
 use ixc_message_api::AccountID;
+use ixc_message_api::code::StdCode::MessageNotHandled;
 
 /// A router for message packets.
 /// # Safety
@@ -56,7 +57,7 @@ pub fn exec_route<'a, R: Router + ?Sized>(
 ) -> Result<Response<'a>, ErrorCode> {
     match find_route(R::SORTED_MSG_ROUTES, req.request().message_selector()) {
         Some(rt) => rt(rtr, caller, req, callbacks, allocator),
-        None => Err(ErrorCode::System(SystemCode::MessageNotHandled)),
+        None => Err(MessageNotHandled.into()),
     }
 }
 
@@ -69,7 +70,7 @@ pub fn exec_query_route<'a, R: Router + ?Sized>(
 ) -> Result<Response<'a>, ErrorCode> {
     match find_route(R::SORTED_QUERY_ROUTES, req.request().message_selector()) {
         Some(rt) => rt(rtr, req, callbacks, allocator),
-        None => Err(ErrorCode::System(SystemCode::MessageNotHandled)),
+        None => Err(MessageNotHandled.into()),
     }
 }
 

@@ -5,7 +5,7 @@ use crate::message::{Message, MessageBase, QueryMessage};
 use crate::result::ClientResult;
 use crate::Context;
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
+use ixc_message_api::code::{ErrorCode, HandlerCode, StdCode, SystemCode};
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::AccountID;
@@ -131,7 +131,7 @@ pub fn encode_handler_error<'b, E: HandlerCode>(
     err: HandlerError<E>,
 ) -> Result<Response<'b>, ErrorCode> {
     Err(match err.code {
-        None => ErrorCode::System(SystemCode::Other),
-        Some(c) => ErrorCode::CustomError(c.into()),
+        None => StdCode::Other.into(),
+        Some(c) => ErrorCode::Custom(c.into()),
     })
 }

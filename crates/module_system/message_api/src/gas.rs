@@ -1,5 +1,5 @@
 //! Gas metering utility.
-use crate::code::{ErrorCode, StdCode, SystemCode};
+use crate::code::{ErrorCode, StdCode};
 use core::cell::Cell;
 
 /// A wrapper for gas.
