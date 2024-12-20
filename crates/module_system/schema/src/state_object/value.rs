@@ -11,11 +11,12 @@ use crate::state_object::value_field::ObjectFieldValue;
 use crate::structs::StructType;
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
+use allocator_api2::alloc::Allocator;
 
 /// Encode an object value.
 pub fn encode_object_value<'a, V: ObjectValue>(
     value: &V::In<'_>,
-    writer_factory: &'a dyn WriterFactory,
+    writer_factory: &'a dyn Allocator,
 ) -> Result<&'a [u8], EncodeError> {
     let mut sizer = EncodeSizer { size: 0 };
     V::encode_reverse(value, &mut sizer)?;

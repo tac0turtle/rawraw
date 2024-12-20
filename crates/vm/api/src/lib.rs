@@ -3,7 +3,6 @@
 //! Virtual Machine API
 #![no_std]
 
-use allocator_api2::vec::Vec;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::{Allocator, RawHandler};
 use ixc_message_api::AccountID;
@@ -17,15 +16,15 @@ pub trait VM {
     fn resolve_handler_id<'a>(
         &self,
         store: &dyn ReadonlyStore,
-        handler_id: &[u8],
+        handler_id: &str,
         allocator: &'a dyn Allocator,
-    ) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
+    ) -> Result<Option<&'a str>, ErrorCode>;
 
     /// Resolves a handler ID to an executable handler or returns an error if the handler is not found.
     fn resolve_handler<'b, 'a: 'b>(
         &'a self,
         store: &dyn ReadonlyStore,
-        handler_id: &[u8],
+        handler_id: &str,
         allocator: &'b dyn Allocator,
     ) -> Result<&'b dyn RawHandler, ErrorCode>;
 
@@ -65,12 +64,7 @@ pub trait VM {
 /// this state should only be used to retrieve the code for a handler from the store.
 pub trait ReadonlyStore {
     /// Gets the value for the given key for the given account.
-    fn get<'a>(
-        &self,
-        account_id: AccountID,
-        key: &[u8],
-        allocator: &'a dyn Allocator,
-    ) -> Result<Option<Vec<u8, &'a dyn Allocator>>, ErrorCode>;
+    fn get(&self, account_id: AccountID, key: &[u8]) -> Result<Option<&[u8]>, ErrorCode>;
 }
 
 /// A descriptor for a handler.

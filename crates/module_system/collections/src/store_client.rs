@@ -1,13 +1,9 @@
-use ixc_core::error::ClientError;
-use ixc_core::low_level::create_packet;
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::header::MessageSelector;
-use ixc_message_api::AccountID;
-
-const STATE_ACCOUNT: AccountID = AccountID::new(2);
+use ixc_message_api::handler::InvokeParams;
+use ixc_message_api::message::{MessageSelector, Param, Request, Response};
 
 const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
@@ -17,24 +13,10 @@ pub(crate) struct KVStoreClient;
 
 impl KVStoreClient {
     pub(crate) fn get<'a>(&self, ctx: &'a Context, key: &[u8]) -> ClientResult<Option<&'a [u8]>> {
-        let mut packet = create_packet(
-            ctx.self_account_id(),
-            ctx.memory_manager(),
-            STATE_ACCOUNT,
-            GET_SELECTOR,
-        )?;
-        let header = packet.header_mut();
-        unsafe {
-            header.in_pointer1.set_slice(key);
-            let res = ctx.dynamic_invoke_query(&mut packet);
-            match res {
-                Ok(_) => {
-                    let res_bz = packet.header().out_pointer1.get(&packet);
-                    Ok(Some(res_bz))
-                }
-                Err(ErrorCode::HandlerCode(0)) => Ok(None),
-                Err(code) => Err(ClientError::from(code)),
-            }
+        let res = dynamic_query_state(ctx, &Request::new1(GET_SELECTOR, key.into()))?;
+        match res.out1() {
+            Param::Slice(res_bz) => Ok(Some(res_bz)),
+            _ => Ok(None),
         }
     }
 
@@ -44,33 +26,25 @@ impl KVStoreClient {
         key: &[u8],
         value: &[u8],
     ) -> ClientResult<()> {
-        let mut packet = create_packet(
-            ctx.self_account_id(),
-            ctx.memory_manager(),
-            STATE_ACCOUNT,
-            SET_SELECTOR,
-        )?;
-        let header = packet.header_mut();
-        unsafe {
-            header.in_pointer1.set_slice(key);
-            header.in_pointer2.set_slice(value);
-            ctx.dynamic_invoke_msg(&mut packet)?;
-        }
+        dynamic_update_state(ctx, &Request::new2(SET_SELECTOR, key.into(), value.into()))?;
         Ok(())
     }
 
     pub(crate) unsafe fn delete(&self, ctx: &mut Context, key: &[u8]) -> ClientResult<()> {
-        let mut packet = create_packet(
-            ctx.self_account_id(),
-            ctx.memory_manager(),
-            STATE_ACCOUNT,
-            DELETE_SELECTOR,
-        )?;
-        let header = packet.header_mut();
-        unsafe {
-            header.in_pointer1.set_slice(key);
-            ctx.dynamic_invoke_msg(&mut packet)?;
-        }
+        dynamic_update_state(ctx, &Request::new1(DELETE_SELECTOR, key.into()))?;
         Ok(())
     }
+}
+
+fn dynamic_update_state<'a>(
+    ctx: &mut Context<'a>,
+    req: &Request,
+) -> Result<Response<'a>, ErrorCode> {
+    let invoke_params = InvokeParams::new(ctx.memory_manager(), &None);
+    ctx.with_backend_mut(|backend| backend.update_state(req, &invoke_params))?
+}
+
+fn dynamic_query_state<'a>(ctx: &Context<'a>, req: &Request) -> Result<Response<'a>, ErrorCode> {
+    let invoke_params = InvokeParams::new(ctx.memory_manager(), &None);
+    ctx.with_backend(|backend| backend.query_state(req, &invoke_params))
 }

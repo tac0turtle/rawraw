@@ -4,9 +4,7 @@ use imbl::{HashMap, OrdMap, Vector};
 use ixc_account_manager::state_handler::std::{StdStateError, StdStateManager};
 use ixc_account_manager::state_handler::StateHandler;
 use ixc_core_macros::message_selector;
-use ixc_message_api::header::MessageSelector;
-use ixc_message_api::packet::MessagePacket;
-use ixc_message_api::AccountID;
+use ixc_message_api::{alloc_util, AccountID};
 use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
@@ -48,10 +46,6 @@ pub struct Tx {
     call_stack: std::vec::Vec<Frame>,
 }
 
-const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
-const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
-const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
-
 impl Tx {
     fn current_frame(&self) -> Result<&Frame, StdStateError> {
         self.call_stack
@@ -67,21 +61,19 @@ impl Tx {
 }
 
 impl StdStateManager for Tx {
-    fn kv_get<A: Allocator>(
+    fn kv_get<'a>(
         &self,
         account_id: AccountID,
         scope: Option<AccountID>,
         key: &[u8],
-        allocator: A,
-    ) -> Result<Option<allocator_api2::vec::Vec<u8, A>>, StdStateError> {
+        allocator: &'a dyn Allocator,
+    ) -> Result<Option<&'a [u8]>, StdStateError> {
         if scope.is_some() {
             todo!("scoped kv_get")
         }
         if let Some(store) = self.current_frame()?.store.stores.get(&account_id) {
             if let Some(value) = store.kv_store.get(key) {
-                let mut copy = allocator_api2::vec::Vec::new_in(allocator);
-                copy.extend_from_slice(value.as_slice());
-                Ok(Some(copy))
+                unsafe { Ok(Some(alloc_util::copy_bytes(allocator, value.as_slice())?)) }
             } else {
                 Ok(None)
             }

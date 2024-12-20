@@ -46,12 +46,9 @@ impl Accumulator {
     /// returning an error if the subtraction would result in a negative value.
     pub fn safe_sub(&self, ctx: &mut Context, value: u128) -> ClientResult<u128, SafeSubError> {
         let current = self.item.get(ctx).map_err(convert_client_error)?;
-        let new_value = current.checked_sub(value).ok_or_else(|| {
-            ClientError::new(
-                ErrorCode::HandlerCode(SafeSubError::Underflow),
-                "".to_string(),
-            )
-        })?;
+        let new_value = current
+            .checked_sub(value)
+            .ok_or_else(|| ClientError::new(ErrorCode::HandlerCode(SafeSubError::Underflow)))?;
         self.item
             .set(ctx, &new_value)
             .map_err(convert_client_error)?;
@@ -92,12 +89,9 @@ impl<K: ObjectKey> AccumulatorMap<K> {
         L: Borrow<K::In<'a>>,
     {
         let current = self.get(ctx, key.borrow()).map_err(convert_client_error)?;
-        let new_value = current.checked_sub(value).ok_or_else(|| {
-            ClientError::new(
-                ErrorCode::HandlerCode(SafeSubError::Underflow),
-                "".to_string(),
-            )
-        })?;
+        let new_value = current
+            .checked_sub(value)
+            .ok_or_else(|| ClientError::new(ErrorCode::HandlerCode(SafeSubError::Underflow)))?;
         self.map
             .set(ctx, key.borrow(), &new_value)
             .map_err(convert_client_error)?;
