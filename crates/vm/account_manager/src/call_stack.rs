@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::StdCode::OutOfGas;
 use ixc_message_api::gas::Gas;
 use ixc_message_api::AccountID;
 
@@ -47,9 +48,10 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
             gas_start,
             gas_max,
         };
-        self.call_stack.borrow_mut().try_push(frame).map_err(|_| {
-            ErrorCode::SystemCode(ixc_message_api::code::SystemCode::CallStackOverflow)
-        })
+        self.call_stack
+            .borrow_mut()
+            .try_push(frame)
+            .map_err(|_| ErrorCode::System(ixc_message_api::code::SystemCode::CallStackOverflow))
     }
 
     /// Pops the top frame from the call stack and returns the gas consumed
@@ -73,9 +75,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
         let consumed = self.gas.consumed();
         if let Some(Some(gas_max)) = self.call_stack.borrow().last().map(|f| f.gas_max) {
             if consumed > gas_max {
-                return Err(ErrorCode::SystemCode(
-                    ixc_message_api::code::SystemCode::OutOfGas,
-                ));
+                return Err(OutOfGas.into());
             }
         }
         Ok(())
@@ -87,7 +87,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
         call_stack
             .get(len - 2)
             .map(|f| f.active_account)
-            .ok_or(ErrorCode::SystemCode(
+            .ok_or(ErrorCode::System(
                 ixc_message_api::code::SystemCode::FatalExecutionError,
             ))
     }
@@ -97,7 +97,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
             .borrow()
             .last()
             .map(|f| f.active_account)
-            .ok_or(ErrorCode::SystemCode(
+            .ok_or(ErrorCode::System(
                 ixc_message_api::code::SystemCode::FatalExecutionError,
             ))
     }
