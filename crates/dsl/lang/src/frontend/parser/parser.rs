@@ -93,7 +93,10 @@ impl<'a> Parser<'a> {
 
     pub fn nth(&mut self, lookahead: usize) -> Token {
         if self.fuel.get() == 0 {
-            panic!("parser is stuck at {:?}", self.tokens.get(self.pos));
+            self.advance_with_error(&format!(
+                "BUG: parser is stuck at {:?}, forcing advance. This is a bug in the parser!! Please report it.",
+                self.tokens.get(self.pos)
+            ));
         } else {
             self.fuel.set(self.fuel.get() - 1);
         }
