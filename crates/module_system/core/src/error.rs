@@ -11,9 +11,9 @@ use ixc_schema::encoder::EncodeError;
 /// The standard error type returned by handlers.
 #[derive(Clone)]
 pub struct HandlerError<E: HandlerCode = u8> {
-    pub(crate) code: ErrorCode<E>,
+    pub(crate) code: Option<E>,
     #[cfg(feature = "std")]
-    pub(crate) msg: alloc::string::String,
+    pub(crate) msg: Option<alloc::string::String>,
 }
 
 impl<E: HandlerCode> HandlerError<E> {
@@ -24,9 +24,9 @@ impl<E: HandlerCode> HandlerError<E> {
         #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
         Self {
-            code: ErrorCode::Std(StdCode::Other),
+            code: None,
             #[cfg(feature = "std")]
-            msg: message,
+            msg: Some(message),
         }
     }
 
@@ -37,61 +37,66 @@ impl<E: HandlerCode> HandlerError<E> {
         #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
         Self {
-            code: ErrorCode::Custom(code),
+            code: None,
             #[cfg(feature = "std")]
-            msg: message,
+            msg: Some(message),
         }
     }
 
     /// Format a new error message with a code.
     pub fn new_from_code(code: E) -> Self {
         Self {
-            code: ErrorCode::Custom(code),
+            code: None,
             #[cfg(feature = "std")]
-            msg: alloc::string::String::new(),
+            msg: None,
         }
     }
 
-    /// Format a new error message with any error code, not just a handler code.
-    pub fn new_fmt_with_any_code(args: core::fmt::Arguments<'_>, code: ErrorCode<E>) -> Self {
-        #[cfg(feature = "std")]
-        let mut message = alloc::string::String::new();
-        #[cfg(feature = "std")]
-        core::fmt::write(&mut message, args).unwrap();
-        Self {
-            code,
-            #[cfg(feature = "std")]
-            msg: message,
+    #[cfg(feature = "std")]
+    fn fmt_error(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        if let Some(msg) = &self.msg {
+            if let Some(code) = &self.code {
+                write!(f, "code: {:?}: {}", code, msg)
+            } else {
+                write!(f, "{}", msg)
+            }
+        } else {
+            if let Some(code) = &self.code {
+                write!(f, "code: {:?}: ", code)
+            } else {
+                write!(f, "unknown error")
+            }
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn fmt_error(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        if let Some(code) = &self.code {
+            write!(f, "code: {:?}: ", code)
+        } else {
+            write!(f, "unknown error")
         }
     }
 }
 
 impl<E: HandlerCode> Debug for HandlerError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        if let Some(code) = &self.code {
-            write!(f, "code: {:?}: {}", code, self.msg)
-        } else {
-            write!(f, "{}", self.msg)
-        }
+        self.fmt_error(f)
     }
 }
 
 impl<E: HandlerCode> Display for HandlerError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        if let Some(code) = &self.code {
-            write!(f, "code: {:?}: {}", code, self.msg)
-        } else {
-            write!(f, "{}", self.msg)
-        }
+        self.fmt_error(f)
     }
 }
 
 impl<E: Error, F: HandlerCode> From<E> for HandlerError<F> {
     fn from(value: E) -> Self {
         HandlerError {
-            code: ErrorCode::Std(StdCode::Other),
+            code: None,
             #[cfg(feature = "std")]
-            msg: alloc::format!("got error: {}", value),
+            msg: Some(alloc::format!("got error: {}", value)),
         }
     }
 }

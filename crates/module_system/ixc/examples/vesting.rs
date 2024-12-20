@@ -130,7 +130,7 @@ mod vesting {
         pub amount: Coin,
     }
 
-    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error)]
+    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, Copy)]
     #[repr(u8)]
     pub enum UnlockError {
         #[error("the unlock time has not arrived yet")]
@@ -140,7 +140,7 @@ mod vesting {
         FundsNotReceivedYet,
     }
 
-    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error)]
+    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, Copy)]
     #[repr(u8)]
     pub enum SendError {
         #[error("insufficient funds")]

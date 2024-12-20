@@ -94,7 +94,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
             // pop the call stack
             self.call_stack.pop();
 
-            res
+            res.map_err(|e| e.code)
         };
 
         // commit or rollback the transaction
@@ -216,7 +216,8 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         self.call_stack.push(id, None)?;
 
         let caller = self.call_stack.caller()?;
-        let res = handler.handle_system(&caller, &on_create, self, allocator);
+        let res = handler.handle_system(&caller, &on_create, self, allocator)
+            .map_err(|e| e.code);
 
         // pop the frame
         self.call_stack.pop();
@@ -281,7 +282,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         )?;
 
         // execute the on-migrate packet with the system message handler
-        handler.handle_system(&active_account, &on_migrate, self, allocator)
+        handler.handle_system(&active_account, &on_migrate, self, allocator).map_err(|e| e.code)
     }
 
     unsafe fn handle_self_destruct(&mut self) -> Result<(), ErrorCode> {

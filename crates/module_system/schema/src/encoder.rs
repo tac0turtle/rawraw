@@ -7,7 +7,7 @@ use crate::value::ValueCodec;
 use core::error::Error;
 use core::fmt::Display;
 use ixc_message_api::code::StdCode::EncodingError;
-use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::code::ErrorCode;
 use ixc_message_api::AccountID;
 
 /// The trait that encoders must implement.

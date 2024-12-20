@@ -29,6 +29,7 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
+use ixc_message_api::error::HandlerError;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -271,15 +272,15 @@ impl RawHandler for MockHandler {
         message: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         for mock in &self.mocks {
             let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
-                Err(ErrorCode::Std(MessageNotHandled)) => continue,
+                Err(HandlerError { code: ErrorCode::Std(MessageNotHandled), .. }) => continue,
                 _ => return res,
             }
         }
-        Err(MessageNotHandled.into())
+        Err(HandlerError::new(MessageNotHandled.into()))
     }
 
     fn handle_query<'a>(
@@ -287,15 +288,15 @@ impl RawHandler for MockHandler {
         message: &Message,
         callbacks: &dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         for mock in &self.mocks {
             let res = mock.handle_query(message, callbacks, allocator);
             match res {
-                Err(ErrorCode::Std(StdCode::MessageNotHandled)) => continue,
+                Err(HandlerError { code: ErrorCode::Std(StdCode::MessageNotHandled), .. }) => continue,
                 _ => return res,
             }
         }
-        Err(MessageNotHandled.into())
+        Err(HandlerError::new(MessageNotHandled.into()))
     }
 }
 
@@ -306,7 +307,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
         message_packet: &Message,
         callbacks: &dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         self.0.handle_query(message_packet, callbacks, allocator)
     }
 
@@ -316,7 +317,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
         message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         self.0
             .handle_msg(caller, message_packet, callbacks, allocator)
     }
@@ -327,7 +328,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
         message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         self.0
             .handle_system(caller, message_packet, callbacks, allocator)
     }

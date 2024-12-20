@@ -21,7 +21,7 @@ pub struct AccumulatorMap<K> {
 }
 
 /// An error that can occur when performing a safe subtraction.
-#[derive(Debug, Clone, TryFromPrimitive, IntoPrimitive)]
+#[derive(Debug, Clone, TryFromPrimitive, IntoPrimitive, Copy)]
 #[repr(u8)]
 pub enum SafeSubError {
     /// The subtraction would result in a negative value.

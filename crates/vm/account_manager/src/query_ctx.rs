@@ -82,7 +82,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         // pop the call stack
         self.call_stack.pop();
 
-        res
+        res.map_err(|e| e.code)
     }
 
     fn update_state<'c>(

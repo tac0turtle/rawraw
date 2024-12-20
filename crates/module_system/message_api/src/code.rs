@@ -21,8 +21,8 @@ pub enum ErrorCode<E: HandlerCode = u8> {
 }
 
 /// A trait implemented by all types that can be used as custom handler error codes.
-pub trait HandlerCode: Into<u8> + TryFrom<u8> + Debug + Clone {}
-impl<T: Into<u8> + TryFrom<u8> + Debug + Clone> HandlerCode for T {}
+pub trait HandlerCode: Into<u8> + TryFrom<u8> + Debug + Clone + Copy {}
+impl<T: Into<u8> + TryFrom<u8> + Debug + Clone + Copy> HandlerCode for T {}
 
 /// A set of error codes that only the system can return.
 /// Handler may receive these codes, but cannot return them.
