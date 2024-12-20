@@ -4,7 +4,7 @@ use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
-use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
+use ixc_message_api::code::SystemCode::MessageNotHandled;
 use ixc_message_api::gas::Gas;
 use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;

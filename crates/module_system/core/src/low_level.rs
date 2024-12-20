@@ -14,7 +14,7 @@ use ixc_schema::binary::NativeBinaryCodec;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::structs::StructSchema;
-use ixc_schema::value::{OptionalValue, ValueCodec};
+use ixc_schema::value::OptionalValue;
 use ixc_schema::SchemaValue;
 
 /// Dynamically invokes an account message.
@@ -145,7 +145,7 @@ pub fn emit_event<'a, E: StructSchema + SchemaValue<'a>>(
     ctx: &mut Context,
     event: &E,
 ) -> ClientResult<()> {
-    let cdc = NativeBinaryCodec::default();
+    let cdc = NativeBinaryCodec;
     let event_bytes = cdc.encode_value(event, ctx.memory_manager())?;
     let req = Request::new2(
         EMIT_EVENT_SELECTOR,

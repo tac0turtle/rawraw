@@ -1,5 +1,4 @@
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::code::SystemCode;
 use ixc_message_api::{code::ErrorCode, AccountID};
 
 /// The standard state manager trait which is the interface
