@@ -1,11 +1,11 @@
 //! Routing system for message packets.
 
 use allocator_api2::alloc::Allocator;
+use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::message::{Message, MessageSelector, Response};
 use ixc_message_api::AccountID;
-use ixc_message_api::code::StdCode::MessageNotHandled;
 
 /// A router for message packets.
 /// # Safety

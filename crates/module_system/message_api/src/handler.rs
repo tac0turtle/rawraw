@@ -1,6 +1,6 @@
 //! The raw handler and host backend interfaces.
-use crate::code::StdCode::MessageNotHandled;
 use crate::code::ErrorCode;
+use crate::code::StdCode::MessageNotHandled;
 use crate::gas::Gas;
 use crate::message::{Message, Request, Response};
 use crate::AccountID;

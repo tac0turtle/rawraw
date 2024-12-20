@@ -8,8 +8,8 @@ use crate::value::ValueCodec;
 use crate::SchemaValue;
 use core::error::Error;
 use core::fmt::{Display, Formatter};
-use ixc_message_api::code::StdCode::EncodingError;
 use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::StdCode::EncodingError;
 use ixc_message_api::AccountID;
 
 /// The trait that decoders must implement.

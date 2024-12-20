@@ -80,14 +80,14 @@ impl<E: HandlerCode> From<u16> for ErrorCode<E> {
                 } else {
                     ErrorCode::Unknown(value)
                 }
-            },
+            }
             512..768 => {
                 if let Ok(e) = E::try_from((value - 512) as u8) {
                     ErrorCode::Custom(e)
                 } else {
                     ErrorCode::Unknown(value)
                 }
-            },
+            }
             _ => ErrorCode::Unknown(value),
         }
     }

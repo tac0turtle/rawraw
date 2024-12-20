@@ -9,13 +9,13 @@ use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::System;
+use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_message_api::code::SystemCode::{
     AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler,
 };
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
-use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_vm_api::VM;
 
 pub(crate) struct ExecContext<

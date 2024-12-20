@@ -1,8 +1,8 @@
 //! Message request and response types.
 
+use crate::code::StdCode::EncodingError;
 use crate::code::{ErrorCode, SystemCode};
 use crate::AccountID;
-use crate::code::StdCode::EncodingError;
 
 /// A message.
 #[non_exhaustive]

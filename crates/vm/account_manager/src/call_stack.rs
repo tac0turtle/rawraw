@@ -1,9 +1,9 @@
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::StdCode::OutOfGas;
 use ixc_message_api::gas::Gas;
 use ixc_message_api::AccountID;
-use ixc_message_api::code::StdCode::OutOfGas;
 
 #[derive(Debug)]
 pub(crate) struct CallStack<const CALL_STACK_LIMIT: usize> {
@@ -48,9 +48,10 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
             gas_start,
             gas_max,
         };
-        self.call_stack.borrow_mut().try_push(frame).map_err(|_| {
-            ErrorCode::System(ixc_message_api::code::SystemCode::CallStackOverflow)
-        })
+        self.call_stack
+            .borrow_mut()
+            .try_push(frame)
+            .map_err(|_| ErrorCode::System(ixc_message_api::code::SystemCode::CallStackOverflow))
     }
 
     /// Pops the top frame from the call stack and returns the gas consumed
