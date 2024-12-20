@@ -1,8 +1,6 @@
 //! Basic error handling utilities.
 
 use crate::result::ClientResult;
-use alloc::format;
-use alloc::string::String;
 use core::error::Error;
 use core::fmt::{Debug, Display, Formatter};
 use ixc_message_api::code::StdCode::EncodingError;
@@ -13,50 +11,58 @@ use ixc_schema::encoder::EncodeError;
 /// The standard error type returned by handlers.
 #[derive(Clone)]
 pub struct HandlerError<E: HandlerCode = u8> {
-    pub(crate) code: Option<E>,
+    pub(crate) code: ErrorCode<E>,
     #[cfg(feature = "std")]
-    pub(crate) msg: String,
-    // TODO no std version - fixed length 256 byte string probably
+    pub(crate) msg: alloc::string::String,
 }
 
 impl<E: HandlerCode> HandlerError<E> {
-    /// Create a new error message.
-    pub fn new(msg: String) -> Self {
-        HandlerError {
-            code: None,
-            #[cfg(feature = "std")]
-            msg,
-        }
-    }
-
-    /// Create a new error message with a code.
-    pub fn new_with_code(code: E, msg: String) -> Self {
-        HandlerError {
-            code: Some(code),
-            #[cfg(feature = "std")]
-            msg,
-        }
-    }
-
     /// Format a new error message.
     pub fn new_fmt(args: core::fmt::Arguments<'_>) -> Self {
         #[cfg(feature = "std")]
-        let mut message = String::new();
+        let mut message = alloc::string::String::new();
+        #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
-        HandlerError::new(message)
+        Self {
+            code: ErrorCode::Std(StdCode::Other),
+            #[cfg(feature = "std")]
+            msg: message,
+        }
     }
 
     /// Format a new error message with a code.
     pub fn new_fmt_with_code(code: E, args: core::fmt::Arguments<'_>) -> Self {
         #[cfg(feature = "std")]
-        let mut message = String::new();
+        let mut message = alloc::string::String::new();
+        #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
-        HandlerError::new_with_code(code, message)
+        Self {
+            code: ErrorCode::Custom(code),
+            #[cfg(feature = "std")]
+            msg: message,
+        }
     }
 
     /// Format a new error message with a code.
     pub fn new_from_code(code: E) -> Self {
-        HandlerError::new_with_code(code, String::new())
+        Self {
+            code: ErrorCode::Custom(code),
+            #[cfg(feature = "std")]
+            msg: alloc::string::String::new(),
+        }
+    }
+
+    /// Format a new error message with any error code, not just a handler code.
+    pub fn new_fmt_with_any_code(args: core::fmt::Arguments<'_>, code: ErrorCode<E>) -> Self {
+        #[cfg(feature = "std")]
+        let mut message = alloc::string::String::new();
+        #[cfg(feature = "std")]
+        core::fmt::write(&mut message, args).unwrap();
+        Self {
+            code,
+            #[cfg(feature = "std")]
+            msg: message,
+        }
     }
 }
 
@@ -83,40 +89,18 @@ impl<E: HandlerCode> Display for HandlerError<E> {
 impl<E: Error, F: HandlerCode> From<E> for HandlerError<F> {
     fn from(value: E) -> Self {
         HandlerError {
-            code: None,
-            msg: format!("got error: {}", value),
+            code: ErrorCode::Std(StdCode::Other),
+            #[cfg(feature = "std")]
+            msg: alloc::format!("got error: {}", value),
         }
     }
 }
 
-// /// Format an error message.
-// #[macro_export]
-// macro_rules! fmt_error {
-//     ($code:ident, $($arg:tt)*) => {
-//         $crate::error::HandlerError::new_fmt_with_code($code, core::format_args!($($arg)*))
-//     };
-//     ($($arg:tt)*) => {
-//         $crate::error::HandlerError::new_fmt(core::format_args!($($arg)*))
-//     };
-// }
-//
-// /// Return an error with a formatted message.
-// #[macro_export]
-// macro_rules! bail {
-//     ($($arg:tt)*) => {
-//         return core::result::Err($crate::error::fmt_error!($($arg)*));
-//     };
-// }
-//
-// /// Ensure a condition is true, otherwise return an error with a formatted message.
-// #[macro_export]
-// macro_rules! ensure {
-//     ($cond:expr, $($arg:tt)*) => {
-//         if !$cond {
-//             return core::result::Err($crate::error::fmt_error!($($arg)*));
-//         }
-//     };
-// }
+/// Converts an error code with one handler code to an error code with another handler code.
+pub fn convert_error_code<E: HandlerCode, F: HandlerCode>(code: ErrorCode<E>) -> ErrorCode<F> {
+    let c: u16 = code.into();
+    ErrorCode::<F>::from(c)
+}
 
 /// The standard error type returned by client methods.
 #[derive(Clone)]
@@ -176,12 +160,6 @@ impl<E: HandlerCode> From<allocator_api2::alloc::AllocError> for ClientError<E> 
             code: EncodingError.into(),
         }
     }
-}
-
-/// Converts an error code with one handler code to an error code with another handler code.
-pub fn convert_error_code<E: HandlerCode, F: HandlerCode>(code: ErrorCode<E>) -> ErrorCode<F> {
-    let c: u16 = code.into();
-    ErrorCode::<F>::from(c)
 }
 
 /// Converts an error code with one handler code to an error code with another handler code.

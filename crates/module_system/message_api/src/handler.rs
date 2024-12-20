@@ -5,6 +5,7 @@ use crate::gas::Gas;
 use crate::message::{Message, Request, Response};
 use crate::AccountID;
 pub use allocator_api2::alloc::Allocator;
+use crate::error::HandlerError;
 
 /// A handler for an account.
 pub trait RawHandler {
@@ -15,8 +16,8 @@ pub trait RawHandler {
         _message: &Message,
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
-        Err(MessageNotHandled.into())
+    ) -> Result<Response<'a>, HandlerError> {
+        Err(HandlerError::new_with_any_code(MessageNotHandled.into()))
     }
 
     /// Handle a query message.
@@ -25,8 +26,8 @@ pub trait RawHandler {
         _message: &Message,
         _callbacks: &dyn HostBackend,
         _allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
-        Err(MessageNotHandled.into())
+    ) -> Result<Response<'a>, HandlerError> {
+        Err(HandlerError::new_with_any_code(MessageNotHandled.into()))
     }
 
     /// Handle a system message.
@@ -36,8 +37,8 @@ pub trait RawHandler {
         _message_packet: &Message,
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
-        Err(MessageNotHandled.into())
+    ) -> Result<Response<'a>, HandlerError> {
+        Err(HandlerError::new_with_any_code(MessageNotHandled.into()))
     }
 }
 

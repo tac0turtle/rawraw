@@ -9,6 +9,7 @@ use ixc_message_api::code::{ErrorCode, HandlerCode, StdCode, SystemCode};
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::AccountID;
+use ixc_message_api::error::HandlerError;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::value::OptionalValue;
@@ -99,7 +100,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
         M::Error,
     >,
     allocator: &'b dyn Allocator,
-) -> Result<Response<'b>, ErrorCode> {
+) -> Result<Response<'b>, HandlerError> {
     match res {
         Ok(value) => {
             if let Some(out1) =
