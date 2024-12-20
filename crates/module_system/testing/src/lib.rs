@@ -24,7 +24,7 @@ use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
 use ixc_schema::binary::NativeBinaryCodec;
-use ixc_schema::codec::{decode_value, Codec};
+use ixc_schema::codec::{decode_value};
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::SchemaValue;

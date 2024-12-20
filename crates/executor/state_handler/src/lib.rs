@@ -157,7 +157,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
 
         let new_value = old_value
             .checked_add(value)
-            .ok_or(ErrorCode::from(ErrorCode::HandlerCode(0)))?;
+            .ok_or(ErrorCode::HandlerCode(0))?;
 
         let mut vec = Vec::new();
         vec.extend_from_slice(&new_value.to_le_bytes());
@@ -179,7 +179,7 @@ impl<S: Store> StdStateManager for StateHandler<S> {
 
         let new_value = old_value
             .checked_sub(value)
-            .ok_or(ErrorCode::from(ErrorCode::HandlerCode(0)))?;
+            .ok_or(ErrorCode::HandlerCode(0))?;
 
         let mut vec = Vec::new();
         vec.extend_from_slice(&new_value.to_le_bytes());
