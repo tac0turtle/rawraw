@@ -15,6 +15,8 @@ interface BankAPI {
    tx send(key to: AccountID, coins: []Coin) emits(EventTransfer);
 
    query get_balance(account: AccountID, denom: Str) u128;
+
+   scoped map balances[account: AccountID, denom: Str] => amount: U128Accumulator;
 }
 
 object Bank {
@@ -48,7 +50,7 @@ interface IXC20 {
     query decimals() u8;
     query total_supply() u128;
     query balance_of(account: AccountID) u128;
-    tx transfer(to: AccountID, amount: u128);
+    tx transfer(to: transfer AccountID, amount: u128);
     tx transferFrom(from: AccountID, to: AccountID, amount: u128);
     tx approve(spender: AccountID, amount: u128);
     scoped map balances[account: AccountID] => amount: u128;

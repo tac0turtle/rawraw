@@ -53,6 +53,8 @@ impl<'a> SymbolBuilder<'a> {
                     self.interface_fn(&it).map(|it| children.push(it));
                 },
                 InterfaceItem::Event(it) => children.push(self.event(&it)),
+                InterfaceItem::MapCollection(it) => children.push(self.map_collection(&it)),
+                InterfaceItem::VarCollection(it) => children.push(self.var_collection(&it)),
             }
         }
         self.symbol(SymbolKind::INTERFACE, node.syntax(), node.name(), Some(children))
@@ -64,6 +66,7 @@ impl<'a> SymbolBuilder<'a> {
             match item {
                 ObjectItem::MapCollection(it) => children.push(self.map_collection(&it)),
                 ObjectItem::Client(it) => children.push(self.client(&it)),
+                ObjectItem::VarCollection(it) => children.push(self.var_collection(&it)),
             }
         }
         self.symbol(SymbolKind::CLASS, node.syntax(), node.name(), Some(children))
@@ -77,6 +80,8 @@ impl<'a> SymbolBuilder<'a> {
                 ImplItem::ImplFn(it) => {
                     self.impl_fn(&it).map(|it| children.push(it));
                 },
+                ImplItem::MapCollection(it) => children.push(self.map_collection(&it)),
+                ImplItem::VarCollection(it) => children.push(self.var_collection(&it)),
             }
         }
         self.symbol(SymbolKind::OBJECT, node.syntax(), node.name(), Some(children))
@@ -115,6 +120,10 @@ impl<'a> SymbolBuilder<'a> {
     }
 
     fn map_collection(&self, node: &MapCollection) -> DocumentSymbol {
+        self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
+    }
+
+    fn var_collection(&self, node: &VarCollection) -> DocumentSymbol {
         self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
     }
 

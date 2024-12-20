@@ -38,6 +38,12 @@ pub enum Token {
     Colon,
     #[token(",")]
     Comma,
+    #[token("mut")]
+    MutKw,
+    #[token("ref")]
+    RefKw,
+    #[token("transfer")]
+    TransferKw,
     #[token("emits")]
     EmitsKw,
     #[token("[")]
@@ -52,6 +58,8 @@ pub enum Token {
     ScopedKw,
     #[token("map")]
     MapKw,
+    #[token("var")]
+    VarKw,
     #[token("=>")]
     RArrow,
     #[token("client")]
@@ -88,6 +96,9 @@ impl Token {
             Token::KeyKw => SyntaxKind::KEY_KW,
             Token::Colon => SyntaxKind::COLON,
             Token::Comma => SyntaxKind::COMMA,
+            Token::MutKw => SyntaxKind::MUT_KW,
+            Token::RefKw => SyntaxKind::REF_KW,
+            Token::TransferKw => SyntaxKind::TRANSFER_KW,
             Token::EmitsKw => SyntaxKind::EMITS_KW,
             Token::LSquare => SyntaxKind::L_SQUARE,
             Token::RSquare => SyntaxKind::R_SQUARE,
@@ -95,6 +106,7 @@ impl Token {
             Token::EventKw => SyntaxKind::EVENT_KW,
             Token::ScopedKw => SyntaxKind::SCOPED_KW,
             Token::MapKw => SyntaxKind::MAP_KW,
+            Token::VarKw => SyntaxKind::VAR_KW,
             Token::RArrow => SyntaxKind::R_ARROW,
             Token::ClientKw => SyntaxKind::CLIENT_KW,
             Token::ImplKw => SyntaxKind::IMPL_KW,

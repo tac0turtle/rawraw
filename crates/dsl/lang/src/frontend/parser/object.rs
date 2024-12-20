@@ -1,6 +1,6 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
-use crate::frontend::parser::map::{at_start_map, map_collection};
+use crate::frontend::parser::collections::{at_start_map, at_start_var, map_collection, var_collection};
 use crate::frontend::parser::state::Parser;
 use crate::frontend::parser::type_::type_;
 
@@ -19,6 +19,8 @@ pub fn object(p: &mut Parser) {
 fn object_item(p: &mut Parser) {
     if at_start_map(p) {
         map_collection(p);
+    } else if at_start_var(p) {
+        var_collection(p);
     } else if p.at(ClientKw) {
         client(p);
     } else {

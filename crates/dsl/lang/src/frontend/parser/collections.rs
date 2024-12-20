@@ -64,3 +64,17 @@ fn map_value_field(p: &mut Parser) {
     p.close::<ast::MapField>(m);
 }
 
+pub fn at_start_var(p: &mut Parser) -> bool {
+    p.at(VarKw)
+}
+
+pub fn var_collection(p: &mut Parser) {
+    let m = p.open();
+    p.eat(ScopedKw);
+    p.expect(VarKw);
+    p.expect(Ident);
+    p.expect(Colon);
+    type_(p);
+    p.expect(Semicolon);
+    p.close::<ast::VarCollection>(m);
+}

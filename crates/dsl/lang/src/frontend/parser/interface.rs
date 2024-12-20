@@ -1,7 +1,7 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::fn_::{fn_sig, FN_TYPES};
-use crate::frontend::parser::map::{at_start_map, map_collection};
+use crate::frontend::parser::collections::{at_start_map, at_start_var, map_collection, var_collection};
 use crate::frontend::parser::state::Parser;
 use crate::frontend::parser::struct_::{event_struct, struct_};
 
@@ -27,6 +27,8 @@ fn interface_item(p: &mut Parser) {
         event_struct(p);
     } else if at_start_map(p) {
         map_collection(p);
+    } else if at_start_var(p) {
+        var_collection(p);
     } else {
         p.advance_with_error("expected interface item");
     }

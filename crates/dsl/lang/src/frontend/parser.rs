@@ -6,7 +6,7 @@ use salsa::{Accumulator, Database};
 mod file;
 mod state;
 mod type_;
-mod map;
+mod collections;
 mod expr;
 mod block;
 mod interface;

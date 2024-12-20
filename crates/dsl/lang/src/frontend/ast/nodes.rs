@@ -165,11 +165,16 @@ pub enum InterfaceItem {
     InterfaceFn(InterfaceFn),
     Struct(Struct),
     Event(Event),
+    MapCollection(MapCollection),
+    VarCollection(VarCollection),
 }
 impl rowan::ast::AstNode for InterfaceItem {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, SyntaxKind::INTERFACE_FN | SyntaxKind::STRUCT | SyntaxKind::EVENT)
+        matches!(
+            kind, SyntaxKind::INTERFACE_FN | SyntaxKind::STRUCT | SyntaxKind::EVENT |
+            SyntaxKind::MAP_COLLECTION | SyntaxKind::VAR_COLLECTION
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -178,6 +183,12 @@ impl rowan::ast::AstNode for InterfaceItem {
             }
             SyntaxKind::STRUCT => InterfaceItem::Struct(Struct { syntax }),
             SyntaxKind::EVENT => InterfaceItem::Event(Event { syntax }),
+            SyntaxKind::MAP_COLLECTION => {
+                InterfaceItem::MapCollection(MapCollection { syntax })
+            }
+            SyntaxKind::VAR_COLLECTION => {
+                InterfaceItem::VarCollection(VarCollection { syntax })
+            }
             _ => return None,
         };
         Some(res)
@@ -187,6 +198,8 @@ impl rowan::ast::AstNode for InterfaceItem {
             InterfaceItem::InterfaceFn(it) => &it.syntax,
             InterfaceItem::Struct(it) => &it.syntax,
             InterfaceItem::Event(it) => &it.syntax,
+            InterfaceItem::MapCollection(it) => &it.syntax,
+            InterfaceItem::VarCollection(it) => &it.syntax,
         }
     }
 }
@@ -203,6 +216,16 @@ impl From<Struct> for InterfaceItem {
 impl From<Event> for InterfaceItem {
     fn from(node: Event) -> Self {
         Self::Event(node)
+    }
+}
+impl From<MapCollection> for InterfaceItem {
+    fn from(node: MapCollection) -> Self {
+        Self::MapCollection(node)
+    }
+}
+impl From<VarCollection> for InterfaceItem {
+    fn from(node: VarCollection) -> Self {
+        Self::VarCollection(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -289,6 +312,76 @@ impl crate::frontend::ast::ConcreteNode for Event {
     const KIND: SyntaxKind = SyntaxKind::EVENT;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MapCollection {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for MapCollection {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::MAP_COLLECTION
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl MapCollection {
+    #[inline]
+    pub fn scoped(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::SCOPED_KW)
+    }
+    #[inline]
+    pub fn name(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    }
+    #[inline]
+    pub fn key_fields(&self) -> Option<MapKeyFields> {
+        rowan::ast::support::child(&self.syntax)
+    }
+    #[inline]
+    pub fn value_fields(&self) -> Option<MapValueFields> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for MapCollection {
+    const KIND: SyntaxKind = SyntaxKind::MAP_COLLECTION;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct VarCollection {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for VarCollection {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::VAR_COLLECTION
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl VarCollection {
+    #[inline]
+    pub fn scoped(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::SCOPED_KW)
+    }
+    #[inline]
+    pub fn name(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    }
+    #[inline]
+    pub fn typ(&self) -> Option<Type> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for VarCollection {
+    const KIND: SyntaxKind = SyntaxKind::VAR_COLLECTION;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnSignature {
     syntax: SyntaxNode,
 }
@@ -332,17 +425,24 @@ impl crate::frontend::ast::ConcreteNode for FnSignature {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ObjectItem {
     MapCollection(MapCollection),
+    VarCollection(VarCollection),
     Client(Client),
 }
 impl rowan::ast::AstNode for ObjectItem {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, SyntaxKind::MAP_COLLECTION | SyntaxKind::CLIENT)
+        matches!(
+            kind, SyntaxKind::MAP_COLLECTION | SyntaxKind::VAR_COLLECTION |
+            SyntaxKind::CLIENT
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             SyntaxKind::MAP_COLLECTION => {
                 ObjectItem::MapCollection(MapCollection { syntax })
+            }
+            SyntaxKind::VAR_COLLECTION => {
+                ObjectItem::VarCollection(VarCollection { syntax })
             }
             SyntaxKind::CLIENT => ObjectItem::Client(Client { syntax }),
             _ => return None,
@@ -352,6 +452,7 @@ impl rowan::ast::AstNode for ObjectItem {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             ObjectItem::MapCollection(it) => &it.syntax,
+            ObjectItem::VarCollection(it) => &it.syntax,
             ObjectItem::Client(it) => &it.syntax,
         }
     }
@@ -361,47 +462,15 @@ impl From<MapCollection> for ObjectItem {
         Self::MapCollection(node)
     }
 }
+impl From<VarCollection> for ObjectItem {
+    fn from(node: VarCollection) -> Self {
+        Self::VarCollection(node)
+    }
+}
 impl From<Client> for ObjectItem {
     fn from(node: Client) -> Self {
         Self::Client(node)
     }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MapCollection {
-    syntax: SyntaxNode,
-}
-impl rowan::ast::AstNode for MapCollection {
-    type Language = IXCLanguage;
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::MAP_COLLECTION
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl MapCollection {
-    #[inline]
-    pub fn scoped(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::SCOPED_KW)
-    }
-    #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
-    }
-    #[inline]
-    pub fn key_fields(&self) -> Option<MapKeyFields> {
-        rowan::ast::support::child(&self.syntax)
-    }
-    #[inline]
-    pub fn value_fields(&self) -> Option<MapValueFields> {
-        rowan::ast::support::child(&self.syntax)
-    }
-}
-impl crate::frontend::ast::ConcreteNode for MapCollection {
-    const KIND: SyntaxKind = SyntaxKind::MAP_COLLECTION;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Client {
@@ -445,6 +514,9 @@ impl rowan::ast::AstNode for FnType {
     fn syntax(&self) -> &SyntaxNode {
         todo!()
     }
+}
+impl crate::frontend::ast::ConcreteNode for FnType {
+    const KIND: SyntaxKind = SyntaxKind::FN_TYPE;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnParamList {
@@ -547,12 +619,33 @@ impl FnParam {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
     #[inline]
+    pub fn modifier(&self) -> Option<FnParamModifier> {
+        rowan::ast::support::child(&self.syntax)
+    }
+    #[inline]
     pub fn typ(&self) -> Option<Type> {
         rowan::ast::support::child(&self.syntax)
     }
 }
 impl crate::frontend::ast::ConcreteNode for FnParam {
     const KIND: SyntaxKind = SyntaxKind::FN_PARAM;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FnParamModifier {}
+impl rowan::ast::AstNode for FnParamModifier {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        todo!()
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        todo!()
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        todo!()
+    }
+}
+impl crate::frontend::ast::ConcreteNode for FnParamModifier {
+    const KIND: SyntaxKind = SyntaxKind::FN_PARAM_MODIFIER;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
@@ -825,15 +918,26 @@ impl crate::frontend::ast::ConcreteNode for ImplFor {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImplItem {
     ImplFn(ImplFn),
+    MapCollection(MapCollection),
+    VarCollection(VarCollection),
 }
 impl rowan::ast::AstNode for ImplItem {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, SyntaxKind::IMPL_FN)
+        matches!(
+            kind, SyntaxKind::IMPL_FN | SyntaxKind::MAP_COLLECTION |
+            SyntaxKind::VAR_COLLECTION
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             SyntaxKind::IMPL_FN => ImplItem::ImplFn(ImplFn { syntax }),
+            SyntaxKind::MAP_COLLECTION => {
+                ImplItem::MapCollection(MapCollection { syntax })
+            }
+            SyntaxKind::VAR_COLLECTION => {
+                ImplItem::VarCollection(VarCollection { syntax })
+            }
             _ => return None,
         };
         Some(res)
@@ -841,12 +945,24 @@ impl rowan::ast::AstNode for ImplItem {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             ImplItem::ImplFn(it) => &it.syntax,
+            ImplItem::MapCollection(it) => &it.syntax,
+            ImplItem::VarCollection(it) => &it.syntax,
         }
     }
 }
 impl From<ImplFn> for ImplItem {
     fn from(node: ImplFn) -> Self {
         Self::ImplFn(node)
+    }
+}
+impl From<MapCollection> for ImplItem {
+    fn from(node: MapCollection) -> Self {
+        Self::MapCollection(node)
+    }
+}
+impl From<VarCollection> for ImplItem {
+    fn from(node: VarCollection) -> Self {
+        Self::VarCollection(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1176,6 +1292,9 @@ impl rowan::ast::AstNode for BinaryOp {
         todo!()
     }
 }
+impl crate::frontend::ast::ConcreteNode for BinaryOp {
+    const KIND: SyntaxKind = SyntaxKind::BINARY_OP;
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rhs {
     syntax: SyntaxNode,
@@ -1218,6 +1337,10 @@ impl rowan::ast::AstNode for Arg {
     }
 }
 impl Arg {
+    #[inline]
+    pub fn modifier(&self) -> Option<FnParamModifier> {
+        rowan::ast::support::child(&self.syntax)
+    }
     #[inline]
     pub fn expr(&self) -> Option<Expr> {
         rowan::ast::support::child(&self.syntax)

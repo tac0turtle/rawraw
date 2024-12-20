@@ -43,12 +43,23 @@ fn fn_param(p: &mut Parser) {
     p.eat(KeyKw);
     p.expect(Ident);
     p.expect(Colon);
+    fn_param_modifier(p);
     type_(p);
     if !p.at(RParen) {
         p.expect(Comma);
     }
     p.close::<ast::FnParam>(m);
 }
+
+pub fn fn_param_modifier(p: &mut Parser) {
+    if p.at_any(FN_PARAM_MODIFIER_KW) {
+        let n = p.open();
+        p.advance();
+        p.close::<ast::FnParamModifier>(n);
+    }
+}
+
+const FN_PARAM_MODIFIER_KW: &[Token] = &[MutKw, RefKw, TransferKw];
 
 fn fn_events(p: &mut Parser) {
     let m = p.open();

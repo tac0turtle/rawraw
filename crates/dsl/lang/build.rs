@@ -222,7 +222,7 @@ fn ast_node_code(
     match ast {
         AstNodeAst::Struct(ast) => ast_node_struct(grammar, type_name, syntax_name, ast),
         AstNodeAst::NodeEnum(ast) => ast_node_node_enum(grammar, type_name, ast),
-        AstNodeAst::TokenEnum(ast) => ast_node_token_enum(grammar, type_name, ast),
+        AstNodeAst::TokenEnum(ast) => ast_node_token_enum(grammar, type_name, syntax_name, ast),
     }
 }
 
@@ -348,6 +348,7 @@ fn ast_node_node_enum(
 fn ast_node_token_enum(
     grammar: &Grammar,
     enum_name: &Ident,
+    syntax_name: &Ident,
     ast: &[&Token],
 ) -> anyhow::Result<TokenStream> {
     Ok(quote! {
@@ -360,6 +361,9 @@ fn ast_node_token_enum(
                 todo!()
             }
             fn syntax(&self) -> &SyntaxNode { todo!() }
+        }
+        impl crate::frontend::ast::ConcreteNode for #enum_name {
+            const KIND: SyntaxKind = SyntaxKind::#syntax_name;
         }
     })
 }

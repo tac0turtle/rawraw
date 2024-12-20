@@ -22,7 +22,8 @@ FnParamList = args:FnParam*
 
 FnType = 'tx' | 'query' | 'pure'
 
-FnParam = key:'key'? name:'#ident' ':' typ:Type ','
+FnParam = key:'key'? name:'#ident' ':' modifier:FnParamModifier? typ:Type ','
+FnParamModifier = 'mut' | 'ref' | 'transfer'
 
 FnEvents = 'emits' '(' events:Type* ')'
 
@@ -69,7 +70,7 @@ ExprBinary = op:BinaryOp exprs:Expr*
 Rhs = expr:Expr
 BinaryOp = '.' | '='
 ArgList = '(' args:Arg* ')'
-Arg = expr:Expr ','
+Arg = modifier:FnParamModifier? expr:Expr ','
 ExprConstruct = name:'#ident' fields:ExprConstructFieldList?
 ExprConstructFieldList = '{' fields:ExprConstructField* '}'
 ExprConstructField = name:'#ident' ':' expr:Expr? ','

@@ -1,6 +1,7 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::fn_::fn_param_modifier;
 use crate::frontend::parser::state::{MarkClosed, Parser};
 
 pub fn expr(p: &mut Parser) {
@@ -88,6 +89,7 @@ fn arg_list(p: &mut Parser) {
 // Arg = Expr ','?
 fn arg(p: &mut Parser) {
     let m = p.open();
+    fn_param_modifier(p);
     expr(p);
     if !p.at(RParen) {
         p.expect(Comma);
