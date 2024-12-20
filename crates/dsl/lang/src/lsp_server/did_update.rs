@@ -2,13 +2,11 @@ use crate::db::FileSource;
 use crate::lsp_server::diagnostic::run_diagnostics;
 use crate::lsp_server::server::LSPServer;
 use salsa::Setter;
-use tower_lsp::lsp_types::{
-    Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Position, Range,
-};
+use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Position, Range, Url};
 
 impl LSPServer {
-    pub async fn on_did_change(&self, params: DidChangeTextDocumentParams) {
-        let src = if let Some(src) = self.document_map.get(&params.text_document.uri) {
+    pub async fn on_did_update(&self, uri: Url, text: String) {
+        let src = if let Some(src) = self.document_map.get(&uri) {
             src
         } else {
             tracing::debug!("file not opened");
@@ -18,12 +16,12 @@ impl LSPServer {
         let lsp_diags = {
             let mut db = self.db.lock().unwrap();
             src.set_text(&mut *db)
-                .to(params.content_changes[0].text.clone());
+                .to(text.to_string());
             run_diagnostics(&*db, *src)
         };
 
         self.client
-            .publish_diagnostics(params.text_document.uri, lsp_diags, None)
+            .publish_diagnostics(uri, lsp_diags, None)
             .await;
     }
 }

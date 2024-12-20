@@ -51,11 +51,11 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(disposable);
 
     const traceOutputChannel = window.createOutputChannel("IXC Language Server");
-	traceOutputChannel.append("Hello world!");
     //const command = process.env.SERVER_PATH || "ixc_lang";
 	const command = "/Users/arc/ixc/target/debug/ixc_lang";
     const run: Executable = {
         command,
+        args: ["lsp-server"],
         options: {
             env: {
                 ...process.env,

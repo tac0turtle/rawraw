@@ -102,10 +102,13 @@ impl LanguageServer for LSPServer {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        self.on_did_change(params).await;
+        self.on_did_update(params.text_document.uri, params.content_changes[0].text.clone()).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        if let Some(text) = params.text {
+            self.on_did_update(params.text_document.uri, text.clone()).await;
+        }
     }
 
     async fn did_close(&self, _: DidCloseTextDocumentParams) {
@@ -123,7 +126,7 @@ impl LanguageServer for LSPServer {
 
 #[tokio::main]
 pub async fn main() {
-    info!("Starting LSP server");
+    // info!("Starting LSP server");
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 

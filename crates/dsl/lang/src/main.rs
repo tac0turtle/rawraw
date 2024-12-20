@@ -17,8 +17,6 @@ enum Command {
 }
 
 fn main() {
-    tracing_subscriber::fmt::init();
-
     let cli = Cli::parse();
     match cli.command {
         Some(Command::LSPServer) => ixc_lang::lsp_server::main(),
