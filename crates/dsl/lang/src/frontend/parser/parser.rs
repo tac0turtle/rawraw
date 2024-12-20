@@ -87,13 +87,13 @@ impl<'a> Parser<'a> {
         self.pos == self.tokens.len()
     }
 
-    pub fn cur(&self) -> Token {
+    pub fn cur(&mut self) -> Token {
         self.nth(0)
     }
 
-    pub fn nth(&self, lookahead: usize) -> Token {
+    pub fn nth(&mut self, lookahead: usize) -> Token {
         if self.fuel.get() == 0 {
-            panic!("parser is stuck")
+            panic!("parser is stuck at {:?}", self.tokens.get(self.pos));
         } else {
             self.fuel.set(self.fuel.get() - 1);
         }
@@ -102,41 +102,19 @@ impl<'a> Parser<'a> {
             .map_or(Token::Eof, |(token, _)| token.clone())
     }
 
-    pub fn at(&self, token: Token) -> bool {
+    pub fn at(&mut self, token: Token) -> bool {
         self.nth(0) == token
     }
 
-    pub fn at_any(&self, tokens: &[Token]) -> bool {
-        self.at_f(|it| tokens.contains(&it))
+    pub fn at_any(&mut self, tokens: &[Token]) -> bool {
+        tokens.contains(&self.cur())
     }
 
-    pub fn at_f(&self, f: impl FnOnce(Token) -> bool) -> bool {
+    fn at_f(&mut self, f: impl FnOnce(Token) -> bool) -> bool {
         f(self.nth(0))
     }
 
-    pub fn at_exact(&self, tokens: &[Token]) -> bool {
-        let mut i = 0;
-        for token in tokens {
-            if self.nth(i) != *token {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-
-    pub fn eat_exact(&mut self, tokens: &[Token]) -> bool {
-        if self.at_exact(tokens) {
-            for _ in tokens {
-                self.advance();
-            }
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn eat_f(&mut self, f: impl FnOnce(Token) -> bool) -> bool {
+    fn eat_f(&mut self, f: impl FnOnce(Token) -> bool) -> bool {
         if self.at_f(f) {
             self.advance();
             true
@@ -161,14 +139,6 @@ impl<'a> Parser<'a> {
         self.emit_error(format!("expected {token:?}"));
     }
 
-    pub fn expect_f(&mut self, eq: impl FnOnce(Token) -> bool, error: &str) {
-        if self.eat_f(eq) {
-            return;
-        }
-        // TODO: Error reporting.
-        self.emit_error(error.into());
-    }
-
     pub fn expect_any(&mut self, tokens: &[Token]) {
         if self.eat_any(tokens) {
             return;
@@ -179,7 +149,6 @@ impl<'a> Parser<'a> {
 
     pub fn advance_with_error(&mut self, error: &str) {
         let m = self.open();
-        // TODO: Error reporting.
         self.emit_error(error.into());
         self.advance();
         self.close::<ErrorNode>(m);
@@ -212,7 +181,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn finish(self, mut builder: GreenNodeBuilder, db: &dyn Database) -> GreenNode {
+    pub fn finish(self, builder: &mut GreenNodeBuilder) -> Vec<Diagnostic> {
         let mut i = 0;
         for event in self.events {
             match event {
@@ -226,11 +195,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        let root = builder.finish();
-        for diag in self.diagnostics {
-            diag.accumulate(db);
-        }
-        root
+        self.diagnostics
     }
 }
 

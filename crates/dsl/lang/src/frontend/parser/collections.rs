@@ -1,7 +1,7 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::Token::*;
-use crate::frontend::parser::state::Parser;
+use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::type_::type_;
 
 pub fn at_start_map(p: &mut Parser) -> bool {

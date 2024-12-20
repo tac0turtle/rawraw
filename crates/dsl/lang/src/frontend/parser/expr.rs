@@ -2,7 +2,7 @@ use crate::frontend::ast;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::fn_::fn_param_modifier;
-use crate::frontend::parser::state::{MarkClosed, Parser};
+use crate::frontend::parser::parser::{MarkClosed, Parser};
 
 pub fn expr(p: &mut Parser) {
     expr_rec(p, Eof); // Eof is just a dummy token until we have an actual left-hand side token

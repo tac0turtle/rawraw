@@ -3,7 +3,7 @@ use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::object::object;
 use crate::frontend::parser::impl_::impl_block;
 use crate::frontend::parser::interface::interface;
-use crate::frontend::parser::state::Parser;
+use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::test::test;
 
 pub fn file(p: &mut Parser) {

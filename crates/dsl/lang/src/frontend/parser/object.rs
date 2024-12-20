@@ -5,7 +5,7 @@ use crate::frontend::parser::collections::{
 };
 use crate::frontend::parser::fn_::FN_TYPES;
 use crate::frontend::parser::impl_::impl_fn;
-use crate::frontend::parser::state::Parser;
+use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::type_::type_;
 
 pub fn object(p: &mut Parser) {
