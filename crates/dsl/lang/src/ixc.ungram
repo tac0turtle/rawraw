@@ -6,7 +6,7 @@ Interface = 'interface' name:'#ident' '{'
     items:InterfaceItem*
 '}'
 
-InterfaceItem = InterfaceFn | Struct | Event
+InterfaceItem = InterfaceFn | Struct | Event | MapCollection | VarCollection
 
 InterfaceFn = sig:FnSignature ';'
 
@@ -14,7 +14,7 @@ Object = 'object' name:'#ident' '{'
     items:ObjectItem*
 '}'
 
-ObjectItem = MapCollection | Client
+ObjectItem = MapCollection | VarCollection | Client
 
 FnSignature = typ:FnType name:'#ident' '(' args:FnParamList ')' events:FnEvents? ret:FnRet?
 
@@ -41,6 +41,7 @@ StructField = name:'#ident' ':' typ:Type ','
 Event = 'event' name:'#ident' '{' fields:StructField* '}'
 
 MapCollection = scoped:'scoped'? 'map' name:'#ident' key_fields:MapKeyFields value_fields:MapValueFields? ';'
+VarCollection = scoped:'scoped'? 'var' name:'#ident' ':' typ:Type ';'
 MapKeyFields = '[' fields:MapField* ']'
 MapValueFields = '=>' fields:MapField*
 MapField = name:'#ident' ':' typ:Type ','
@@ -51,7 +52,7 @@ ClientType = typ:Type ','
 
 Impl = 'impl' name:'#ident' for:ImplFor '{' items:ImplItem* '}'
 ImplFor = 'for' name:'#ident'
-ImplItem = ImplFn
+ImplItem = ImplFn | MapCollection | VarCollection
 ImplFn = sig:FnSignature block:FnBlock
 FnBlock = '{' statements:Stmt* '}'
 Stmt = StmtExpr

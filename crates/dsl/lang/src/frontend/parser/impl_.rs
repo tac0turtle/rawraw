@@ -2,6 +2,7 @@ use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::block::block;
 use crate::frontend::parser::fn_::{fn_sig, FN_TYPES};
+use crate::frontend::parser::map::{at_start_map, map_collection};
 use crate::frontend::parser::state::Parser;
 
 pub fn impl_block(p: &mut Parser) {
@@ -26,6 +27,8 @@ fn impl_item(p: &mut Parser) {
     let cur = p.cur();
     if FN_TYPES.contains(&cur) {
         impl_fn(p);
+    } else if at_start_map(p) {
+        map_collection(p);
     } else {
         p.advance_with_error("expected impl item");
     }

@@ -1,7 +1,14 @@
 use crate::frontend::ast;
+use crate::frontend::lexer::Token;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::state::Parser;
 use crate::frontend::parser::type_::type_;
+
+pub fn at_start_map(p: &mut Parser) -> bool {
+    p.at_any(&MAP_START_KWS)
+}
+
+const MAP_START_KWS: &[Token] = &[MapKw, ScopedKw];
 
 pub fn map_collection(p: &mut Parser) {
     let m = p.open();

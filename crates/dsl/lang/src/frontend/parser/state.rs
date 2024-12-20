@@ -34,7 +34,7 @@ pub struct MarkClosed {
     index: usize,
 }
 
-impl <'a> Parser<'a> {
+impl<'a> Parser<'a> {
     pub fn new(input: &'a str, source: Vec<(Token, Span)>) -> Self {
         let mut res = Self {
             input,
@@ -68,7 +68,9 @@ impl <'a> Parser<'a> {
         let mark = MarkOpened { index: m.index };
         self.events.insert(
             m.index,
-            Event::Open { kind: SyntaxKind::ERROR_NODE },
+            Event::Open {
+                kind: SyntaxKind::ERROR_NODE,
+            },
         );
         mark
     }
@@ -191,7 +193,7 @@ impl <'a> Parser<'a> {
             let span = &self.tokens[len - 1].1;
             &(span.len()..span.len())
         } else {
-           &self.tokens[pos].1
+            &self.tokens[pos].1
         };
         self.diagnostics.push(Diagnostic {
             message,
@@ -211,7 +213,6 @@ impl <'a> Parser<'a> {
     }
 
     pub fn finish(self, mut builder: GreenNodeBuilder, db: &dyn Database) -> GreenNode {
-        builder.start_node(SyntaxKind::ROOT.into());
         let mut i = 0;
         for event in self.events {
             match event {
@@ -225,8 +226,7 @@ impl <'a> Parser<'a> {
                 }
             }
         }
-        builder.finish_node();
-        let root =builder.finish();
+        let root = builder.finish();
         for diag in self.diagnostics {
             diag.accumulate(db);
         }

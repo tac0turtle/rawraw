@@ -43,7 +43,6 @@ fn generate_syntax_kinds(grammar: &Grammar) -> anyhow::Result<()> {
         #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, num_enum::FromPrimitive, num_enum::IntoPrimitive)]
         #[repr(u16)]
         pub enum SyntaxKind {
-            ROOT,
             EOF,
             ERROR, // this is for errors represented as a single token
             ERROR_NODE, // this is for errors represented as a node of possible multiple tokens

@@ -4,9 +4,8 @@ use crate::lsp_server::line_col::{build_line_index, to_lsp_range};
 use crate::lsp_server::server::LSPServer;
 use line_index::LineIndex;
 use rowan::ast::AstNode;
-use tower_lsp::lsp_types::{
-    DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, SymbolKind,
-};
+use tower_lsp::lsp_types::{DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, MessageType, SymbolKind};
+use tracing::info;
 use crate::frontend::syntax::{SyntaxNode, SyntaxToken};
 
 impl LSPServer {
@@ -20,8 +19,8 @@ impl LSPServer {
             let line_index = build_line_index(&*db, *src);
             let builder = SymbolBuilder { line_index: &line_index };
             if let Some(node) = File::cast(ast) {
-                let file = builder.file(&node);
-                return Ok(Some(DocumentSymbolResponse::Nested(vec![file])));
+                let syms = builder.file_symbols(&node);
+                return Ok(Some(DocumentSymbolResponse::Nested(syms)));
             }
         }
         Ok(None)
@@ -33,27 +32,97 @@ struct SymbolBuilder<'a> {
 }
 
 impl<'a> SymbolBuilder<'a> {
-    fn file(&self, file: &File) -> DocumentSymbol {
-        let node = file.syntax();
-        let mut sym = self.symbol(SymbolKind::FILE, node, None);
+    fn file_symbols(&self, file: &File) -> Vec<DocumentSymbol> {
         let mut children = vec![];
         for item in file.items() {
             match item {
                 Item::Interface(it) => children.push(self.interface(&it)),
-                // Item::Object(it) => children.push(object_symbols(&it, line_index)),
-                // Item::Impl(it) => children.push(impl_symbols(&it, line_index)),
-                _ => {},
+                Item::Object(it) => children.push(self.object(&it)),
+                Item::Impl(it) => children.push(self.impl_(&it)),
             }
         }
-        sym.children = Some(children);
-        sym
+        children
     }
 
     fn interface(&self, node: &Interface) -> DocumentSymbol {
-        self.symbol(SymbolKind::INTERFACE, node.syntax(), node.name())
+        let mut children = Vec::new();
+        for item in node.items() {
+            match item {
+                InterfaceItem::Struct(it) => children.push(self.struct_(&it)),
+                InterfaceItem::InterfaceFn(it) => {
+                    self.interface_fn(&it).map(|it| children.push(it));
+                },
+                InterfaceItem::Event(it) => children.push(self.event(&it)),
+            }
+        }
+        self.symbol(SymbolKind::INTERFACE, node.syntax(), node.name(), Some(children))
     }
 
-    fn symbol(&self, kind: SymbolKind, node: &SyntaxNode, name: Option<SyntaxToken>) -> DocumentSymbol {
+    fn object(&self, node: &Object) -> DocumentSymbol {
+        let mut children = Vec::new();
+        for item in node.items() {
+            match item {
+                ObjectItem::MapCollection(it) => children.push(self.map_collection(&it)),
+                ObjectItem::Client(it) => children.push(self.client(&it)),
+            }
+        }
+        self.symbol(SymbolKind::CLASS, node.syntax(), node.name(), Some(children))
+    }
+
+
+    fn impl_(&self, node: &Impl) -> DocumentSymbol {
+        let mut children = Vec::new();
+        for item in node.items() {
+            match item {
+                ImplItem::ImplFn(it) => {
+                    self.impl_fn(&it).map(|it| children.push(it));
+                },
+            }
+        }
+        self.symbol(SymbolKind::OBJECT, node.syntax(), node.name(), Some(children))
+    }
+
+    fn struct_(&self, node: &Struct) -> DocumentSymbol {
+        let mut children = Vec::new();
+        for field in node.fields() {
+            children.push(self.field(&field));
+        }
+        self.symbol(SymbolKind::STRUCT, node.syntax(), node.name(), Some(children))
+    }
+
+    fn interface_fn(&self, node: &InterfaceFn) -> Option<DocumentSymbol> {
+        node.sig().map(|it| self.fn_signature(&it))
+    }
+
+    fn impl_fn(&self, node: &ImplFn) -> Option<DocumentSymbol> {
+        node.sig().map(|it| self.fn_signature(&it))
+    }
+
+    fn fn_signature(&self, node: &FnSignature) -> DocumentSymbol {
+        self.symbol(SymbolKind::METHOD, node.syntax(), node.name(), None)
+    }
+
+    fn event(&self, node: &Event) -> DocumentSymbol {
+        let mut children = vec![];
+        for field in node.fields() {
+            children.push(self.field(&field));
+        }
+        self.symbol(SymbolKind::STRUCT, node.syntax(), node.name(), Some(children))
+    }
+
+    fn field(&self, node: &StructField) -> DocumentSymbol {
+        self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
+    }
+
+    fn map_collection(&self, node: &MapCollection) -> DocumentSymbol {
+        self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
+    }
+
+    fn client(&self, node: &Client) -> DocumentSymbol {
+        self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
+    }
+
+    fn symbol(&self, kind: SymbolKind, node: &SyntaxNode, name: Option<SyntaxToken>, children: Option<Vec<DocumentSymbol>>) -> DocumentSymbol {
         let (name, sel_range) = match name {
             Some(name) => (name.text().to_string(), &name.text_range()),
             None => ("".to_string(), &node.text_range()),
@@ -63,7 +132,7 @@ impl<'a> SymbolBuilder<'a> {
             kind,
             range: to_lsp_range(self.line_index, &node.text_range()),
             selection_range: to_lsp_range(self.line_index, &sel_range),
-            children: None,
+            children,
             detail: None,
             tags: None,
             deprecated: None,

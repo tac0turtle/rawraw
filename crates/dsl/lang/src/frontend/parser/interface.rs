@@ -1,6 +1,7 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::fn_::{fn_sig, FN_TYPES};
+use crate::frontend::parser::map::{at_start_map, map_collection};
 use crate::frontend::parser::state::Parser;
 use crate::frontend::parser::struct_::{event_struct, struct_};
 
@@ -19,14 +20,21 @@ pub fn interface(p: &mut Parser) {
 fn interface_item(p: &mut Parser) {
     let cur = p.cur();
     if FN_TYPES.contains(&cur) {
-        fn_sig(p, Semicolon);
-        p.expect(Semicolon);
+        interface_fn(p);
     } else if cur == StructKw {
        struct_(p);
     } else if cur == EventKw {
         event_struct(p);
+    } else if at_start_map(p) {
+        map_collection(p);
     } else {
         p.advance_with_error("expected interface item");
     }
 }
 
+fn interface_fn(p: &mut Parser) {
+    let m = p.open();
+    fn_sig(p, Semicolon);
+    p.expect(Semicolon);
+    p.close::<ast::InterfaceFn>(m);
+}

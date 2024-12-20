@@ -14,7 +14,6 @@
 )]
 #[repr(u16)]
 pub enum SyntaxKind {
-    ROOT,
     EOF,
     ERROR,
     ERROR_NODE,

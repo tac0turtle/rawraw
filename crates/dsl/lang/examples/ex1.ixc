@@ -51,8 +51,11 @@ interface IXC20 {
     tx transfer(to: AccountID, amount: u128);
     tx transferFrom(from: AccountID, to: AccountID, amount: u128);
     tx approve(spender: AccountID, amount: u128);
+    scoped map balances[account: AccountID] => amount: u128;
 }
 
-object SimpleToken {
-    map balances[account: AccountID] => amount: u128;
+object SimpleToken {}
+
+impl IXC20 for SimpleToken {
+    scoped map balances[account: AccountID] => amount: u128;
 }
