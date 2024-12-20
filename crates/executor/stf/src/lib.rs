@@ -5,12 +5,12 @@ use crate::info::Info;
 use std::marker::PhantomData;
 
 use allocator_api2::alloc::Allocator;
-use ixc_account_manager::authz::AuthorizationMiddleware;
 use ixc_account_manager::id_generator::IDGenerator;
 use ixc_account_manager::state_handler::StateHandler;
 use ixc_account_manager::AccountManager;
 use ixc_message_api::handler::{HostBackend, RawHandler};
-use ixc_message_api::{code::ErrorCode, header::MessageSelector, packet::MessagePacket, AccountID};
+use ixc_message_api::message::{Message, MessageSelector, Request};
+use ixc_message_api::{code::ErrorCode, AccountID};
 use ixc_vm_api::VM;
 
 pub struct BlockReq<T: Transation> {
@@ -22,13 +22,13 @@ pub struct BlockReq<T: Transation> {
 /// A transaction that can be used to execute a message .
 pub trait Transation {
     /// Get the sender of the transaction.
-    fn sender(&self) -> &AccountID;
+    fn sender(&self) -> AccountID;
     /// Get the recipient of the transaction.
-    fn recipient(&self) -> &AccountID;
+    fn recipient(&self) -> AccountID;
     /// Get the message of the transaction.
     fn msg(&self) -> &[u8];
     /// Get the message selector of the transaction.
-    fn selector(&self) -> &MessageSelector;
+    fn selector(&self) -> MessageSelector;
 }
 
 pub trait BeforeTxApply {
@@ -83,7 +83,12 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply, Bb: BeginBlocker, Eb: EndBlocker>
         Self(PhantomData, PhantomData, PhantomData, PhantomData)
     }
 
-    pub fn begin_block() {}
+    pub fn begin_block<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
+        am: &AccountManager<Vm>,
+        sh: &mut SH,
+        id_generator: &mut IDG,
+    ) {
+    }
 
     pub fn end_block() {}
 
@@ -98,11 +103,9 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply, Bb: BeginBlocker, Eb: EndBlocker>
         let mut message_packet = Self::new_message_packet(tx, allocator);
 
         // handle msg
+        am.invoke_msg(sh, id_generator, tx.sender(), allocator)?;
 
-        let mut msg = Self::new_message_packet(tx, allocator);
-        am.invoke_msg(sh, id_generator, &NoOpAuthorizer, &mut msg, allocator)?;
-
-        let resp = Self::response_from_message_packet(&msg);
+        let resp = Self::response_from_message_packet(&message_packet);
 
         PTx::after_tx_apply(am, sh, id_generator, tx, &resp)?;
 
@@ -122,14 +125,6 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply, Bb: BeginBlocker, Eb: EndBlocker>
         todo!()
     }
 }
-struct NoOpAuthorizer;
-
-impl AuthorizationMiddleware for NoOpAuthorizer {
-    fn authorize(&self, real_caller: AccountID, msg: &MessagePacket) -> Result<(), ErrorCode> {
-        todo!()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
