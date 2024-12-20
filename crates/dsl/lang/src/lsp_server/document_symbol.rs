@@ -1,12 +1,14 @@
 use crate::frontend::ast::*;
 use crate::frontend::parser;
+use crate::frontend::syntax::{SyntaxNode, SyntaxToken};
 use crate::lsp_server::line_col::{build_line_index, to_lsp_range};
 use crate::lsp_server::server::LSPServer;
 use line_index::LineIndex;
 use rowan::ast::AstNode;
-use tower_lsp::lsp_types::{DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, MessageType, SymbolKind};
+use tower_lsp::lsp_types::{
+    DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, MessageType, SymbolKind,
+};
 use tracing::info;
-use crate::frontend::syntax::{SyntaxNode, SyntaxToken};
 
 impl LSPServer {
     pub async fn on_document_symbol(
@@ -17,7 +19,9 @@ impl LSPServer {
             let db = self.db.lock().unwrap();
             let ast = parser::parse(&*db, *src).syntax(&*db);
             let line_index = build_line_index(&*db, *src);
-            let builder = SymbolBuilder { line_index: &line_index };
+            let builder = SymbolBuilder {
+                line_index: &line_index,
+            };
             if let Some(node) = File::cast(ast) {
                 let syms = builder.file_symbols(&node);
                 return Ok(Some(DocumentSymbolResponse::Nested(syms)));
@@ -51,13 +55,18 @@ impl<'a> SymbolBuilder<'a> {
                 InterfaceItem::Struct(it) => children.push(self.struct_(&it)),
                 InterfaceItem::InterfaceFn(it) => {
                     self.interface_fn(&it).map(|it| children.push(it));
-                },
+                }
                 InterfaceItem::Event(it) => children.push(self.event(&it)),
                 InterfaceItem::MapCollection(it) => children.push(self.map_collection(&it)),
                 InterfaceItem::VarCollection(it) => children.push(self.var_collection(&it)),
             }
         }
-        self.symbol(SymbolKind::INTERFACE, node.syntax(), node.name(), Some(children))
+        self.symbol(
+            SymbolKind::INTERFACE,
+            node.syntax(),
+            node.name(),
+            Some(children),
+        )
     }
 
     fn object(&self, node: &Object) -> DocumentSymbol {
@@ -67,11 +76,18 @@ impl<'a> SymbolBuilder<'a> {
                 ObjectItem::MapCollection(it) => children.push(self.map_collection(&it)),
                 ObjectItem::Client(it) => children.push(self.client(&it)),
                 ObjectItem::VarCollection(it) => children.push(self.var_collection(&it)),
+                ObjectItem::ImplFn(it) => {
+                    self.impl_fn(&it).map(|it| children.push(it));
+                }
             }
         }
-        self.symbol(SymbolKind::CLASS, node.syntax(), node.name(), Some(children))
+        self.symbol(
+            SymbolKind::CLASS,
+            node.syntax(),
+            node.name(),
+            Some(children),
+        )
     }
-
 
     fn impl_(&self, node: &Impl) -> DocumentSymbol {
         let mut children = Vec::new();
@@ -79,12 +95,17 @@ impl<'a> SymbolBuilder<'a> {
             match item {
                 ImplItem::ImplFn(it) => {
                     self.impl_fn(&it).map(|it| children.push(it));
-                },
+                }
                 ImplItem::MapCollection(it) => children.push(self.map_collection(&it)),
                 ImplItem::VarCollection(it) => children.push(self.var_collection(&it)),
             }
         }
-        self.symbol(SymbolKind::OBJECT, node.syntax(), node.name(), Some(children))
+        self.symbol(
+            SymbolKind::OBJECT,
+            node.syntax(),
+            node.name(),
+            Some(children),
+        )
     }
 
     fn struct_(&self, node: &Struct) -> DocumentSymbol {
@@ -92,7 +113,12 @@ impl<'a> SymbolBuilder<'a> {
         for field in node.fields() {
             children.push(self.field(&field));
         }
-        self.symbol(SymbolKind::STRUCT, node.syntax(), node.name(), Some(children))
+        self.symbol(
+            SymbolKind::STRUCT,
+            node.syntax(),
+            node.name(),
+            Some(children),
+        )
     }
 
     fn interface_fn(&self, node: &InterfaceFn) -> Option<DocumentSymbol> {
@@ -112,7 +138,12 @@ impl<'a> SymbolBuilder<'a> {
         for field in node.fields() {
             children.push(self.field(&field));
         }
-        self.symbol(SymbolKind::STRUCT, node.syntax(), node.name(), Some(children))
+        self.symbol(
+            SymbolKind::STRUCT,
+            node.syntax(),
+            node.name(),
+            Some(children),
+        )
     }
 
     fn field(&self, node: &StructField) -> DocumentSymbol {
@@ -131,7 +162,13 @@ impl<'a> SymbolBuilder<'a> {
         self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
     }
 
-    fn symbol(&self, kind: SymbolKind, node: &SyntaxNode, name: Option<SyntaxToken>, children: Option<Vec<DocumentSymbol>>) -> DocumentSymbol {
+    fn symbol(
+        &self,
+        kind: SymbolKind,
+        node: &SyntaxNode,
+        name: Option<SyntaxToken>,
+        children: Option<Vec<DocumentSymbol>>,
+    ) -> DocumentSymbol {
         let (name, sel_range) = match name {
             Some(name) => (name.text().to_string(), &name.text_range()),
             None => ("".to_string(), &node.text_range()),

@@ -14,7 +14,7 @@ Object = 'object' name:'#ident' '{'
     items:ObjectItem*
 '}'
 
-ObjectItem = MapCollection | VarCollection | Client
+ObjectItem = MapCollection | VarCollection | Client | ImplFn
 
 FnSignature = typ:FnType name:'#ident' '(' args:FnParamList ')' events:FnEvents? ret:FnRet?
 
@@ -41,8 +41,8 @@ StructField = name:'#ident' ':' typ:Type ','
 
 Event = 'event' name:'#ident' '{' fields:StructField* '}'
 
-MapCollection = scoped:'scoped'? 'map' name:'#ident' key_fields:MapKeyFields value_fields:MapValueFields? ';'
-VarCollection = scoped:'scoped'? 'var' name:'#ident' ':' typ:Type ';'
+MapCollection = scoped:'account_scoped'? 'map' name:'#ident' key_fields:MapKeyFields value_fields:MapValueFields? ';'
+VarCollection = 'var' name:'#ident' ':' typ:Type ';'
 MapKeyFields = '[' fields:MapField* ']'
 MapValueFields = '=>' fields:MapField*
 MapField = name:'#ident' ':' typ:Type ','

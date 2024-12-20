@@ -1,0 +1,59 @@
+interface IXC20 {
+    query name() Str;
+    query symbol() Str;
+    query decimals() u8;
+    query total_supply() u128;
+    query balance_of(account: AccountID) u128;
+    tx send(to: AccountID, amount: u128);
+    tx transferFrom(from: AccountID, to: AccountID, amount: u128);
+    tx approve(spender: AccountID, amount: u128);
+    account_scoped map balances[account: AccountID] => amount: u128;
+}
+
+object SimpleToken {
+    var name: Str;
+    var symbol: Str;
+    var decimals: u8;
+    var admin: AccountID;
+    var total_supply: u128;
+    map allowances[owner: AccountID, spender: AccountID] => amount: u128;
+}
+
+impl IXC20 for SimpleToken {
+    account_scoped map balances[account: AccountID] => amount: u128;
+
+    query name() Str {
+        name
+    }
+
+    query symbol() Str {
+        symbol
+    }
+
+    query decimals() u8 {
+        decimals
+    }
+
+    query total_supply() u128 {
+        total_supply
+    }
+    
+    query balance_of(account: AccountID) u128 {
+        balances.get(account)
+    }
+
+    tx send(to: AccountID, amount: u128) {
+        balances.safe_sub(msg.sender, amount);
+        balances.add(to, amount);
+    }
+
+    tx transferFrom(from: AccountID, to: AccountID, amount: u128) {
+        allowances.safe_sub(from, msg.sender, amount);
+        balances.safe_sub(from, amount);
+        balances.add(to, amount);
+    }
+
+    tx approve(spender: AccountID, amount: u128) {
+        allowances.add(msg.sender, spender, amount);
+    }
+}

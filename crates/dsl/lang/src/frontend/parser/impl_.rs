@@ -36,7 +36,7 @@ fn impl_item(p: &mut Parser) {
     }
 }
 
-fn impl_fn(p: &mut Parser) {
+pub fn impl_fn(p: &mut Parser) {
     let m = p.open();
     fn_sig(p, LCurly);
     block(p);

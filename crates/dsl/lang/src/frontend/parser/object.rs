@@ -1,6 +1,10 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
-use crate::frontend::parser::collections::{at_start_map, at_start_var, map_collection, var_collection};
+use crate::frontend::parser::collections::{
+    at_start_map, at_start_var, map_collection, var_collection,
+};
+use crate::frontend::parser::fn_::FN_TYPES;
+use crate::frontend::parser::impl_::impl_fn;
 use crate::frontend::parser::state::Parser;
 use crate::frontend::parser::type_::type_;
 
@@ -23,6 +27,8 @@ fn object_item(p: &mut Parser) {
         var_collection(p);
     } else if p.at(ClientKw) {
         client(p);
+    } else if p.at_any(&FN_TYPES) {
+        impl_fn(p);
     } else {
         p.advance_with_error("expected handler item");
     }
@@ -54,4 +60,3 @@ fn client_type(p: &mut Parser) {
     }
     p.close::<ast::ClientType>(m);
 }
-

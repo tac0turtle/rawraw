@@ -15,12 +15,10 @@ interface BankAPI {
    tx send(key to: AccountID, coins: []Coin) emits(EventTransfer);
 
    query get_balance(account: AccountID, denom: Str) u128;
-
-   scoped map balances[account: AccountID, denom: Str] => amount: U128Accumulator;
 }
 
 object Bank {
-   map balances[account: AccountID, denom: Str] => amount: U128Accumulator;
+   account_scoped map balances[account: AccountID, denom: Str] => amount: U128Accumulator;
    map supply[denom: Str] => amount: U128Accumulator;
    map denom_admins[denom: Str] => admin: AccountID;
    client block_info: BlockInfoAPI;
@@ -42,24 +40,4 @@ impl BankAPI for Bank {
    query get_balance(account: AccountID, denom: Str) u128 {
        balances.get(account, denom)
    }
-}
-
-interface IXC20 {
-    query name() Str;
-    query symbol() Str;
-    query decimals() u8;
-    query total_supply() u128;
-    query balance_of(account: AccountID) u128;
-    tx send(to: AccountID, amount: u128);
-    tx transferFrom(from: AccountID, to: AccountID, amount: u128);
-    tx approve(spender: AccountID, amount: u128);
-    scoped map balances[account: AccountID] => amount: u128;
-}
-
-object SimpleToken {
-    var admin: AccountID;
-}
-
-impl IXC20 for SimpleToken {
-    scoped map balances[account: AccountID] => amount: u128;
 }

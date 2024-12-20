@@ -54,8 +54,8 @@ pub enum Token {
     StructKw,
     #[token("event")]
     EventKw,
-    #[token("scoped")]
-    ScopedKw,
+    #[token("account_scoped")]
+    AccountScopedKw,
     #[token("map")]
     MapKw,
     #[token("var")]
@@ -104,7 +104,7 @@ impl Token {
             Token::RSquare => SyntaxKind::R_SQUARE,
             Token::StructKw => SyntaxKind::STRUCT_KW,
             Token::EventKw => SyntaxKind::EVENT_KW,
-            Token::ScopedKw => SyntaxKind::SCOPED_KW,
+            Token::AccountScopedKw => SyntaxKind::ACCOUNT_SCOPED_KW,
             Token::MapKw => SyntaxKind::MAP_KW,
             Token::VarKw => SyntaxKind::VAR_KW,
             Token::RArrow => SyntaxKind::R_ARROW,

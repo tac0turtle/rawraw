@@ -330,7 +330,7 @@ impl rowan::ast::AstNode for MapCollection {
 impl MapCollection {
     #[inline]
     pub fn scoped(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::SCOPED_KW)
+        rowan::ast::support::token(&self.syntax, SyntaxKind::ACCOUNT_SCOPED_KW)
     }
     #[inline]
     pub fn name(&self) -> Option<SyntaxToken> {
@@ -365,10 +365,6 @@ impl rowan::ast::AstNode for VarCollection {
     }
 }
 impl VarCollection {
-    #[inline]
-    pub fn scoped(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::SCOPED_KW)
-    }
     #[inline]
     pub fn name(&self) -> Option<SyntaxToken> {
         rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
@@ -427,13 +423,14 @@ pub enum ObjectItem {
     MapCollection(MapCollection),
     VarCollection(VarCollection),
     Client(Client),
+    ImplFn(ImplFn),
 }
 impl rowan::ast::AstNode for ObjectItem {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind, SyntaxKind::MAP_COLLECTION | SyntaxKind::VAR_COLLECTION |
-            SyntaxKind::CLIENT
+            SyntaxKind::CLIENT | SyntaxKind::IMPL_FN
         )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -445,6 +442,7 @@ impl rowan::ast::AstNode for ObjectItem {
                 ObjectItem::VarCollection(VarCollection { syntax })
             }
             SyntaxKind::CLIENT => ObjectItem::Client(Client { syntax }),
+            SyntaxKind::IMPL_FN => ObjectItem::ImplFn(ImplFn { syntax }),
             _ => return None,
         };
         Some(res)
@@ -454,6 +452,7 @@ impl rowan::ast::AstNode for ObjectItem {
             ObjectItem::MapCollection(it) => &it.syntax,
             ObjectItem::VarCollection(it) => &it.syntax,
             ObjectItem::Client(it) => &it.syntax,
+            ObjectItem::ImplFn(it) => &it.syntax,
         }
     }
 }
@@ -470,6 +469,11 @@ impl From<VarCollection> for ObjectItem {
 impl From<Client> for ObjectItem {
     fn from(node: Client) -> Self {
         Self::Client(node)
+    }
+}
+impl From<ImplFn> for ObjectItem {
+    fn from(node: ImplFn) -> Self {
+        Self::ImplFn(node)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -500,6 +504,35 @@ impl Client {
 }
 impl crate::frontend::ast::ConcreteNode for Client {
     const KIND: SyntaxKind = SyntaxKind::CLIENT;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ImplFn {
+    syntax: SyntaxNode,
+}
+impl rowan::ast::AstNode for ImplFn {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::IMPL_FN
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ImplFn {
+    #[inline]
+    pub fn sig(&self) -> Option<FnSignature> {
+        rowan::ast::support::child(&self.syntax)
+    }
+    #[inline]
+    pub fn block(&self) -> Option<FnBlock> {
+        rowan::ast::support::child(&self.syntax)
+    }
+}
+impl crate::frontend::ast::ConcreteNode for ImplFn {
+    const KIND: SyntaxKind = SyntaxKind::IMPL_FN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FnType {}
@@ -964,35 +997,6 @@ impl From<VarCollection> for ImplItem {
     fn from(node: VarCollection) -> Self {
         Self::VarCollection(node)
     }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImplFn {
-    syntax: SyntaxNode,
-}
-impl rowan::ast::AstNode for ImplFn {
-    type Language = IXCLanguage;
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::IMPL_FN
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl ImplFn {
-    #[inline]
-    pub fn sig(&self) -> Option<FnSignature> {
-        rowan::ast::support::child(&self.syntax)
-    }
-    #[inline]
-    pub fn block(&self) -> Option<FnBlock> {
-        rowan::ast::support::child(&self.syntax)
-    }
-}
-impl crate::frontend::ast::ConcreteNode for ImplFn {
-    const KIND: SyntaxKind = SyntaxKind::IMPL_FN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnBlock {

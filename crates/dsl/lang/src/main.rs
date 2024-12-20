@@ -22,7 +22,7 @@ fn main() {
         Some(Command::LSPServer) => ixc_lang::lsp_server::main(),
         _ =>  {
             // test example:
-            compile_cli("crates/dsl/lang/examples/ex1.ixc")
+            compile_cli("crates/dsl/lang/examples/bank.ixc")
         }
     }
 }

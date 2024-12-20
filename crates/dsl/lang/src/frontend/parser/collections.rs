@@ -8,11 +8,11 @@ pub fn at_start_map(p: &mut Parser) -> bool {
     p.at_any(&MAP_START_KWS)
 }
 
-const MAP_START_KWS: &[Token] = &[MapKw, ScopedKw];
+const MAP_START_KWS: &[Token] = &[MapKw, AccountScopedKw];
 
 pub fn map_collection(p: &mut Parser) {
     let m = p.open();
-    p.eat(ScopedKw);
+    p.eat(AccountScopedKw);
     p.expect(MapKw);
     p.expect(Ident);
     map_key_fields(p);
@@ -70,7 +70,6 @@ pub fn at_start_var(p: &mut Parser) -> bool {
 
 pub fn var_collection(p: &mut Parser) {
     let m = p.open();
-    p.eat(ScopedKw);
     p.expect(VarKw);
     p.expect(Ident);
     p.expect(Colon);

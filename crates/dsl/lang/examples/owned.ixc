@@ -1,0 +1,11 @@
+object AssetManager {
+    var owner: AccountID;
+    tx mint(to: AccountID, amount: u128) {
+        assert(owner == msg.sender);
+        transfer(Asset.new(amount), to);
+    }
+}
+
+object Asset {
+    var amount: u128;
+}
