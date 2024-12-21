@@ -1,3 +1,10 @@
+mod ids;
+mod item;
+mod scope;
+mod bind;
+mod resolve;
+mod type_;
+
 use crate::frontend::ast::*;
 use crate::frontend::syntax::SyntaxKind::*;
 use crate::frontend::syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
