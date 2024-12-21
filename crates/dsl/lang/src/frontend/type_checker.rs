@@ -59,12 +59,12 @@ fn check_file(db: &dyn Database, file: File) {
     for item in file.items() {
         match item {
             File::Item::Interface(it) => {
-                if let Some(name) = it.name() {
-                    scope.type_ids.insert(
-                        name.text().to_string(),
-                        TypeID::new(db, name.text().to_string()),
-                    );
-                }
+                // if let Some(name) = it.name() {
+                //     scope.type_ids.insert(
+                //         name.text().to_string(),
+                //         TypeID::new(db, name.text().to_string()),
+                //     );
+                // }
             }
             // File::Item::Object(it) => check_object(db, it, &types),
             // File::Item::Impl(it) => check_impl(db, it, &types),
