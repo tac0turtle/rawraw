@@ -8,6 +8,7 @@ pub enum IXCLanguage {}
 
 pub type SyntaxNode = rowan::SyntaxNode<IXCLanguage>;
 pub type SyntaxToken = rowan::SyntaxToken<IXCLanguage>;
+pub type SyntaxElement = rowan::SyntaxElement<IXCLanguage>;
 
 impl Language for IXCLanguage {
     type Kind = SyntaxKind;
