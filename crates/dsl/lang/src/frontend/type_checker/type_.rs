@@ -6,7 +6,7 @@ use crate::frontend::type_checker::Scope;
 
 enum Type<'db> {
     Ident(ItemRef<'db>),
-    Array(Type<'db>)
+    Array(Box<Type<'db>>)
 }
 
 pub fn resolve_type<'db>(type_: ast::Type, scope: &'db Scope) -> Option<Type<'db>> {

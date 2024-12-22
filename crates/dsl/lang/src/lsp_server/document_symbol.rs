@@ -65,7 +65,7 @@ impl<'a> SymbolBuilder<'a> {
         self.symbol(
             SymbolKind::INTERFACE,
             node.syntax(),
-            node.name(),
+            node.name().,
             Some(children),
         )
     }

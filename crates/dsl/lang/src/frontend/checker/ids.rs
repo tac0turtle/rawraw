@@ -3,7 +3,7 @@ use rowan::ast::AstNode;
 use salsa::Database;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AstPtr<'db, N: AstNode> {
+pub struct AstPtr<'db, N: AstNode + ?Sized> {
     _marker: std::marker::PhantomData<N>,
     path: NodeId<'db>,
 }

@@ -18,12 +18,12 @@ pub struct ScopeBuilder<'db> {
 
 impl<'db> ScopeBuilder<'db> {
     pub fn provide_symbol_for_children<N: ItemDefiner>(&mut self, node: N) {
-        if let Some(name) = name {
-            // self.symbols
-            //     .insert(name.text().to_string(), N::item_ref(AstPtr::new(&node)));
-        } else {
-            // TODO: report diagnostic
-        }
+        // if let Some(name) = name {
+        //     // self.symbols
+        //     //     .insert(name.text().to_string(), N::item_ref(AstPtr::new(&node)));
+        // } else {
+        //     // TODO: report diagnostic
+        // }
     }
 
     pub fn inherit_parent_node_scope(&mut self) {}

@@ -29,6 +29,6 @@ pub struct FnParamDef<'db> {
 }
 
 pub enum TypeId<'db> {
-    Array(TypeId<'db>),
+    Array(Box<TypeId<'db>>),
     Named(ItemRef<'db>),
 }
