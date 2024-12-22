@@ -19,7 +19,6 @@ impl<'db, N: AstNode> AstPtr<'db, N> {
     }
 
     pub fn resolve(&self, db: &'db dyn Database, node: &SyntaxNode) -> Option<N> {
-        // let resolve_src = db.file_line_index(file_id)?;
         let node = self.path.path(db).resolve(node)?;
         N::cast(node)
     }
@@ -32,12 +31,6 @@ pub struct NodeId<'db> {
     // TODO:
     // #[return_ref]
     // pub file_id: FileId<'db>,
-}
-
-#[salsa::interned]
-pub struct FileId<'db> {
-    #[return_ref]
-    pub url: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -63,21 +56,3 @@ impl NodePath {
         Some(node)
     }
 }
-
-// #[salsa::interned]
-// pub struct TokenId<'db> {
-//     #[return_ref]
-//     pub path: TokenPath,
-// }
-//
-// #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-// pub struct TokenPath(NodePath, usize);
-//
-// impl TokenPath {
-//     pub fn resolve(&self, node: &SyntaxNode) -> Option<SyntaxToken> {
-//         let node = self.0.resolve(node)?;
-//         let elem = node.children_with_tokens().nth(self.1)?;
-//         elem.into_token()
-//     }
-// }
-//
