@@ -210,7 +210,7 @@ impl<'a> Param<'a> {
     /// Expect the parameter to be a slice or return an encoding error.
     pub fn expect_bytes(&self) -> Result<&'a [u8], ErrorCode> {
         match self.typ {
-            ParamType::Slice => unsafe {Ok(self.value.slice) },
+            ParamType::Slice => unsafe { Ok(self.value.slice) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
@@ -218,7 +218,7 @@ impl<'a> Param<'a> {
     /// Expect the parameter to be a string or return an encoding error.
     pub fn expect_string(&self) -> Result<&'a str, ErrorCode> {
         match self.typ {
-            ParamType::String => unsafe {Ok(self.value.string) },
+            ParamType::String => unsafe { Ok(self.value.string) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
@@ -226,7 +226,7 @@ impl<'a> Param<'a> {
     /// Expect the parameter to be a u128 or return an encoding error.
     pub fn expect_u128(&self) -> Result<u128, ErrorCode> {
         match self.typ {
-            ParamType::U128 => unsafe {Ok(self.value.u128) },
+            ParamType::U128 => unsafe { Ok(self.value.u128) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
@@ -234,7 +234,7 @@ impl<'a> Param<'a> {
     /// Expect the parameter to be an account ID or return an encoding error.
     pub fn expect_account_id(&self) -> Result<AccountID, ErrorCode> {
         match self.typ {
-            ParamType::AccountID => unsafe {Ok(self.value.account_id) },
+            ParamType::AccountID => unsafe { Ok(self.value.account_id) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
@@ -273,28 +273,5 @@ impl From<AccountID> for Param<'_> {
             typ: ParamType::AccountID,
             value: ParamValue { account_id },
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    extern crate std;
-    use std::println;
-
-    #[test]
-    fn test_size_of() {
-        // before
-        // size of Request: 112
-        // size of Response: 64
-        // size of Message: 128
-
-        // after
-        // size of Request: 64
-        // size of Response: 48
-        // size of Message: 80
-        println!("size of Request: {:?}", std::mem::size_of::<Request>());
-        println!("size of Response: {:?}", std::mem::size_of::<Response>());
-        println!("size of Message: {:?}", std::mem::size_of::<Message>());
     }
 }
