@@ -10,10 +10,10 @@ pub enum Token {
     Whitespace,
     #[regex(r#"//[^\n\r\f\v]*"#)]
     LineComment,
-    #[token("interface")]
-    InterfaceKw,
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
     Ident,
+    #[token("interface")]
+    InterfaceKw,
     #[token("{")]
     LCurly,
     #[token("}")]
@@ -84,8 +84,8 @@ impl Token {
             Token::Eof => SyntaxKind::EOF,
             Token::Whitespace => SyntaxKind::WHITESPACE,
             Token::LineComment => SyntaxKind::LINE_COMMENT,
-            Token::InterfaceKw => SyntaxKind::INTERFACE_KW,
             Token::Ident => SyntaxKind::IDENT,
+            Token::InterfaceKw => SyntaxKind::INTERFACE_KW,
             Token::LCurly => SyntaxKind::L_CURLY,
             Token::RCurly => SyntaxKind::R_CURLY,
             Token::Semicolon => SyntaxKind::SEMICOLON,

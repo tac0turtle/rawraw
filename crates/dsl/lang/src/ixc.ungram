@@ -1,8 +1,15 @@
+// a name is a node which defines a symbol
+Name = '#ident'
+// a name reference is a node which references a symbol
+// all idents are either names or name references
+// and these nodes are used to define their role in the AST
+NameRef = '#ident'
+
 File = items:Item*
 
 Item = Interface | Object | Impl | Test
 
-Interface = 'interface' name:'#ident' '{'
+Interface = 'interface' name:Name '{'
     items:InterfaceItem*
 '}'
 
@@ -10,49 +17,49 @@ InterfaceItem = InterfaceFn | Struct | Event | MapCollection | VarCollection
 
 InterfaceFn = sig:FnSignature ';'
 
-Object = 'object' name:'#ident' '{'
+Object = 'object' name:Name '{'
     items:ObjectItem*
 '}'
 
 ObjectItem = MapCollection | VarCollection | Client | ImplFn
 
-FnSignature = typ:FnType name:'#ident' '(' args:FnParamList ')' events:FnEvents? ret:FnRet?
+FnSignature = typ:FnType name:Name '(' args:FnParamList ')' events:FnEvents? ret:FnRet?
 
 FnParamList = args:FnParam*
 
 FnType = 'tx' | 'query' | 'pure'
 
-FnParam = key:'key'? name:'#ident' ':' modifier:FnParamModifier? typ:Type ','
+FnParam = key:'key'? name:Name ':' modifier:FnParamModifier? typ:Type ','
 FnParamModifier = 'mut' | 'ref' | 'transfer'
 
 FnEvents = 'emits' '(' events:Type* ')'
 
-FnRet = ret:'#ident'
+FnRet = ret:Type
 
 Type = TypeIdent | TypeArray
 
-TypeIdent = name:'#ident'
+TypeIdent = name:NameRef
 
 TypeArray = typ:Type '[' ']'
 
-Struct = 'struct' name:'#ident' '{' fields:StructField* '}'
+Struct = 'struct' name:Name '{' fields:StructField* '}'
 
-StructField = name:'#ident' ':' typ:Type ','
+StructField = name:Name ':' typ:Type ','
 
-Event = 'event' name:'#ident' '{' fields:StructField* '}'
+Event = 'event' name:Name '{' fields:StructField* '}'
 
-MapCollection = scoped:'account_scoped'? 'map' name:'#ident' key_fields:MapKeyFields value_fields:MapValueFields? ';'
-VarCollection = 'var' name:'#ident' ':' typ:Type ';'
+MapCollection = scoped:'account_scoped'? 'map' name:Name key_fields:MapKeyFields value_fields:MapValueFields? ';'
+VarCollection = 'var' name:Name ':' typ:Type ';'
 MapKeyFields = '[' fields:MapField* ']'
 MapValueFields = '=>' fields:MapField*
-MapField = name:'#ident' ':' typ:Type ','
+MapField = name:Name ':' typ:Type ','
 
-Client = 'client' name:'#ident' ':' types:ClientTypes ';'
+Client = 'client' name:Name ':' types:ClientTypes ';'
 ClientTypes = types:ClientType*
 ClientType = typ:Type ','
 
-Impl = 'impl' name:'#ident' for:ImplFor '{' items:ImplItem* '}'
-ImplFor = 'for' name:'#ident'
+Impl = 'impl' name:Name for:ImplFor '{' items:ImplItem* '}'
+ImplFor = 'for' name:Name
 ImplItem = ImplFn | MapCollection | VarCollection
 ImplFn = sig:FnSignature block:FnBlock
 FnBlock = '{' statements:Stmt* '}'
@@ -62,19 +69,19 @@ StmtExpr = expr:Expr
 Expr = ExprParen |
     NameExpr |
     ExprCall
-NameExpr = name:'#ident'
+NameExpr = name_ref:NameRef
 ExprParen = '(' expr:Expr ')'
-FieldExpr = expr:Expr '.' name:'#ident'
+FieldRefExpr = expr:Expr '.' name:NameRef
 ExprCall = expr:Expr args:ArgList
 ExprBinary = op:BinaryOp exprs:Expr*
 Rhs = expr:Expr
 BinaryOp = '.' | '='
 ArgList = '(' args:Arg* ')'
 Arg = modifier:FnParamModifier? expr:Expr ','
-ExprConstruct = name:'#ident' fields:ExprConstructFieldList?
+ExprConstruct = name:Name fields:ExprConstructFieldList?
 ExprConstructFieldList = '{' fields:ExprConstructField* '}'
-ExprConstructField = name:'#ident' ':' expr:Expr? ','
+ExprConstructField = name:Name ':' expr:Expr? ','
 
-ForStmt = 'for' pat:'#ident' 'in' iterable:Expr block:FnBlock
+ForStmt = 'for' pat:Name 'in' iterable:Expr block:FnBlock
 
 Test = 'test' name:'#ident' block:FnBlock

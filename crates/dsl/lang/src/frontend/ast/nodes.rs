@@ -2,6 +2,40 @@
 
 use crate::frontend::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Name {}
+impl rowan::ast::AstNode for Name {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        todo!()
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        todo!()
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        todo!()
+    }
+}
+impl crate::frontend::ast::ConcreteNode for Name {
+    const KIND: SyntaxKind = SyntaxKind::NAME;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NameRef {}
+impl rowan::ast::AstNode for NameRef {
+    type Language = IXCLanguage;
+    fn can_cast(kind: SyntaxKind) -> bool {
+        todo!()
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        todo!()
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        todo!()
+    }
+}
+impl crate::frontend::ast::ConcreteNode for NameRef {
+    const KIND: SyntaxKind = SyntaxKind::NAME_REF;
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct File {
     syntax: SyntaxNode,
 }
@@ -98,8 +132,8 @@ impl rowan::ast::AstNode for Interface {
 }
 impl Interface {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn items(&self) -> rowan::ast::AstChildren<InterfaceItem> {
@@ -127,8 +161,8 @@ impl rowan::ast::AstNode for Object {
 }
 impl Object {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn items(&self) -> rowan::ast::AstChildren<ObjectItem> {
@@ -156,8 +190,8 @@ impl rowan::ast::AstNode for Impl {
 }
 impl Impl {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn for_(&self) -> Option<ImplFor> {
@@ -311,8 +345,8 @@ impl rowan::ast::AstNode for Struct {
 }
 impl Struct {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn fields(&self) -> rowan::ast::AstChildren<StructField> {
@@ -340,8 +374,8 @@ impl rowan::ast::AstNode for Event {
 }
 impl Event {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn fields(&self) -> rowan::ast::AstChildren<StructField> {
@@ -373,8 +407,8 @@ impl MapCollection {
         rowan::ast::support::token(&self.syntax, SyntaxKind::ACCOUNT_SCOPED_KW)
     }
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn key_fields(&self) -> Option<MapKeyFields> {
@@ -406,8 +440,8 @@ impl rowan::ast::AstNode for VarCollection {
 }
 impl VarCollection {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn typ(&self) -> Option<Type> {
@@ -439,8 +473,8 @@ impl FnSignature {
         rowan::ast::support::child(&self.syntax)
     }
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn args(&self) -> Option<FnParamList> {
@@ -534,8 +568,8 @@ impl rowan::ast::AstNode for Client {
 }
 impl Client {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn types(&self) -> Option<ClientTypes> {
@@ -659,8 +693,8 @@ impl rowan::ast::AstNode for FnRet {
 }
 impl FnRet {
     #[inline]
-    pub fn ret(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn ret(&self) -> Option<Type> {
+        rowan::ast::support::child(&self.syntax)
     }
 }
 impl crate::frontend::ast::ConcreteNode for FnRet {
@@ -688,8 +722,8 @@ impl FnParam {
         rowan::ast::support::token(&self.syntax, SyntaxKind::KEY_KW)
     }
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn modifier(&self) -> Option<FnParamModifier> {
@@ -773,8 +807,8 @@ impl rowan::ast::AstNode for TypeIdent {
 }
 impl TypeIdent {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<NameRef> {
+        rowan::ast::support::child(&self.syntax)
     }
 }
 impl crate::frontend::ast::ConcreteNode for TypeIdent {
@@ -823,8 +857,8 @@ impl rowan::ast::AstNode for StructField {
 }
 impl StructField {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn typ(&self) -> Option<Type> {
@@ -902,8 +936,8 @@ impl rowan::ast::AstNode for MapField {
 }
 impl MapField {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn typ(&self) -> Option<Type> {
@@ -981,8 +1015,8 @@ impl rowan::ast::AstNode for ImplFor {
 }
 impl ImplFor {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
 }
 impl crate::frontend::ast::ConcreteNode for ImplFor {
@@ -1203,8 +1237,8 @@ impl rowan::ast::AstNode for NameExpr {
 }
 impl NameExpr {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name_ref(&self) -> Option<NameRef> {
+        rowan::ast::support::child(&self.syntax)
     }
 }
 impl crate::frontend::ast::ConcreteNode for NameExpr {
@@ -1240,13 +1274,13 @@ impl crate::frontend::ast::ConcreteNode for ExprCall {
     const KIND: SyntaxKind = SyntaxKind::EXPR_CALL;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FieldExpr {
+pub struct FieldRefExpr {
     syntax: SyntaxNode,
 }
-impl rowan::ast::AstNode for FieldExpr {
+impl rowan::ast::AstNode for FieldRefExpr {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::FIELD_EXPR
+        kind == SyntaxKind::FIELD_REF_EXPR
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
@@ -1255,18 +1289,18 @@ impl rowan::ast::AstNode for FieldExpr {
         &self.syntax
     }
 }
-impl FieldExpr {
+impl FieldRefExpr {
     #[inline]
     pub fn expr(&self) -> Option<Expr> {
         rowan::ast::support::child(&self.syntax)
     }
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<NameRef> {
+        rowan::ast::support::child(&self.syntax)
     }
 }
-impl crate::frontend::ast::ConcreteNode for FieldExpr {
-    const KIND: SyntaxKind = SyntaxKind::FIELD_EXPR;
+impl crate::frontend::ast::ConcreteNode for FieldRefExpr {
+    const KIND: SyntaxKind = SyntaxKind::FIELD_REF_EXPR;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArgList {
@@ -1411,8 +1445,8 @@ impl rowan::ast::AstNode for ExprConstruct {
 }
 impl ExprConstruct {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn fields(&self) -> Option<ExprConstructFieldList> {
@@ -1465,8 +1499,8 @@ impl rowan::ast::AstNode for ExprConstructField {
 }
 impl ExprConstructField {
     #[inline]
-    pub fn name(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn name(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn expr(&self) -> Option<Expr> {
@@ -1494,8 +1528,8 @@ impl rowan::ast::AstNode for ForStmt {
 }
 impl ForStmt {
     #[inline]
-    pub fn pat(&self) -> Option<SyntaxToken> {
-        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
+    pub fn pat(&self) -> Option<Name> {
+        rowan::ast::support::child(&self.syntax)
     }
     #[inline]
     pub fn iterable(&self) -> Option<Expr> {
