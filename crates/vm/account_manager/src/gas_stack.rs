@@ -2,7 +2,7 @@ use crate::gas::GasMeter;
 use crate::scope_guard::ScopeGuardStack;
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
-use ixc_message_api::code::ErrorCode;
+use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::gas::GasTracker;
 
 #[derive(Debug)]
@@ -39,6 +39,11 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
         &'a self,
         scoped_gas_tracker: Option<&'a GasTracker>,
     ) -> Result<GasScopeGuard<'a, CALL_STACK_LIMIT>, ErrorCode> {
+        // if we're already out of gas then just error out
+        if self.meter().out_of_gas() {
+            return Err(ErrorCode::SystemCode(SystemCode::OutOfGas));
+        }
+
         let gas_start = self.gas.consumed.get();
         let frame = if let Some(scoped_gas_limit) = scoped_gas_tracker.map(|g| g.limit).flatten() {
             // first get the amount of gas that has been consumed

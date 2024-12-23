@@ -52,8 +52,12 @@ mod gas2 {
                 crate::gas1::Gas1ConsumeGas {},
                 Some(&tracker),
             );
-            check_if_really_out_of_gas(ctx, res)?;
-            Ok(tracker.consumed.get())
+            check_if_really_out_of_gas(ctx, res.clone())?;
+            if res.is_err() {
+                Ok(0)
+            } else {
+                Ok(tracker.consumed.get())
+            }
         }
     }
 
@@ -79,6 +83,7 @@ mod gas2 {
 #[cfg(test)]
 mod tests {
     use super::gas1::*;
+    use crate::gas2::*;
     use ixc_core::account_api::create_account;
     use ixc_core::handler::Client;
     use ixc_core::low_level::dynamic_invoke_msg_with_gas;
@@ -114,10 +119,37 @@ mod tests {
             ErrorCode::SystemCode(SystemCode::OutOfGas)
         );
         assert_eq!(tracker.consumed.get(), 100);
-        // assert_eq!(gas.consumed(), 100);
-        // let res = gas1_client.consume_gas(&mut alice);
-        // assert!(res.is_err());
-        // assert_eq!(res.unwrap_err().code, ErrorCode::SystemCode(SystemCode::OutOfGas));
+
+        app.register_handler::<Gas2>().unwrap();
+        let gas2_client = create_account::<Gas2>(&mut alice, Gas2Create {}).unwrap();
+        let res = gas2_client.call_consume_gas(&mut alice, gas1_client.account_id(), None);
+        assert_eq!(res.unwrap(), 100);
+
+        let tracker = GasTracker::unlimited();
+        let res = dynamic_invoke_msg_with_gas(
+            &mut alice,
+            gas2_client.account_id(),
+            Gas2CallConsumeGas {
+                gas_eater: gas1_client.account_id(),
+                limit: None,
+            },
+            Some(&tracker),
+        );
+        assert_eq!(res.unwrap(), 100);
+        assert_eq!(tracker.consumed.get(), 100);
+
+        let tracker = GasTracker::limited(200);
+        let res = dynamic_invoke_msg_with_gas(
+            &mut alice,
+            gas2_client.account_id(),
+            Gas2CallConsumeGas {
+                gas_eater: gas1_client.account_id(),
+                limit: Some(50),
+            },
+            Some(&tracker),
+        );
+        assert_eq!(res.unwrap(), 0);
+        assert_eq!(tracker.consumed.get(), 100);
     }
 }
 
