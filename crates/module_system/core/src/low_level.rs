@@ -154,8 +154,6 @@ pub fn encode_default_response<'b>(res: crate::Result<()>) -> Result<Response<'b
 pub fn encode_handler_error<'b, E: HandlerCode>(
     err: HandlerError<E>,
 ) -> Result<Response<'b>, ErrorCode> {
-    Err(match err.code {
-        None => ErrorCode::SystemCode(SystemCode::Other),
-        Some(c) => ErrorCode::HandlerCode(c.into()),
-    })
+    let code: u16 = err.code.into();
+    Err(code.into())
 }
