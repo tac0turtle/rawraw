@@ -4,12 +4,12 @@ use ixc_message_api::code::{ErrorCode, SystemCode};
 
 /// A wrapper for gas.
 #[derive(Debug, Default, Clone)]
-pub struct Gas {
+pub struct GasMeter {
     limit: u64,
     pub(crate) consumed: Cell<u64>,
 }
 
-impl Gas {
+impl GasMeter {
     /// Create a new gas meter with a limit.
     pub fn new(limit: Option<u64>) -> Self {
         Self {

@@ -1,13 +1,13 @@
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
-use crate::gas::Gas;
+use crate::gas::GasMeter;
 
 #[derive(Debug)]
 pub(crate) struct GasStack<const CALL_STACK_LIMIT: usize> {
     stack: RefCell<ArrayVec<Frame, CALL_STACK_LIMIT>>,
     root_limit: Option<u64>,
-    gas: Gas,
+    gas: GasMeter,
 }
 
 impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
@@ -15,7 +15,7 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
         Self {
             stack: RefCell::new(Default::default()),
             root_limit: gas_limit,
-            gas: Gas::new(gas_limit),
+            gas: GasMeter::new(gas_limit),
         }
     }
 }
@@ -74,7 +74,7 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
     //     // Ok(())
     //     todo!()
     // }
-    pub(crate) fn meter(&self) -> &Gas {
+    pub(crate) fn meter(&self) -> &GasMeter {
         todo!()
     }
 }

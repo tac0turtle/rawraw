@@ -21,7 +21,7 @@ use ixc_message_api::handler::{Allocator, HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Response};
 use ixc_message_api::AccountID;
 use ixc_vm_api::{ReadonlyStore, VM};
-use crate::gas::Gas;
+use crate::gas::GasMeter;
 use crate::gas_stack::GasStack;
 
 /// The default stack size for the account manager.
@@ -70,11 +70,11 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
 struct ReadOnlyStoreWrapper<'a, S: StateHandler> {
     state_handler: &'a S,
     allocator: &'a dyn Allocator,
-    gas: &'a Gas,
+    gas: &'a GasMeter,
 }
 
 impl<'a, S: StateHandler> ReadOnlyStoreWrapper<'a, S> {
-    fn wrap(state_handler: &'a S, gas: &'a Gas, allocator: &'a dyn Allocator) -> Self {
+    fn wrap(state_handler: &'a S, gas: &'a GasMeter, allocator: &'a dyn Allocator) -> Self {
         Self {
             state_handler,
             gas,

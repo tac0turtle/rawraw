@@ -27,7 +27,7 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
-use ixc_account_manager::gas::Gas;
+use ixc_account_manager::gas::GasMeter;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -202,7 +202,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         let res = state.handle_exec(
             self.account,
             req,
-            &Gas::unlimited(),
+            &GasMeter::unlimited(),
             invoke_params.allocator,
         )?;
         backend
@@ -223,7 +223,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         state.handle_query(
             self.account,
             req,
-            &Gas::unlimited(),
+            &GasMeter::unlimited(),
             invoke_params.allocator,
         )
     }

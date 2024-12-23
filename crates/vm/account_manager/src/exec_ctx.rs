@@ -1,5 +1,5 @@
 use crate::call_stack::CallStack;
-use crate::gas::Gas;
+use crate::gas::GasMeter;
 use crate::gas_stack::GasStack;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
