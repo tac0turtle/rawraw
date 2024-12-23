@@ -3,7 +3,7 @@ use ixc_core::Context;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::handler::InvokeParams;
-use ixc_message_api::message::{MessageSelector, Param, Request, Response};
+use ixc_message_api::message::{MessageSelector, Request, Response};
 
 const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
@@ -14,9 +14,10 @@ pub(crate) struct KVStoreClient;
 impl KVStoreClient {
     pub(crate) fn get<'a>(&self, ctx: &'a Context, key: &[u8]) -> ClientResult<Option<&'a [u8]>> {
         let res = dynamic_query_state(ctx, &Request::new1(GET_SELECTOR, key.into()))?;
-        match res.out1() {
-            Param::Slice(res_bz) => Ok(Some(res_bz)),
-            _ => Ok(None),
+        if let Some(res_bz) = res.out1().as_slice() {
+            Ok(Some(res_bz))
+        } else {
+            Ok(None)
         }
     }
 
