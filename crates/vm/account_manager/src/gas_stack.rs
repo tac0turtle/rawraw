@@ -1,8 +1,8 @@
 use crate::gas::GasMeter;
+use crate::scope_guard::{ScopeGuard, ScopeGuardStack};
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
-use crate::scope_guard::{ScopeGuard, ScopeGuardStack};
 
 #[derive(Debug)]
 pub(crate) struct GasStack<const CALL_STACK_LIMIT: usize> {
@@ -27,7 +27,10 @@ struct Frame {
 }
 
 impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
-    pub(crate) fn push(&self, scoped_gas_limit: Option<u64>) -> Result<ScopeGuard<GasStack<CALL_STACK_LIMIT>>, ErrorCode> {
+    pub(crate) fn push(
+        &self,
+        scoped_gas_limit: Option<u64>,
+    ) -> Result<ScopeGuard<GasStack<CALL_STACK_LIMIT>>, ErrorCode> {
         let frame = if let Some(scoped_gas_limit) = scoped_gas_limit {
             // first get the amount of gas that has been consumed
             let gas_start = self.gas.consumed.get();
@@ -157,7 +160,10 @@ mod tests {
                         let scope = gas_stack.push(Some(5)).unwrap();
                         //cannot exceed parent limit
                         assert_eq!(gas_stack.meter().left(), Some(5));
-                        assert_eq!(gas_stack.meter().consume(6), Err(ErrorCode::SystemCode(SystemCode::OutOfGas)));
+                        assert_eq!(
+                            gas_stack.meter().consume(6),
+                            Err(ErrorCode::SystemCode(SystemCode::OutOfGas))
+                        );
                         scope.pop();
                     }
                     assert_eq!(gas_stack.meter().left(), Some(4));

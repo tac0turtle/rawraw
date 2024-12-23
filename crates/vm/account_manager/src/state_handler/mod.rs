@@ -1,6 +1,7 @@
 //! State handler traits.
 pub mod std;
 
+use crate::gas::GasMeter;
 use crate::id_generator;
 use crate::id_generator::IDGenerator;
 use alloc::format;
@@ -9,7 +10,6 @@ use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::SystemCode::EncodingError;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
-use crate::gas::GasMeter;
 
 /// The state handler trait.
 pub trait StateHandler {
@@ -30,7 +30,12 @@ pub trait StateHandler {
         gas: &GasMeter,
     ) -> Result<(), ErrorCode>;
     /// Delete the value of the key.
-    fn kv_delete(&mut self, account_id: AccountID, key: &[u8], gas: &GasMeter) -> Result<(), ErrorCode>;
+    fn kv_delete(
+        &mut self,
+        account_id: AccountID,
+        key: &[u8],
+        gas: &GasMeter,
+    ) -> Result<(), ErrorCode>;
     /// Begin a transaction.
     fn begin_tx(&mut self, gas: &GasMeter) -> Result<(), ErrorCode>;
     /// Commit a transaction.
@@ -57,10 +62,18 @@ pub trait StateHandler {
     ) -> Result<Response<'a>, ErrorCode>;
 
     /// Create storage for a new account.
-    fn create_account_storage(&mut self, account: AccountID, gas: &GasMeter) -> Result<(), ErrorCode>;
+    fn create_account_storage(
+        &mut self,
+        account: AccountID,
+        gas: &GasMeter,
+    ) -> Result<(), ErrorCode>;
 
     /// Delete all of an account's storage.
-    fn delete_account_storage(&mut self, account: AccountID, gas: &GasMeter) -> Result<(), ErrorCode>;
+    fn delete_account_storage(
+        &mut self,
+        account: AccountID,
+        gas: &GasMeter,
+    ) -> Result<(), ErrorCode>;
 }
 
 pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(

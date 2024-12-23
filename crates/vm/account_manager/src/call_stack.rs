@@ -1,8 +1,8 @@
+use crate::scope_guard::{ScopeGuard, ScopeGuardStack};
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::AccountID;
-use crate::scope_guard::{ScopeGuard, ScopeGuardStack};
 
 #[derive(Debug)]
 pub(crate) struct CallStack<const CALL_STACK_LIMIT: usize> {
@@ -62,5 +62,4 @@ impl<const CALL_STACK_LIMIT: usize> ScopeGuardStack for CallStack<CALL_STACK_LIM
     fn pop(&self) {
         self.call_stack.borrow_mut().pop();
     }
-
 }

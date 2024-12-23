@@ -5,6 +5,7 @@ mod store;
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 use crate::store::VersionedMultiStore;
 use allocator_api2::alloc::Allocator;
+use ixc_account_manager::gas::GasMeter;
 use ixc_account_manager::id_generator::IncrementingIDGenerator;
 use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
 use ixc_account_manager::state_handler::std::StdStateHandler;
@@ -27,7 +28,6 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
-use ixc_account_manager::gas::GasMeter;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {

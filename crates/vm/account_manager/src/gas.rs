@@ -80,7 +80,10 @@ mod tests {
         assert_eq!(gas_meter.consume(10), Ok(()));
         assert_eq!(gas_meter.consumed(), 100);
         assert_eq!(gas_meter.left(), Some(0));
-        assert_eq!(gas_meter.consume(1), Err(ErrorCode::SystemCode(SystemCode::OutOfGas)));
+        assert_eq!(
+            gas_meter.consume(1),
+            Err(ErrorCode::SystemCode(SystemCode::OutOfGas))
+        );
         assert_eq!(gas_meter.consumed(), 101); // gas is consumed even if it's out of gas
         assert_eq!(gas_meter.left(), Some(0));
     }

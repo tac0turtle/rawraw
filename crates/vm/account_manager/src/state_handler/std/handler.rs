@@ -1,3 +1,4 @@
+use crate::gas::GasMeter;
 use crate::state_handler::std::manager::StdStateManager;
 use crate::state_handler::StateHandler;
 use allocator_api2::alloc::Allocator;
@@ -7,7 +8,6 @@ use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
 use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
-use crate::gas::GasMeter;
 
 /// The standard state handler.
 pub struct StdStateHandler<'a, S: StdStateManager> {
@@ -137,13 +137,21 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         }
     }
 
-    fn create_account_storage(&mut self, account: AccountID, _gas: &GasMeter) -> Result<(), ErrorCode> {
+    fn create_account_storage(
+        &mut self,
+        account: AccountID,
+        _gas: &GasMeter,
+    ) -> Result<(), ErrorCode> {
         self.state
             .create_account_storage(account)
             .map_err(|_| SystemCode(FatalExecutionError))
     }
 
-    fn delete_account_storage(&mut self, account: AccountID, _gas: &GasMeter) -> Result<(), ErrorCode> {
+    fn delete_account_storage(
+        &mut self,
+        account: AccountID,
+        _gas: &GasMeter,
+    ) -> Result<(), ErrorCode> {
         self.state
             .delete_account_storage(account)
             .map_err(|_| SystemCode(FatalExecutionError))

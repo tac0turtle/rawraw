@@ -94,6 +94,9 @@ pub struct InvokeParams<'a> {
 impl<'a> InvokeParams<'a> {
     /// Create a new InvokeParams.
     pub fn new(allocator: &'a dyn Allocator, gas_limit: Option<u64>) -> Self {
-        Self { allocator, gas_limit }
+        Self {
+            allocator,
+            gas_limit,
+        }
     }
 }

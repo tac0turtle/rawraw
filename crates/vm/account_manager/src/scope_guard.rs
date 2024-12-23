@@ -15,7 +15,9 @@ impl<'a, T: ScopeGuardStack> ScopeGuard<'a, T> {
         }
     }
 
-    pub(crate) fn pop(mut self) { self.do_pop(); }
+    pub(crate) fn pop(mut self) {
+        self.do_pop();
+    }
 
     pub(crate) fn do_pop(&mut self) {
         if !self.popped {

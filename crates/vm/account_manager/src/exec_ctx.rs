@@ -102,8 +102,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             )?;
             let caller = self.call_stack.caller()?;
             let mut wrapper = ExecContextWrapper::new(self);
-            let res =
-                handler.handle_msg(&caller, message, &mut wrapper, allocator);
+            let res = handler.handle_msg(&caller, message, &mut wrapper, allocator);
 
             // pop the call stack
             call_scope.pop();
@@ -259,7 +258,12 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         let call_scope = self.call_stack.push(id)?;
 
         let caller = self.call_stack.caller()?;
-        let res = handler.handle_system(&caller, &on_create, &mut ExecContextWrapper::new(self), allocator);
+        let res = handler.handle_system(
+            &caller,
+            &on_create,
+            &mut ExecContextWrapper::new(self),
+            allocator,
+        );
 
         // pop the frame
         call_scope.pop();
@@ -339,7 +343,12 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         )?;
 
         // execute the on-migrate packet with the system message handler
-        handler.handle_system(&active_account, &on_migrate, &mut ExecContextWrapper::new(self), allocator)
+        handler.handle_system(
+            &active_account,
+            &on_migrate,
+            &mut ExecContextWrapper::new(self),
+            allocator,
+        )
     }
 
     unsafe fn handle_self_destruct(&self) -> Result<(), ErrorCode> {

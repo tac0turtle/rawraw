@@ -1,10 +1,10 @@
 #[cfg(feature = "std")]
 extern crate alloc;
+use crate::result::ClientResult;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
-use crate::result::ClientResult;
 
 /// Context wraps a single message request (and possibly response as well) along with
 /// the router callbacks necessary for making nested message calls.

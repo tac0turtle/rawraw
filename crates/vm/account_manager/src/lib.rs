@@ -4,17 +4,19 @@ extern crate alloc;
 
 mod call_stack;
 mod exec_ctx;
+pub mod gas;
+mod gas_stack;
 pub mod id_generator;
 pub mod native_vm;
 mod query_ctx;
-pub mod state_handler;
-pub mod gas;
-mod gas_stack;
-mod wrapper;
 mod scope_guard;
+pub mod state_handler;
+mod wrapper;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
+use crate::gas::GasMeter;
+use crate::gas_stack::GasStack;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::StateHandler;
@@ -23,8 +25,6 @@ use ixc_message_api::handler::{Allocator, HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Response};
 use ixc_message_api::AccountID;
 use ixc_vm_api::{ReadonlyStore, VM};
-use crate::gas::GasMeter;
-use crate::gas_stack::GasStack;
 
 /// The default stack size for the account manager.
 pub const DEFAULT_STACK_SIZE: usize = 128;
@@ -51,7 +51,13 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         message: &Message,
         invoke_params: &InvokeParams<'b>,
     ) -> Result<Response<'b>, ErrorCode> {
-        let mut exec_context = ExecContext::new(self, state_handler, id_generator, caller, invoke_params.gas_limit);
+        let mut exec_context = ExecContext::new(
+            self,
+            state_handler,
+            id_generator,
+            caller,
+            invoke_params.gas_limit,
+        );
         exec_context.do_invoke_msg(message, invoke_params)
     }
 
