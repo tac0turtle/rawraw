@@ -13,8 +13,6 @@ pub(crate) struct CallStack<const CALL_STACK_LIMIT: usize> {
 #[derive(Debug)]
 pub(crate) struct Frame {
     active_account: AccountID,
-    gas_start: u64,
-    gas_max: Option<u64>,
 }
 
 impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {

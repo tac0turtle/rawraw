@@ -8,6 +8,7 @@ pub mod id_generator;
 pub mod native_vm;
 mod query_ctx;
 pub mod state_handler;
+mod gas_stack;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
