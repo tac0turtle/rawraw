@@ -20,7 +20,7 @@ impl GasMeter {
 
     /// Create a new gas meter with a limit.
     /// If the limit is set to 0, then gas metering will be unlimited.
-    pub fn with_limit(limit: u64) -> Self {
+    pub fn limited(limit: u64) -> Self {
         Self::new(Some(limit))
     }
 
@@ -71,7 +71,8 @@ mod tests {
 
     #[test]
     fn test_gas_limit() {
-        let gas_meter = GasMeter::new(Some(100));
+        let gas_meter = GasMeter::limited(100);
+        assert_eq!(gas_meter.limit(), Some(100));
         assert_eq!(gas_meter.left(), Some(100));
         gas_meter.consume(90).unwrap();
         assert_eq!(gas_meter.consumed(), 90);
