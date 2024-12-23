@@ -28,22 +28,38 @@ struct Frame {
 
 impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
     pub(crate) fn push(&self, gas_limit: Option<u64>) -> Result<(), ErrorCode> {
-        // // TODO check if out of gas already
-        //
-        // let gas_start = self.gas.consumed();
-        // let mut gas_max = None;
-        // if let Some(gas_limit) = gas_limit {
-        //     let mut scope_gas_max = gas_limit + gas_start;
-        //     if let Some(cur_gas_max) = self.gas_max() {
-        //         scope_gas_max = scope_gas_max.min(cur_gas_max);
-        //     }
-        //     gas_max = Some(scope_gas_max);
-        // };
+        if let Some(gas_limit) = gas_limit {
+            // first get the amount of gas that has been consumed
+            let gas_start = self.gas.consumed.get();
+            // this is the new proposed gas limit, which we get by adding the gas start to the scoped gas limit
+            let proposed_gas_max = gas_start + gas_limit;
+            // this is the current gas limit based on the current scope or the root limit
+            let cur_gas_max = if let Some(frame) = self.stack.borrow().last() {
+                frame.gas_max
+            } else {
+                self.root_limit
+            };
+            // the new limit is the minimum of these
+            let new_limit = if let Some(cur_gas_max) = cur_gas_max {
+                proposed_gas_max.min(cur_gas_max)
+            } else {
+                proposed_gas_max
+            };
+            self.gas.limit.set(new_limit);
+            //
+            // let mut scope_gas_max = gas_limit + gas_start;
+            // if let Some(cur_gas_max) = self.gas_max() {
+            //     scope_gas_max = scope_gas_max.min(cur_gas_max);
+            // }
+            // gas_max = Some(scope_gas_max);
+        };
+
+        todo!();
+
         // let frame = Frame { gas_start, gas_max };
         // self.stack.borrow_mut().try_push(frame).map_err(|_| {
         //     ErrorCode::SystemCode(ixc_message_api::code::SystemCode::CallStackOverflow)
         // })
-        todo!()
     }
 
     pub(crate) fn pop(&self) -> Result<(), ErrorCode> {
@@ -53,7 +69,7 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
         todo!()
     }
 
-    // fn gas_max(&self) -> Option<u64> {
+    // fn cur_gas_max(&self) -> Option<u64> {
     //     if let Some(frame) = self.stack.borrow().last() {
     //         frame.gas_max
     //     } else {
@@ -75,27 +91,6 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
     //     todo!()
     // }
     pub(crate) fn meter(&self) -> &GasMeter {
-        todo!()
+        &self.gas
     }
 }
-
-pub(crate) struct GasScopeGuard<'a, const CALL_STACK_LIMIT: usize> {
-    stack: &'a mut GasStack<CALL_STACK_LIMIT>,
-}
-
-impl <'a, const CALL_STACK_LIMIT: usize> GasScopeGuard<'a, CALL_STACK_LIMIT> {
-    // pub(crate) fn meter(&self) -> &Gas {
-    //     todo!()
-    // }
-    //
-    pub(crate) fn pop(self) {}
-
-    fn do_pop(&mut self) {
-    }
-}
-
-impl <'a, const CALL_STACK_LIMIT: usize> Drop for GasScopeGuard<'a, CALL_STACK_LIMIT> {
-    fn drop(&mut self) {
-    }
-}
-
