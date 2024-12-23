@@ -68,7 +68,7 @@ union ParamValue<'a> {
     account_id: AccountID,
 }
 
-impl<'a> Default for ParamValue<'a> {
+impl Default for ParamValue<'_> {
     fn default() -> Self {
         Self { empty: () }
     }
@@ -294,7 +294,7 @@ impl<'a> From<&'a str> for Param<'a> {
     }
 }
 
-impl<'a> From<u128> for Param<'a> {
+impl From<u128> for Param<'_> {
     fn from(u128: u128) -> Self {
         Param {
             typ: ParamType::U128,
