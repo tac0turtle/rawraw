@@ -30,6 +30,7 @@ impl GasMeter {
     }
 
     /// Returns the gas limit if there is one.
+    #[allow(dead_code)] // used in tests, false positive
     pub(crate) fn limit(&self) -> Option<u64> {
         if self.limit.get() == 0 {
             None
@@ -39,6 +40,7 @@ impl GasMeter {
     }
 
     /// Get the amount of gas left.
+    #[allow(dead_code)] // used in tests, false positive
     pub(crate) fn left(&self) -> Option<u64> {
         if self.limit.get() == 0 {
             None
@@ -60,6 +62,7 @@ impl GasMeter {
     }
 
     /// Returns the total amount of gas consumed since this meter was created.
+    #[allow(dead_code)] // used in tests
     pub(crate) fn consumed(&self) -> u64 {
         self.consumed.get()
     }

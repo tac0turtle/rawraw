@@ -1,5 +1,4 @@
 use crate::gas::GasMeter;
-use crate::scope_guard::ScopeGuardStack;
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::{ErrorCode, SystemCode};
@@ -45,7 +44,7 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
         }
 
         let gas_start = self.gas.consumed.get();
-        let frame = if let Some(scoped_gas_limit) = scoped_gas_tracker.map(|g| g.limit).flatten() {
+        let frame = if let Some(scoped_gas_limit) = scoped_gas_tracker.and_then(|g| g.limit) {
             // first get the amount of gas that has been consumed
             // this is the new proposed gas limit, which we get by adding the gas start to the scoped gas limit
             let proposed_limit = gas_start + scoped_gas_limit;
@@ -93,7 +92,7 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
     }
 }
 
-impl<'a, const CALL_STACK_LIMIT: usize> GasScopeGuard<'a, CALL_STACK_LIMIT> {
+impl<const CALL_STACK_LIMIT: usize> GasScopeGuard<'_, CALL_STACK_LIMIT> {
     pub(crate) fn pop(mut self) {
         self.do_pop();
     }

@@ -1,5 +1,4 @@
 use crate::call_stack::CallStack;
-use crate::gas::GasMeter;
 use crate::gas_stack::GasStack;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
@@ -51,7 +50,7 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usi
             state_handler: RefCell::new(state_handler),
             id_generator,
             call_stack: CallStack::new(account),
-            gas_stack: GasStack::new(gas_tracker.map(|g| g.limit).flatten()),
+            gas_stack: GasStack::new(gas_tracker.and_then(|g| g.limit)),
         }
     }
 }
