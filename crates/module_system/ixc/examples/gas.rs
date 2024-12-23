@@ -22,7 +22,6 @@ mod gas1 {
 
 #[ixc::handler(Gas2)]
 mod gas2 {
-    use crate::gas1::{Gas1, Gas1ConsumeGas};
     use ixc::*;
     use ixc_core::low_level::dynamic_invoke_msg_with_gas;
     use ixc_core::result::ClientResult;

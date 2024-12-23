@@ -113,7 +113,7 @@ impl<const CALL_STACK_LIMIT: usize> GasScopeGuard<'_, CALL_STACK_LIMIT> {
     }
 }
 
-impl<'a, const CALL_STACK_LIMIT: usize> Drop for GasScopeGuard<'a, CALL_STACK_LIMIT> {
+impl<const CALL_STACK_LIMIT: usize> Drop for GasScopeGuard<'_, CALL_STACK_LIMIT> {
     fn drop(&mut self) {
         self.do_pop();
     }
