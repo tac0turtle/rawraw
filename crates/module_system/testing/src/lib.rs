@@ -231,6 +231,10 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn consume_gas(&self, _gas: u64) -> Result<(), ErrorCode> {
         Ok(())
     }
+
+    fn out_of_gas(&self) -> Result<bool, ErrorCode> {
+        Ok(false)
+    }
 }
 
 /// Defines a mock handler composed of mock handler API trait implementations.

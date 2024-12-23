@@ -91,6 +91,12 @@ impl<'a> Context<'a> {
         Ok(())
     }
 
+    /// Returns true if there is not enough gas to continue execution.
+    pub fn out_of_gas(&self) -> ClientResult<bool> {
+        let res = self.with_backend(|backend| backend.out_of_gas())?;
+        Ok(res)
+    }
+
     /// Get the memory manager.
     pub fn memory_manager(&self) -> &'a MemoryManager {
         self.mem

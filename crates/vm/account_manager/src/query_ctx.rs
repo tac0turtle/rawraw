@@ -121,6 +121,10 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
         self.gas_stack.meter().consume(gas)
     }
+
+    fn out_of_gas(&self) -> Result<bool, ErrorCode> {
+        Ok(self.gas_stack.meter().out_of_gas())
+    }
 }
 
 impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>

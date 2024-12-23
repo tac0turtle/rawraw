@@ -63,6 +63,15 @@ impl GasMeter {
     pub(crate) fn consumed(&self) -> u64 {
         self.consumed.get()
     }
+
+    /// Returns true if there is not enough gas to continue execution.
+    pub fn out_of_gas(&self) -> bool {
+        let limit = self.limit.get();
+        if limit > 0 {
+            return self.consumed.get() > limit;
+        }
+        false
+    }
 }
 
 #[cfg(test)]

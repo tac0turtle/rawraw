@@ -63,4 +63,8 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
         self.exec_ctx.do_consume_gas(gas)
     }
+
+    fn out_of_gas(&self) -> Result<bool, ErrorCode> {
+        self.exec_ctx.do_out_of_gas()
+    }
 }

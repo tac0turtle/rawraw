@@ -184,6 +184,10 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     pub(crate) fn do_consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
         self.gas_stack.meter().consume(gas)
     }
+
+    pub(crate) fn do_out_of_gas(&self) -> Result<bool, ErrorCode> {
+        Ok(self.gas_stack.meter().out_of_gas())
+    }
 }
 
 impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>

@@ -25,6 +25,8 @@ mod gas2 {
     use crate::gas1::{Gas1, Gas1ConsumeGas};
     use ixc::*;
     use ixc_core::low_level::dynamic_invoke_msg_with_gas;
+    use ixc_core::result::ClientResult;
+    use ixc_message_api::code::{ErrorCode, SystemCode};
     use ixc_message_api::gas::GasTracker;
 
     #[derive(Resources)]
@@ -42,22 +44,35 @@ mod gas2 {
             ctx: &mut Context,
             gas_eater: AccountID,
             limit: Option<u64>,
-        ) -> Result<Option<u64>> {
+        ) -> Result<u64> {
             let tracker = GasTracker::new(limit);
-            let res = dynamic_invoke_msg_with_gas(ctx, gas_eater, Gas1ConsumeGas {}, Some(&tracker));
-            // if res.is_err() {
-            //     match ctx.gas_left() {
-            //         Some(gas_left) => {
-            //             if gas_left > 0 {
-            //                 return Ok(Some(gas_left));
-            //             }
-            //         }
-            //         None => Ok(None),
-            //     }
-            // }
-            // Ok(ctx.gas_left())
-            todo!()
+            let res = dynamic_invoke_msg_with_gas(
+                ctx,
+                gas_eater,
+                crate::gas1::Gas1ConsumeGas {},
+                Some(&tracker),
+            );
+            check_if_really_out_of_gas(ctx, res)?;
+            Ok(tracker.consumed.get())
         }
+    }
+
+    fn check_if_really_out_of_gas(ctx: &mut Context, res: ClientResult<()>) -> Result<()> {
+        match res {
+            Err(e) => {
+                if e.code == ErrorCode::SystemCode(SystemCode::OutOfGas) {
+                    if ctx.out_of_gas()? {
+                        Err(e)
+                    } else {
+                        Ok(())
+                    }
+                } else {
+                    Err(e)
+                }
+            }
+            _ => res,
+        }?;
+        Ok(())
     }
 }
 
@@ -77,13 +92,15 @@ mod tests {
         app.register_handler::<Gas1>().unwrap();
         let mut alice = app.new_client_context().unwrap();
         let gas1_client = create_account::<Gas1>(&mut alice, Gas1Create {}).unwrap();
+        let tracker = GasTracker::unlimited();
         let res = dynamic_invoke_msg_with_gas(
             &mut alice,
             gas1_client.account_id(),
             Gas1ConsumeGas {},
-            None,
+            Some(&tracker),
         );
         assert!(res.is_ok());
+        assert_eq!(tracker.consumed.get(), 100);
         let tracker = GasTracker::new(Some(50));
         let res = dynamic_invoke_msg_with_gas(
             &mut alice,
@@ -96,6 +113,7 @@ mod tests {
             res.unwrap_err().code,
             ErrorCode::SystemCode(SystemCode::OutOfGas)
         );
+        assert_eq!(tracker.consumed.get(), 100);
         // assert_eq!(gas.consumed(), 100);
         // let res = gas1_client.consume_gas(&mut alice);
         // assert!(res.is_err());

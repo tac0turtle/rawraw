@@ -72,6 +72,9 @@ pub trait HostBackend {
 
     /// Consume gas. Returns an out-of-gas error if there is not enough gas.
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode>;
+
+    /// Returns true if there is not enough gas to continue execution.
+    fn out_of_gas(&self) -> Result<bool, ErrorCode>;
 }
 
 /// Parameters common to all invoke methods on HostBackend.
