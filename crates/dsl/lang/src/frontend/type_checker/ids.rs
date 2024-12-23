@@ -1,4 +1,4 @@
-use crate::frontend::syntax::{SyntaxElement, SyntaxNode, SyntaxToken};
+use crate::frontend::syntax::{IXCLanguage, SyntaxElement, SyntaxNode, SyntaxToken};
 use rowan::ast::AstNode;
 use salsa::Database;
 
@@ -8,7 +8,7 @@ pub struct AstPtr<'db, N: AstNode> {
     path: NodeId<'db>,
 }
 
-impl<'db, N: AstNode> AstPtr<'db, N> {
+impl<'db, N: AstNode<Language = IXCLanguage>> AstPtr<'db, N> {
     pub fn new(db: &'db dyn Database, node: &N) -> Option<Self> {
         let path = NodePath::new(node.syntax());
         let id = NodeId::new(db, path);

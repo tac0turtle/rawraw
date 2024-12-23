@@ -2,6 +2,7 @@ use crate::frontend::ast;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::fn_::fn_param_modifier;
+use crate::frontend::parser::name::name_ref;
 use crate::frontend::parser::parser::{MarkClosed, Parser};
 
 pub fn expr(p: &mut Parser) {
@@ -55,7 +56,7 @@ fn expr_delimited(p: &mut Parser) -> MarkClosed {
     let m = p.open();
     match p.cur() {
         Ident => {
-            p.expect(Ident);
+            name_ref(p);
             let mut lhs = p.close::<ast::NameExpr>(m);
             lhs
         }

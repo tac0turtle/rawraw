@@ -130,7 +130,7 @@ fn generate_lex_tokens(grammar: &Grammar) -> anyhow::Result<()> {
 enum AstNodeAst<'a> {
     Struct(Vec<(String, AstStructField<'a>)>),
     NodeEnum(Vec<&'a Node>),
-    TokenEnum(Vec<&'a Token>),
+    TokenAlt(Vec<&'a Token>),
 }
 
 enum AstStructField<'a> {
@@ -177,10 +177,10 @@ fn ast_node_ast<'a>(name: &str, rule: &'a Rule) -> anyhow::Result<AstNodeAst<'a>
                     }
                     Rule::Token(t) => {
                         if let AstNodeAst::Struct(_) = res {
-                            res = AstNodeAst::TokenEnum(vec![t]);
-                        } else if let AstNodeAst::TokenEnum(mut cases) = res {
+                            res = AstNodeAst::TokenAlt(vec![t]);
+                        } else if let AstNodeAst::TokenAlt(mut cases) = res {
                             cases.push(t);
-                            res = AstNodeAst::TokenEnum(cases);
+                            res = AstNodeAst::TokenAlt(cases);
                         } else {
                             bail!("alt rule must have all nodes or all tokens, got {:?}", rule);
                         }
@@ -190,7 +190,7 @@ fn ast_node_ast<'a>(name: &str, rule: &'a Rule) -> anyhow::Result<AstNodeAst<'a>
             }
             res
         },
-        Rule::Token(t) => AstNodeAst::TokenEnum(vec![t]),
+        Rule::Token(t) => AstNodeAst::TokenAlt(vec![t]),
         Rule::Node(n) => AstNodeAst::NodeEnum(vec![n]),
         _ => bail!("rule {name}: top-level rule must be a labeled, seq, or alt, try labelling it, got {:?}", rule),
     })
@@ -222,7 +222,7 @@ fn ast_node_code(
     match ast {
         AstNodeAst::Struct(ast) => ast_node_struct(grammar, type_name, syntax_name, ast),
         AstNodeAst::NodeEnum(ast) => ast_node_node_enum(grammar, type_name, ast),
-        AstNodeAst::TokenEnum(ast) => ast_node_token_enum(grammar, type_name, syntax_name, ast),
+        AstNodeAst::TokenAlt(ast) => ast_node_token_alt(grammar, type_name, syntax_name, ast),
     }
 }
 
@@ -345,26 +345,46 @@ fn ast_node_node_enum(
     })
 }
 
-fn ast_node_token_enum(
+fn ast_node_token_alt(
     grammar: &Grammar,
-    enum_name: &Ident,
+    struct_name: &Ident,
     syntax_name: &Ident,
     ast: &[&Token],
 ) -> anyhow::Result<TokenStream> {
+    // let getters = ast.iter().map(|token| {
+    //     let data = grammar.index(**token);
+    //     let mut name = data.name.clone();
+    //     if name.starts_with('#') {
+    //         name.remove(0);
+    //     }
+    //     let token_name = to_valid_ident(&name);
+    //     let (token_kind, _) = token_syntax_name(&name);
+    //     quote! {
+    //         #[inline]
+    //         pub fn #token_name(&self) -> Option<SyntaxToken> {
+    //             rowan::ast::support::token(&self.syntax, SyntaxKind::#token_kind)
+    //         }
+    //     }
+    // });
     Ok(quote! {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-        pub enum #enum_name {}
-        impl rowan::ast::AstNode for #enum_name {
+        pub struct #struct_name {
+            syntax: SyntaxNode,
+        }
+        impl rowan::ast::AstNode for #struct_name {
             type Language = IXCLanguage;
-            fn can_cast(kind: SyntaxKind) -> bool { todo!() }
+            fn can_cast(kind: SyntaxKind) -> bool { kind == SyntaxKind::#syntax_name }
             fn cast(syntax: SyntaxNode) -> Option<Self> {
-                todo!()
+                if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
             }
             fn syntax(&self) -> &SyntaxNode { todo!() }
         }
-        impl crate::frontend::ast::ConcreteNode for #enum_name {
+        impl crate::frontend::ast::ConcreteNode for #struct_name {
             const KIND: SyntaxKind = SyntaxKind::#syntax_name;
         }
+        // impl #struct_name {
+        //     #(#getters)*
+        // }
     })
 }
 

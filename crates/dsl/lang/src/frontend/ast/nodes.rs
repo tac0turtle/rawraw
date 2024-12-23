@@ -2,34 +2,50 @@
 
 use crate::frontend::syntax::{SyntaxKind, SyntaxNode, SyntaxToken, IXCLanguage};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Name {}
+pub struct Name {
+    syntax: SyntaxNode,
+}
 impl rowan::ast::AstNode for Name {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        kind == SyntaxKind::NAME
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        &self.syntax
+    }
+}
+impl Name {
+    #[inline]
+    pub fn name(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
 impl crate::frontend::ast::ConcreteNode for Name {
     const KIND: SyntaxKind = SyntaxKind::NAME;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum NameRef {}
+pub struct NameRef {
+    syntax: SyntaxNode,
+}
 impl rowan::ast::AstNode for NameRef {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        kind == SyntaxKind::NAME_REF
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxNode {
-        todo!()
+        &self.syntax
+    }
+}
+impl NameRef {
+    #[inline]
+    pub fn name_ref(&self) -> Option<SyntaxToken> {
+        rowan::ast::support::token(&self.syntax, SyntaxKind::IDENT)
     }
 }
 impl crate::frontend::ast::ConcreteNode for NameRef {
@@ -609,14 +625,16 @@ impl crate::frontend::ast::ConcreteNode for ImplFn {
     const KIND: SyntaxKind = SyntaxKind::IMPL_FN;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FnType {}
+pub struct FnType {
+    syntax: SyntaxNode,
+}
 impl rowan::ast::AstNode for FnType {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        kind == SyntaxKind::FN_TYPE
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxNode {
         todo!()
@@ -738,14 +756,16 @@ impl crate::frontend::ast::ConcreteNode for FnParam {
     const KIND: SyntaxKind = SyntaxKind::FN_PARAM;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FnParamModifier {}
+pub struct FnParamModifier {
+    syntax: SyntaxNode,
+}
 impl rowan::ast::AstNode for FnParamModifier {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        kind == SyntaxKind::FN_PARAM_MODIFIER
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxNode {
         todo!()
@@ -1357,14 +1377,16 @@ impl crate::frontend::ast::ConcreteNode for ExprBinary {
     const KIND: SyntaxKind = SyntaxKind::EXPR_BINARY;
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum BinaryOp {}
+pub struct BinaryOp {
+    syntax: SyntaxNode,
+}
 impl rowan::ast::AstNode for BinaryOp {
     type Language = IXCLanguage;
     fn can_cast(kind: SyntaxKind) -> bool {
-        todo!()
+        kind == SyntaxKind::BINARY_OP
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        todo!()
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxNode {
         todo!()

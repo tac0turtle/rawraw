@@ -1,5 +1,6 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::name::name_ref;
 use crate::frontend::parser::parser::Parser;
 
 // parse a type
@@ -12,7 +13,7 @@ pub fn type_(p: &mut Parser) {
         p.close::<ast::TypeArray>(m);
     } else {
         let m = p.open();
-        p.expect(Ident);
+        name_ref(p);
         p.close::<ast::TypeIdent>(m);
     }
 }

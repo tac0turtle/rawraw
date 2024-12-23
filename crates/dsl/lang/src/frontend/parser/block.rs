@@ -1,6 +1,7 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::expr::expr;
+use crate::frontend::parser::name::{name, name_ref};
 use crate::frontend::parser::parser::Parser;
 
 pub fn block(p: &mut Parser) {
@@ -33,7 +34,7 @@ fn statement(p: &mut Parser) {
 fn for_stmt(p: &mut Parser) {
     let m = p.open();
     p.expect(ForKw);
-    p.expect(Ident);
+    name(p);
     p.expect(InKw);
     expr(p);
     block(p);
@@ -52,7 +53,7 @@ fn expr_construct_field_list(p: &mut Parser) {
 
 fn expr_construct_field(p: &mut Parser) {
     let m = p.open();
-    p.expect(Ident);
+    name_ref(p);
     if p.at(Colon) {
         p.expect(Colon);
         expr(p);

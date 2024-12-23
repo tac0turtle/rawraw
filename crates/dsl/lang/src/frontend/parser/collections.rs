@@ -1,6 +1,7 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::name::name;
 use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::type_::type_;
 
@@ -14,7 +15,7 @@ pub fn map_collection(p: &mut Parser) {
     let m = p.open();
     p.eat(AccountScopedKw);
     p.expect(MapKw);
-    p.expect(Ident);
+    name(p);
     map_key_fields(p);
     if p.at(RArrow) {
         map_value_fields(p);
@@ -35,7 +36,7 @@ fn map_key_fields(p: &mut Parser) {
 
 fn map_key_field(p: &mut Parser) {
     let m = p.open();
-    p.expect(Ident);
+    name(p);
     p.expect(Colon);
     type_(p);
     if !p.at(RSquare) {
@@ -71,7 +72,7 @@ pub fn at_start_var(p: &mut Parser) -> bool {
 pub fn var_collection(p: &mut Parser) {
     let m = p.open();
     p.expect(VarKw);
-    p.expect(Ident);
+    name(p);
     p.expect(Colon);
     type_(p);
     p.expect(Semicolon);

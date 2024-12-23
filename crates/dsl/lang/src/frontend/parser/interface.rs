@@ -2,13 +2,14 @@ use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::fn_::{fn_sig, FN_TYPES};
 use crate::frontend::parser::collections::{at_start_map, at_start_var, map_collection, var_collection};
+use crate::frontend::parser::name::name;
 use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::struct_::{event_struct, struct_};
 
 pub fn interface(p: &mut Parser) {
     let m = p.open();
     p.expect(InterfaceKw);
-    p.expect(Ident);
+    name(p);
     p.expect(LCurly);
     while !p.at(RCurly) && !p.eof() {
         interface_item(p);

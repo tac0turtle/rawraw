@@ -1,13 +1,14 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::name::name;
 use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::type_::type_;
 
 pub fn fn_sig(p: &mut Parser, rhs: Token) {
     let m = p.open();
     p.expect_any(FN_TYPES);
-    p.expect(Ident);
+    name(p);
     fn_param_list(p);
     // events
     if p.at(EmitsKw) {
@@ -41,7 +42,7 @@ fn fn_param_list(p: &mut Parser) {
 fn fn_param(p: &mut Parser) {
     let m = p.open();
     p.eat(KeyKw);
-    p.expect(Ident);
+    name(p);
     p.expect(Colon);
     fn_param_modifier(p);
     type_(p);

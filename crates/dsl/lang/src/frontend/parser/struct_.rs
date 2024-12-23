@@ -1,5 +1,6 @@
 use crate::frontend::ast;
 use crate::frontend::lexer::Token::*;
+use crate::frontend::parser::name::name;
 use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::type_::type_;
 
@@ -11,7 +12,7 @@ pub fn struct_(p: &mut Parser) {
 }
 
 fn struct_inner(p: &mut Parser) {
-    p.expect(Ident);
+    name(p);
     p.expect(LCurly);
     while !p.at(RCurly) && !p.eof() {
         struct_field(p);
@@ -21,7 +22,7 @@ fn struct_inner(p: &mut Parser) {
 
 fn struct_field(p: &mut Parser) {
     let m = p.open();
-    p.expect(Ident);
+    name(p);
     p.expect(Colon);
     type_(p);
     if !p.at(RCurly) {

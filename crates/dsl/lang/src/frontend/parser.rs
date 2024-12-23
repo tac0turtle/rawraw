@@ -20,6 +20,7 @@ mod parser;
 mod struct_;
 mod test;
 mod type_;
+mod name;
 
 #[salsa::tracked]
 pub fn parse(db: &dyn Database, src: FileSource) -> ParsedAST<'_> {

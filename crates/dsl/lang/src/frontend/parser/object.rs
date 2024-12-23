@@ -5,13 +5,14 @@ use crate::frontend::parser::collections::{
 };
 use crate::frontend::parser::fn_::FN_TYPES;
 use crate::frontend::parser::impl_::impl_fn;
+use crate::frontend::parser::name::name;
 use crate::frontend::parser::parser::Parser;
 use crate::frontend::parser::type_::type_;
 
 pub fn object(p: &mut Parser) {
     let m = p.open();
     p.expect(ObjectKw);
-    p.expect(Ident);
+    name(p);
     p.expect(LCurly);
     while !p.at(RCurly) && !p.eof() {
         object_item(p);
@@ -37,7 +38,7 @@ fn object_item(p: &mut Parser) {
 fn client(p: &mut Parser) {
     let m = p.open();
     p.expect(ClientKw);
-    p.expect(Ident);
+    name(p);
     p.expect(Colon);
     client_types(p);
     p.expect(Semicolon);

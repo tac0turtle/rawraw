@@ -36,25 +36,6 @@ impl LanguageServer for LSPServer {
                     },
                 )),
                 document_symbol_provider: Some(OneOf::Left(true)),
-                // completion_provider: Some(CompletionOptions {
-                //     resolve_provider: Some(false),
-                //     trigger_characters: Some(vec![".".to_string()]),
-                //     work_done_progress_options: Default::default(),
-                //     all_commit_characters: None,
-                //     completion_item: None,
-                // }),
-                // execute_command_provider: Some(ExecuteCommandOptions {
-                //     commands: vec!["dummy.do_something".to_string()],
-                //     work_done_progress_options: Default::default(),
-                // }),
-                //
-                // workspace: Some(WorkspaceServerCapabilities {
-                //     workspace_folders: Some(WorkspaceFoldersServerCapabilities {
-                //         supported: Some(true),
-                //         change_notifications: Some(OneOf::Left(true)),
-                //     }),
-                //     file_operations: None,
-                // }),
                 semantic_tokens_provider: Some(
                     SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(
                         SemanticTokensRegistrationOptions {
@@ -80,10 +61,7 @@ impl LanguageServer for LSPServer {
                         },
                     ),
                 ),
-                // // definition: Some(GotoCapability::default()),
-                // definition_provider: Some(OneOf::Left(true)),
-                // references_provider: Some(OneOf::Left(true)),
-                // rename_provider: Some(OneOf::Left(true)),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 ..ServerCapabilities::default()
             },
         })
@@ -121,6 +99,10 @@ impl LanguageServer for LSPServer {
 
     async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
         self.on_document_symbol(params).await
+    }
+
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        self.on_hover(params).await
     }
 }
 

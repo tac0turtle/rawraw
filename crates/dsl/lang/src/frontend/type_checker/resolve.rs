@@ -29,12 +29,13 @@ impl<'db> ResolveSymbols<'db> for FnParam {
     type Resolved = ResolvedFnParam;
 
     fn resolve_symbols(&self, scope: &Scope<'db>) -> Option<Self::Resolved> {
-        let ty = self.ty()?;
-        let ty = resolve_type(ty, scope);
-        Some(ResolvedFnParam {
-            name: self.name()?.text().to_string(),
-            ty,
-        })
+        // let ty = self.ty()?;
+        // let ty = resolve_type(ty, scope);
+        // Some(ResolvedFnParam {
+        //     name: self.name()?.text().to_string(),
+        //     ty,
+        // })
+        todo!()
     }
 
     fn resolve_item(r: Self::Resolved) -> ResolvedItem<'db> {

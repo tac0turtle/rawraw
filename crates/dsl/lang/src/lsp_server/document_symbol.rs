@@ -43,7 +43,8 @@ impl<'a> SymbolBuilder<'a> {
                 Item::Interface(it) => children.push(self.interface(&it)),
                 Item::Object(it) => children.push(self.object(&it)),
                 Item::Impl(it) => children.push(self.impl_(&it)),
-                Item::Test(it) => children.push(self.test(&it)),
+                // Item::Test(it) => children.push(self.test(&it)),
+                _ => {}
             }
         }
         children
@@ -65,7 +66,7 @@ impl<'a> SymbolBuilder<'a> {
         self.symbol(
             SymbolKind::INTERFACE,
             node.syntax(),
-            node.name().,
+            node.name(),
             Some(children),
         )
     }
@@ -131,7 +132,12 @@ impl<'a> SymbolBuilder<'a> {
     }
 
     fn fn_signature(&self, node: &FnSignature) -> DocumentSymbol {
-        self.symbol(SymbolKind::METHOD, node.syntax(), node.name(), None)
+        self.symbol(
+            SymbolKind::METHOD,
+            node.syntax(),
+            node.name(),
+            None,
+        )
     }
 
     fn event(&self, node: &Event) -> DocumentSymbol {
@@ -163,19 +169,22 @@ impl<'a> SymbolBuilder<'a> {
         self.symbol(SymbolKind::FIELD, node.syntax(), node.name(), None)
     }
 
-    fn test(&self, node: &Test) -> DocumentSymbol {
-        self.symbol(SymbolKind::FUNCTION, node.syntax(), node.name(), None)
-    }
+    // fn test(&self, node: &Test) -> DocumentSymbol {
+    //     self.symbol(SymbolKind::FUNCTION, node.syntax(), node.name(), None)
+    // }
 
-    fn symbol(
+    fn symbol<N: AstNode>(
         &self,
         kind: SymbolKind,
         node: &SyntaxNode,
-        name: Option<SyntaxToken>,
+        name: Option<N>,
         children: Option<Vec<DocumentSymbol>>,
     ) -> DocumentSymbol {
         let (name, sel_range) = match name {
-            Some(name) => (name.text().to_string(), &name.text_range()),
+            Some(name) => {
+                let syntax = name.syntax();
+                (syntax.text().to_string(), &syntax.text_range())
+            }
             None => ("".to_string(), &node.text_range()),
         };
         DocumentSymbol {

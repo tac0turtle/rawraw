@@ -1,9 +1,9 @@
 // a name is a node which defines a symbol
-Name = '#ident'
+Name = name:'#ident'
 // a name reference is a node which references a symbol
 // all idents are either names or name references
 // and these nodes are used to define their role in the AST
-NameRef = '#ident'
+NameRef = name_ref:'#ident'
 
 File = items:Item*
 

@@ -3,16 +3,17 @@ use crate::frontend::lexer::Token::*;
 use crate::frontend::parser::block::block;
 use crate::frontend::parser::fn_::{fn_sig, FN_TYPES};
 use crate::frontend::parser::collections::{at_start_map, at_start_var, map_collection, var_collection};
+use crate::frontend::parser::name::name_ref;
 use crate::frontend::parser::parser::Parser;
 
 pub fn impl_block(p: &mut Parser) {
     let m = p.open();
     p.expect(ImplKw);
-    p.expect(Ident);
+    name_ref(p);
     {
         let m = p.open();
         p.expect(ForKw);
-        p.expect(Ident);
+        name_ref(p);
         p.close::<ast::ImplFor>(m);
     }
     p.expect(LCurly);

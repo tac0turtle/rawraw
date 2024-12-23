@@ -21,7 +21,7 @@ pub(crate) struct ScopeBuilder<'db> {
 impl<'db> ScopeBuilder<'db> {
     pub fn bind_symbol<N: BindSymbols>(&mut self, name: Option<SyntaxToken>, node: N) {
         if let Some(name) = name {
-            self.symbols.insert(name.text().to_string(), N::item_ref(AstPtr::new(&node)));
+            // self.symbols.insert(name.text().to_string(), N::item_ref(AstPtr::new(&node)));
         } else {
             // TODO: report diagnostic
         }
