@@ -1,4 +1,6 @@
 use crate::call_stack::CallStack;
+use crate::gas::Gas;
+use crate::gas_stack::GasStack;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::{
@@ -15,7 +17,6 @@ use ixc_message_api::code::SystemCode::{
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
-use ixc_message_api::gas::Gas;
 use ixc_vm_api::VM;
 
 pub(crate) struct ExecContext<
@@ -29,6 +30,7 @@ pub(crate) struct ExecContext<
     state_handler: &'a mut ST,
     id_generator: &'a IDG,
     call_stack: CallStack<CALL_STACK_LIMIT>,
+    gas_stack: GasStack<CALL_STACK_LIMIT>,
 }
 
 impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
@@ -39,13 +41,14 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usi
         state_handler: &'a mut ST,
         id_generator: &'a IDG,
         account: AccountID,
-        gas_limit: Option<&Gas>,
+        gas_limit: Option<u64>,
     ) -> Self {
         Self {
             account_manager,
             state_handler,
             id_generator,
-            call_stack: CallStack::new(account, gas_limit),
+            call_stack: CallStack::new(account),
+            gas_stack: GasStack::new(gas_limit),
         }
     }
 }
@@ -59,12 +62,13 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
         message: &Message,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
+        self.gas_stack.push(invoke_params.gas_limit)?;
         let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
         // begin a transaction
         self.state_handler
-            .begin_tx(&self.call_stack.gas)
+            .begin_tx(self.gas_stack.meter())
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         let res = if target_account == ROOT_ACCOUNT {
@@ -72,20 +76,20 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
             self.handle_system_message(message.request(), allocator)
         } else {
             // push onto the call stack when we're calling a non-system account
-            self.call_stack.push(target_account, invoke_params.gas)?;
+            self.call_stack.push(target_account)?;
 
             // find the account's handler ID
             let handler_id = get_account_handler_id(
                 self.state_handler,
                 target_account,
-                &self.call_stack.gas,
+                self.gas_stack.meter(),
                 allocator,
             )?
             .ok_or(SystemCode(AccountNotFound))?;
 
             // run the handler
             let handler = self.account_manager.code_manager.resolve_handler(
-                &ReadOnlyStoreWrapper::wrap(self.state_handler, &self.call_stack.gas, allocator),
+                &ReadOnlyStoreWrapper::wrap(self.state_handler, self.gas_stack.meter(), allocator),
                 handler_id,
                 allocator,
             )?;
@@ -101,14 +105,15 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
         // commit or rollback the transaction
         if res.is_ok() {
             self.state_handler
-                .commit_tx(&self.call_stack.gas)
+                .commit_tx(self.gas_stack.meter())
                 .map_err(|_| SystemCode(InvalidHandler))?;
         } else {
             self.state_handler
-                .rollback_tx(&self.call_stack.gas)
+                .rollback_tx(self.gas_stack.meter())
                 .map_err(|_| SystemCode(InvalidHandler))?;
         }
 
+        self.gas_stack.pop()?;
         res
     }
 
@@ -119,7 +124,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
     ) -> Result<Response<'a>, ErrorCode> {
         // create a nested query execution frame
         let query_ctx =
-            QueryContext::new(self.account_manager, self.state_handler, &self.call_stack);
+            QueryContext::new(self.account_manager, self.state_handler, &self.call_stack, &self.gas_stack);
         query_ctx.invoke_query(message, invoke_params)
     }
 
@@ -128,10 +133,10 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
         req: &Request,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
+        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
         let active_account = self.call_stack.active_account()?;
-        let gas_meter = &self.call_stack.gas;
         self.state_handler
-            .handle_exec(active_account, req, gas_meter, invoke_params.allocator)
+            .handle_exec(active_account, req, self.gas_stack.meter(), invoke_params.allocator)
     }
 
     fn query_state<'a>(
@@ -139,14 +144,14 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
         req: &Request,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
+        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
         let active_account = self.call_stack.active_account()?;
-        let gas_meter = &self.call_stack.gas;
         self.state_handler
-            .handle_query(active_account, req, gas_meter, invoke_params.allocator)
+            .handle_query(active_account, req, self.gas_stack.meter(), invoke_params.allocator)
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        self.call_stack.consume_gas(gas)
+        self.gas_stack.meter().consume(gas)
     }
 }
 
@@ -180,14 +185,12 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         let handler_id = req.in1().expect_string()?;
         let init_data = req.in2().expect_bytes()?;
 
-        let gas = &self.call_stack.gas;
-
         // resolve the handler ID and retrieve the VM
         let handler_id = self
             .account_manager
             .code_manager
             .resolve_handler_id(
-                &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
+                &ReadOnlyStoreWrapper::wrap(self.state_handler, self.gas_stack.meter(), allocator),
                 handler_id,
                 allocator,
             )?
@@ -199,7 +202,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             self.state_handler,
             handler_id,
             allocator,
-            gas,
+            self.gas_stack.meter(),
         )
         .map_err(|_| SystemCode(InvalidHandler))?;
 
@@ -208,13 +211,13 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
 
         // run the on_create handler
         let handler = self.account_manager.code_manager.resolve_handler(
-            &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
+            &ReadOnlyStoreWrapper::wrap(self.state_handler, self.gas_stack.meter(), allocator),
             handler_id,
             allocator,
         )?;
 
         // push a frame onto the call stack
-        self.call_stack.push(id, None)?;
+        self.call_stack.push(id)?;
 
         let caller = self.call_stack.caller()?;
         let res = handler.handle_system(&caller, &on_create, self, allocator);
@@ -246,11 +249,9 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         let active_account = self.call_stack.active_account()?;
         let new_handler_id = req.in1().expect_string()?;
 
-        let gas = &self.call_stack.gas;
-
         // get the old handler id
         let old_handler_id =
-            get_account_handler_id(self.state_handler, active_account, gas, allocator)?
+            get_account_handler_id(self.state_handler, active_account, self.gas_stack.meter(), allocator)?
                 .ok_or(SystemCode(AccountNotFound))?;
 
         // resolve the handler ID and retrieve the VM
@@ -258,14 +259,14 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             .account_manager
             .code_manager
             .resolve_handler_id(
-                &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
+                &ReadOnlyStoreWrapper::wrap(self.state_handler, self.gas_stack.meter(), allocator),
                 new_handler_id,
                 allocator,
             )?
             .ok_or(SystemCode(HandlerNotFound))?;
 
         // update the handler ID
-        set_handler_id(self.state_handler, active_account, new_handler_id, gas)
+        set_handler_id(self.state_handler, active_account, new_handler_id, self.gas_stack.meter())
             .map_err(|_| SystemCode(InvalidHandler))?;
 
         // create a packet for calling on_create
@@ -276,7 +277,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
 
         // retrieve the handler
         let handler = self.account_manager.code_manager.resolve_handler(
-            &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
+            &ReadOnlyStoreWrapper::wrap(self.state_handler, self.gas_stack.meter(), allocator),
             new_handler_id,
             allocator,
         )?;
@@ -289,7 +290,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         destroy_account_data(
             self.state_handler,
             self.call_stack.active_account()?,
-            &self.call_stack.gas,
+            self.gas_stack.meter(),
         )
         .map_err(|_| SystemCode(FatalExecutionError))?;
         Ok(())

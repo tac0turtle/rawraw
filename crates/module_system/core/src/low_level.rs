@@ -9,7 +9,6 @@ use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::AccountID;
-use ixc_message_api::gas::Gas;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::value::OptionalValue;
@@ -30,10 +29,10 @@ pub fn dynamic_invoke_msg_with_gas<'a, 'b, M: Message<'b>>(
     context: &mut Context<'a>,
     account: AccountID,
     message: M,
-    gas: Option<&'a Gas>,
+    gas_limit: Option<u64>,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     let packet = encode_message_packet(context.memory_manager(), account, message)?;
-    let res = dynamic_invoke_msg_packet(context, &packet, gas);
+    let res = dynamic_invoke_msg_packet(context, &packet, gas_limit);
     decode_message_response::<M>(context, &res)
 }
 
@@ -55,10 +54,10 @@ pub fn dynamic_invoke_query_with_gas<'a, 'b, M: QueryMessage<'b>>(
     context: &Context<'a>,
     account: AccountID,
     message: M,
-    gas: Option<&'a Gas>,
+    gas_limit: Option<u64>,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     let packet = encode_message_packet(context.memory_manager(), account, message)?;
-    let res = dynamic_invoke_query_packet(context, &packet, gas);
+    let res = dynamic_invoke_query_packet(context, &packet, gas_limit);
     decode_message_response::<M>(context, &res)
 }
 
@@ -66,9 +65,9 @@ pub fn dynamic_invoke_query_with_gas<'a, 'b, M: QueryMessage<'b>>(
 pub fn dynamic_invoke_query_packet<'a>(
     ctx: &Context<'a>,
     msg: &ixc_message_api::message::Message,
-    gas: Option<&'a Gas>,
+    gas_limit: Option<u64>,
 ) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.mem, gas);
+    let invoke_params = InvokeParams::new(ctx.mem, gas_limit);
     ctx.with_backend(|backend| backend.invoke_query(msg, &invoke_params))
 }
 
@@ -76,9 +75,9 @@ pub fn dynamic_invoke_query_packet<'a>(
 pub fn dynamic_invoke_msg_packet<'a>(
     ctx: &mut Context<'a>,
     msg: &ixc_message_api::message::Message,
-    gas: Option<&'a Gas>,
+    gas_limit: Option<u64>,
 ) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.mem, gas);
+    let invoke_params = InvokeParams::new(ctx.mem, gas_limit);
     ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?
 }
 

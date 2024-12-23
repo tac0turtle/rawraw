@@ -1,18 +1,26 @@
 //! Gas metering utility.
-use crate::code::{ErrorCode, SystemCode};
 use core::cell::Cell;
+use ixc_message_api::code::{ErrorCode, SystemCode};
 
 /// A wrapper for gas.
 #[derive(Debug, Default, Clone)]
 pub struct Gas {
     limit: u64,
-    consumed: Cell<u64>,
+    pub(crate) consumed: Cell<u64>,
 }
 
 impl Gas {
     /// Create a new gas meter with a limit.
+    pub fn new(limit: Option<u64>) -> Self {
+        Self {
+            limit: limit.unwrap_or(0),
+            consumed: Cell::new(0),
+        }
+    }
+
+    /// Create a new gas meter with a limit.
     /// If the limit is set to 0, then gas metering will be unlimited.
-    pub fn limited(limit: u64) -> Self {
+    pub fn with_limit(limit: u64) -> Self {
         Self {
             limit,
             consumed: Cell::new(0),
@@ -28,7 +36,7 @@ impl Gas {
     }
 
     /// Returns the gas limit if there is one.
-    pub fn limit(&self) -> Option<u64> {
+    pub(crate) fn limit(&self) -> Option<u64> {
         if self.limit == 0 {
             None
         } else {
@@ -37,7 +45,7 @@ impl Gas {
     }
 
     /// Get the amount of gas left.
-    pub fn left(&self) -> Option<u64> {
+    pub(crate) fn left(&self) -> Option<u64> {
         if self.limit == 0 {
             None
         } else {
@@ -54,10 +62,5 @@ impl Gas {
         } else {
             Ok(())
         }
-    }
-
-    /// Returns the amount of gas consumed.
-    pub fn consumed(&self) -> u64 {
-        self.consumed.get()
     }
 }

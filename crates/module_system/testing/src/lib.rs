@@ -19,7 +19,6 @@ use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
-use ixc_message_api::gas::Gas;
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
@@ -28,6 +27,7 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
+use ixc_account_manager::gas::Gas;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
