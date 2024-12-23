@@ -7,7 +7,14 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{FnArg, ImplItemFn, Type};
 
-/// Collects the information from the #[on_migrate] attribute.
+/// Collects information about a function annotated with #[on_migrate].
+///
+/// # Parameters
+/// - `item_fn`: The function to collect information from
+/// - `attr`: The #[on_migrate] attribute
+///
+/// # Returns
+/// Information about the migration function including the source handler type
 pub(crate) fn collect_on_migrate_info(
     item_fn: &mut ImplItemFn,
     attr: OnMigrateAttr,
@@ -80,6 +87,14 @@ pub(crate) fn collect_on_migrate_info(
     Ok(OnMigrateInfo { from, attr })
 }
 
+/// Generates handler code for migration functions.
+///
+/// Builds the implementation for handling migration messages by generating
+/// the necessary routing and handler code for each migration function.
+///
+/// # Parameters
+/// - `builder`: The API builder to add the generated code to
+/// - `published_fn_info`: Information about all published functions
 pub(crate) fn build_on_migrate_handler(
     builder: &mut APIBuilder,
     published_fn_info: &[PublishedFnInfo],
@@ -121,8 +136,11 @@ pub(crate) fn build_on_migrate_handler(
     Ok(())
 }
 
+/// Information about a migration function.
 #[derive(Debug)]
 pub(crate) struct OnMigrateInfo {
+    /// The type of the handler being migrated from
     pub(crate) from: Box<Type>,
+    /// The #[on_migrate] attribute
     pub(crate) attr: OnMigrateAttr,
 }
