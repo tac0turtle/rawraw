@@ -2,6 +2,7 @@
 //!
 //! This crate provides a low-level implementation of the Cosmos SDK RFC 003 message passing API.
 #![no_std]
+extern crate alloc;
 
 mod account_id;
 pub mod alloc_util;
