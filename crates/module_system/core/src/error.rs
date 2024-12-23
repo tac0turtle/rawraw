@@ -12,7 +12,7 @@ use ixc_schema::encoder::EncodeError;
 /// The standard error type returned by handlers.
 #[derive(Clone)]
 pub struct HandlerError<E: HandlerCode = u8> {
-    pub(crate) code: Option<E>,
+    pub(crate) code: ErrorCode<E>,
     #[cfg(feature = "std")]
     pub(crate) msg: String,
     // TODO no std version - fixed length 256 byte string probably
@@ -22,7 +22,7 @@ impl<E: HandlerCode> HandlerError<E> {
     /// Create a new error message.
     pub fn new(msg: String) -> Self {
         HandlerError {
-            code: None,
+            code: ErrorCode::SystemCode(SystemCode::Other),
             #[cfg(feature = "std")]
             msg,
         }
@@ -31,7 +31,7 @@ impl<E: HandlerCode> HandlerError<E> {
     /// Create a new error message with a code.
     pub fn new_with_code(code: E, msg: String) -> Self {
         HandlerError {
-            code: Some(code),
+            code: ErrorCode::HandlerCode(code),
             #[cfg(feature = "std")]
             msg,
         }
@@ -57,32 +57,38 @@ impl<E: HandlerCode> HandlerError<E> {
     pub fn new_from_code(code: E) -> Self {
         HandlerError::new_with_code(code, String::new())
     }
+
+    fn fmt_str(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        if self.code != ErrorCode::SystemCode(SystemCode::Other) {
+            write!(f, "code: {:?}: {}", self.code, self.msg)
+        } else {
+            write!(f, "{}", self.msg)
+        }
+    }
 }
 
 impl<E: HandlerCode> Debug for HandlerError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        if let Some(code) = &self.code {
-            write!(f, "code: {:?}: {}", code, self.msg)
-        } else {
-            write!(f, "{}", self.msg)
-        }
+        self.fmt_str(f)
     }
 }
 
 impl<E: HandlerCode> Display for HandlerError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        if let Some(code) = &self.code {
-            write!(f, "code: {:?}: {}", code, self.msg)
-        } else {
-            write!(f, "{}", self.msg)
-        }
+        self.fmt_str(f)
     }
 }
 
-impl<E: Error, F: HandlerCode> From<E> for HandlerError<F> {
-    fn from(value: E) -> Self {
+impl<E: HandlerCode, F: HandlerCode> From<ClientError<E>> for HandlerError<F> {
+    fn from(value: ClientError<E>) -> Self {
+        let code: ErrorCode<F> = if value.code == ErrorCode::SystemCode(SystemCode::OutOfGas) {
+            ErrorCode::SystemCode(SystemCode::OutOfGas)
+        } else {
+            ErrorCode::SystemCode(SystemCode::Other)
+        };
         HandlerError {
-            code: None,
+            code,
+            #[cfg(feature = "std")]
             msg: format!("got error: {}", value),
         }
     }
