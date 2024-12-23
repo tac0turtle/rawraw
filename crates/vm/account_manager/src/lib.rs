@@ -10,6 +10,7 @@ mod query_ctx;
 pub mod state_handler;
 pub mod gas;
 mod gas_stack;
+mod wrapper;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
@@ -50,7 +51,7 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         invoke_params: &InvokeParams<'b>,
     ) -> Result<Response<'b>, ErrorCode> {
         let mut exec_context = ExecContext::new(self, state_handler, id_generator, caller, invoke_params.gas_limit);
-        exec_context.invoke_msg(message, invoke_params)
+        exec_context.do_invoke_msg(message, invoke_params)
     }
 
     /// Invokes the query in the context of the provided state handler.

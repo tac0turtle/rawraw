@@ -70,7 +70,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
                 .ok_or(SystemCode(AccountNotFound))?;
 
         // create a nested execution frame for the target account
-        self.call_stack.push(target_account)?;
+        let call_scope = self.call_stack.push(target_account)?;
 
         // run the handler
         let handler = self.account_manager.code_manager.resolve_handler(
@@ -82,7 +82,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         let res = handler.handle_query(message, self, allocator);
 
         // pop the call & gas stacks
-        self.call_stack.pop();
+        call_scope.pop();
         self.gas_stack.pop()?;
         res
     }
