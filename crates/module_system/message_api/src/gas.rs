@@ -15,7 +15,10 @@ pub struct GasTracker {
 impl GasTracker {
     /// Creates a new gas tracker with an optional limit.
     pub fn new(limit: Option<u64>) -> Self {
-        Self { limit, consumed: Cell::new(0) }
+        Self {
+            limit,
+            consumed: Cell::new(0),
+        }
     }
 
     /// Creates a new gas tracker with no limit.

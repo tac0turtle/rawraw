@@ -1,9 +1,9 @@
 //! The raw handler and host backend interfaces.
 use crate::code::{ErrorCode, SystemCode};
+use crate::gas::GasTracker;
 use crate::message::{Message, Request, Response};
 use crate::AccountID;
 pub use allocator_api2::alloc::Allocator;
-use crate::gas::GasTracker;
 
 /// A handler for an account.
 pub trait RawHandler {
