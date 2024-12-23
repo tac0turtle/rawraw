@@ -89,12 +89,12 @@ pub struct InvokeParams<'a> {
     /// then the parent gas limit will be used.
     /// If an unlimited gas meter is provided, then gas consumption can be monitored
     /// without setting a limit.
-    pub gas: &'a Option<Gas>,
+    pub gas: Option<&'a Gas>,
 }
 
 impl<'a> InvokeParams<'a> {
     /// Create a new InvokeParams.
-    pub fn new(allocator: &'a dyn Allocator, gas: &'a Option<Gas>) -> Self {
+    pub fn new(allocator: &'a dyn Allocator, gas: Option<&'a Gas>) -> Self {
         Self { allocator, gas }
     }
 }

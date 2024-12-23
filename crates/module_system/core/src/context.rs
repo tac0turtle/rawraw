@@ -4,6 +4,7 @@ use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::AccountID;
 use ixc_schema::mem::MemoryManager;
+use crate::result::ClientResult;
 
 /// Context wraps a single message request (and possibly response as well) along with
 /// the router callbacks necessary for making nested message calls.
@@ -85,8 +86,9 @@ impl<'a> Context<'a> {
     }
 
     /// Consume gas. Returns an out of gas error if there is not enough gas.
-    pub fn consume_gas(&mut self, gas: u64) -> Result<(), ErrorCode> {
-        self.with_backend(|backend| backend.consume_gas(gas))
+    pub fn consume_gas(&mut self, gas: u64) -> ClientResult<()> {
+        self.with_backend(|backend| backend.consume_gas(gas))?;
+        Ok(())
     }
 
     /// Get the memory manager.

@@ -44,10 +44,10 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         id_generator: &IDG,
         caller: AccountID,
         message: &Message,
-        allocator: &InvokeParams<'b>,
+        invoke_params: &InvokeParams<'b>,
     ) -> Result<Response<'b>, ErrorCode> {
-        let mut exec_context = ExecContext::new(self, state_handler, id_generator, caller);
-        exec_context.invoke_msg(message, allocator)
+        let mut exec_context = ExecContext::new(self, state_handler, id_generator, caller, invoke_params.gas);
+        exec_context.invoke_msg(message, invoke_params)
     }
 
     /// Invokes the query in the context of the provided state handler.
@@ -55,11 +55,11 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         &self,
         state_handler: &ST,
         message_packet: &Message,
-        allocator: &InvokeParams<'b>,
+        invoke_params: &InvokeParams<'b>,
     ) -> Result<Response<'b>, ErrorCode> {
-        let call_stack = CallStack::new(AccountID::EMPTY, None);
+        let call_stack = CallStack::new(AccountID::EMPTY, invoke_params.gas);
         let query_ctx = QueryContext::new(self, state_handler, &call_stack);
-        query_ctx.invoke_query(message_packet, allocator)
+        query_ctx.invoke_query(message_packet, invoke_params)
     }
 }
 

@@ -18,24 +18,24 @@ pub(crate) struct Frame {
 }
 
 impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
-    pub(crate) fn new(active_account: AccountID, gas_limit: Option<u64>) -> Self {
-        let gas_meter = Gas::limited(gas_limit.unwrap_or(0));
+    pub(crate) fn new(active_account: AccountID, gas_limit: Option<&Gas>) -> Self {
+        let gas_meter = gas_limit.cloned().unwrap_or_default();
         let res = Self {
             call_stack: RefCell::new(Default::default()),
             gas: gas_meter,
         };
-        res.push(active_account, gas_limit).unwrap();
+        res.push(active_account, gas_limit).unwrap(); // TODO
         res
     }
 
     pub(crate) fn push(
         &self,
         account_id: AccountID,
-        gas_limit: Option<u64>,
+        gas_limit: Option<&Gas>,
     ) -> Result<(), ErrorCode> {
         let gas_start = self.gas.consumed();
         let mut gas_max = None;
-        if let Some(gas_limit) = gas_limit {
+        if let Some(gas_limit) = gas_limit.map(|g| g.limit()).flatten() {
             let mut scope_gas_max = gas_limit + gas_start;
             if let Some(cur_gas_max) = self.gas_max() {
                 scope_gas_max = scope_gas_max.min(cur_gas_max);

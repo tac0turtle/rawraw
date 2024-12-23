@@ -9,6 +9,7 @@ use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::AccountID;
+use ixc_message_api::gas::Gas;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::value::OptionalValue;
@@ -17,12 +18,22 @@ use ixc_schema::value::OptionalValue;
 /// Static account client instances should be preferred wherever possible,
 /// so that static dependency analysis can be performed.
 pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
-    context: &'a mut Context,
+    context: &mut Context<'a>,
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
+    dynamic_invoke_msg_with_gas(context, account, message, None)
+}
+
+/// Dynamically invokes an account message with gas.
+pub fn dynamic_invoke_msg_with_gas<'a, 'b, M: Message<'b>>(
+    context: &mut Context<'a>,
+    account: AccountID,
+    message: M,
+    gas: Option<&'a Gas>,
+) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     let packet = encode_message_packet(context.memory_manager(), account, message)?;
-    let res = dynamic_invoke_msg_packet(context, &packet);
+    let res = dynamic_invoke_msg_packet(context, &packet, gas);
     decode_message_response::<M>(context, &res)
 }
 
@@ -30,12 +41,24 @@ pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
 /// Static account client instances should be preferred wherever possible,
 /// so that static dependency analysis can be performed.
 pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
-    context: &'a Context,
+    context: &Context<'a>,
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
+    dynamic_invoke_query_with_gas(context, account, message, None)
+}
+
+/// Dynamically invokes an account query message.
+/// Static account client instances should be preferred wherever possible,
+/// so that static dependency analysis can be performed.
+pub fn dynamic_invoke_query_with_gas<'a, 'b, M: QueryMessage<'b>>(
+    context: &Context<'a>,
+    account: AccountID,
+    message: M,
+    gas: Option<&'a Gas>,
+) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     let packet = encode_message_packet(context.memory_manager(), account, message)?;
-    let res = dynamic_invoke_query_packet(context, &packet);
+    let res = dynamic_invoke_query_packet(context, &packet, gas);
     decode_message_response::<M>(context, &res)
 }
 
@@ -43,8 +66,9 @@ pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
 pub fn dynamic_invoke_query_packet<'a>(
     ctx: &Context<'a>,
     msg: &ixc_message_api::message::Message,
+    gas: Option<&'a Gas>,
 ) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.mem, &None);
+    let invoke_params = InvokeParams::new(ctx.mem, gas);
     ctx.with_backend(|backend| backend.invoke_query(msg, &invoke_params))
 }
 
@@ -52,8 +76,9 @@ pub fn dynamic_invoke_query_packet<'a>(
 pub fn dynamic_invoke_msg_packet<'a>(
     ctx: &mut Context<'a>,
     msg: &ixc_message_api::message::Message,
+    gas: Option<&'a Gas>,
 ) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.mem, &None);
+    let invoke_params = InvokeParams::new(ctx.mem, gas);
     ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?
 }
 
@@ -74,7 +99,7 @@ fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
 }
 
 fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
-    context: &'a Context,
+    context: &Context<'a>,
     res: &Result<Response<'a>, ErrorCode>,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
     match res {

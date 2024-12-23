@@ -15,6 +15,7 @@ use ixc_message_api::code::SystemCode::{
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
+use ixc_message_api::gas::Gas;
 use ixc_vm_api::VM;
 
 pub(crate) struct ExecContext<
@@ -38,12 +39,13 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usi
         state_handler: &'a mut ST,
         id_generator: &'a IDG,
         account: AccountID,
+        gas_limit: Option<&Gas>,
     ) -> Self {
         Self {
             account_manager,
             state_handler,
             id_generator,
-            call_stack: CallStack::new(account, None),
+            call_stack: CallStack::new(account, gas_limit),
         }
     }
 }
@@ -70,7 +72,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize> 
             self.handle_system_message(message.request(), allocator)
         } else {
             // push onto the call stack when we're calling a non-system account
-            self.call_stack.push(target_account, None)?;
+            self.call_stack.push(target_account, invoke_params.gas)?;
 
             // find the account's handler ID
             let handler_id = get_account_handler_id(
