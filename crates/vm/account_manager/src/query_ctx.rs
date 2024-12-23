@@ -44,7 +44,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn invoke_msg<'c>(
         &mut self,
         _message: &Message,
-        _invoke_params: &InvokeParams<'c>,
+        _invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
         Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
@@ -54,9 +54,9 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn invoke_query<'c>(
         &self,
         message: &Message,
-        invoke_params: &InvokeParams<'c>,
+        invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
-        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
@@ -94,7 +94,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn update_state<'c>(
         &mut self,
         _req: &Request,
-        _invoke_params: &InvokeParams<'c>,
+        _invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
         Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
@@ -104,16 +104,18 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn query_state<'c>(
         &self,
         req: &Request,
-        invoke_params: &InvokeParams<'c>,
+        invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
-        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let active_account = self.call_stack.active_account()?;
-        self.state_handler.handle_query(
+        let res = self.state_handler.handle_query(
             active_account,
             req,
             self.gas_stack.meter(),
             invoke_params.allocator,
-        )
+        );
+        gas_scope.pop();
+        res
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {

@@ -49,14 +49,14 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         id_generator: &IDG,
         caller: AccountID,
         message: &Message,
-        invoke_params: &InvokeParams<'b>,
+        invoke_params: &InvokeParams<'b, '_>,
     ) -> Result<Response<'b>, ErrorCode> {
         let mut exec_context = ExecContext::new(
             self,
             state_handler,
             id_generator,
             caller,
-            invoke_params.gas_limit,
+            invoke_params.gas_tracker,
         );
         exec_context.do_invoke_msg(message, invoke_params)
     }
@@ -66,10 +66,10 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         &self,
         state_handler: &ST,
         message_packet: &Message,
-        invoke_params: &InvokeParams<'b>,
+        invoke_params: &InvokeParams<'b, '_>,
     ) -> Result<Response<'b>, ErrorCode> {
         let call_stack = CallStack::new(AccountID::EMPTY);
-        let gas_stack = GasStack::new(invoke_params.gas_limit);
+        let gas_stack = GasStack::new(invoke_params.gas_tracker.map(|g| g.limit).flatten());
         let query_ctx = QueryContext::new(self, state_handler, &call_stack, &gas_stack);
         query_ctx.invoke_query(message_packet, invoke_params)
     }

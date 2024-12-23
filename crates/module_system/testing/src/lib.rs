@@ -158,7 +158,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn invoke_msg<'a>(
         &mut self,
         message: &Message,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         let mut backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
@@ -181,7 +181,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn invoke_query<'a>(
         &self,
         message: &Message,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         // TODO add a read only state handler impl for query
         let backend = self.backend.lock().unwrap();
@@ -194,7 +194,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn update_state<'a>(
         &mut self,
         req: &Request,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         let mut backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
@@ -215,7 +215,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn query_state<'a>(
         &self,
         req: &Request,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         let backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();

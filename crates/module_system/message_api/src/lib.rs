@@ -8,6 +8,7 @@ pub mod alloc_util;
 pub mod code;
 pub mod handler;
 pub mod message;
+pub mod gas;
 
 pub use account_id::AccountID;
 

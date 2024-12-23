@@ -25,6 +25,7 @@ mod gas2 {
     use crate::gas1::{Gas1, Gas1ConsumeGas};
     use ixc::*;
     use ixc_core::low_level::dynamic_invoke_msg_with_gas;
+    use ixc_message_api::gas::GasTracker;
 
     #[derive(Resources)]
     pub struct Gas2 {}
@@ -42,7 +43,8 @@ mod gas2 {
             gas_eater: AccountID,
             limit: Option<u64>,
         ) -> Result<Option<u64>> {
-            let res = dynamic_invoke_msg_with_gas(ctx, gas_eater, Gas1ConsumeGas {}, limit);
+            let tracker = GasTracker::new(limit);
+            let res = dynamic_invoke_msg_with_gas(ctx, gas_eater, Gas1ConsumeGas {}, Some(&tracker));
             // if res.is_err() {
             //     match ctx.gas_left() {
             //         Some(gas_left) => {
@@ -66,6 +68,7 @@ mod tests {
     use ixc_core::handler::Client;
     use ixc_core::low_level::dynamic_invoke_msg_with_gas;
     use ixc_message_api::code::{ErrorCode, SystemCode};
+    use ixc_message_api::gas::GasTracker;
     use ixc_testing::*;
 
     #[test]
@@ -81,11 +84,12 @@ mod tests {
             None,
         );
         assert!(res.is_ok());
+        let tracker = GasTracker::new(Some(50));
         let res = dynamic_invoke_msg_with_gas(
             &mut alice,
             gas1_client.account_id(),
             Gas1ConsumeGas {},
-            Some(50),
+            Some(&tracker),
         );
         assert!(res.is_err());
         assert_eq!(

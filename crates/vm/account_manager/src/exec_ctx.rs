@@ -19,6 +19,7 @@ use ixc_message_api::code::SystemCode::{
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
+use ixc_message_api::gas::GasTracker;
 use ixc_vm_api::VM;
 
 pub(crate) struct ExecContext<
@@ -43,14 +44,14 @@ impl<'a, CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usi
         state_handler: &'a mut ST,
         id_generator: &'a IDG,
         account: AccountID,
-        gas_limit: Option<u64>,
+        gas_tracker: Option<&'a GasTracker>,
     ) -> Self {
         Self {
             account_manager,
             state_handler: RefCell::new(state_handler),
             id_generator,
             call_stack: CallStack::new(account),
-            gas_stack: GasStack::new(gas_limit),
+            gas_stack: GasStack::new(gas_tracker.map(|g| g.limit).flatten()),
         }
     }
 }
@@ -62,9 +63,9 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     pub(crate) fn do_invoke_msg<'a>(
         &self,
         message: &Message,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
-        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
@@ -130,10 +131,10 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     pub(crate) fn do_invoke_query<'a>(
         &self,
         message: &Message,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         // create a nested query execution frame
-        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let state_handler = self.state_handler.borrow();
         let query_ctx = QueryContext::new(
             self.account_manager,
@@ -149,9 +150,9 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     pub(crate) fn do_update_state<'a>(
         &self,
         req: &Request,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
-        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let active_account = self.call_stack.active_account()?;
         let res = self.state_handler.borrow_mut().handle_exec(
             active_account,
@@ -166,9 +167,9 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     pub(crate) fn do_query_state<'a>(
         &self,
         req: &Request,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
-        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let active_account = self.call_stack.active_account()?;
         let res = self.state_handler.borrow_mut().handle_query(
             active_account,
