@@ -56,7 +56,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         message: &Message,
         invoke_params: &InvokeParams<'c>,
     ) -> Result<Response<'c>, ErrorCode> {
-        self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
         let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
@@ -83,7 +83,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
 
         // pop the call & gas stacks
         call_scope.pop();
-        self.gas_stack.pop()?;
+        gas_scope.pop();
         res
     }
 

@@ -11,6 +11,7 @@ pub mod state_handler;
 pub mod gas;
 mod gas_stack;
 mod wrapper;
+mod scope_guard;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;

@@ -2,6 +2,7 @@ use crate::gas::GasMeter;
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
+use crate::scope_guard::{ScopeGuard, ScopeGuardStack};
 
 #[derive(Debug)]
 pub(crate) struct GasStack<const CALL_STACK_LIMIT: usize> {
@@ -26,7 +27,7 @@ struct Frame {
 }
 
 impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
-    pub(crate) fn push(&self, scoped_gas_limit: Option<u64>) -> Result<(), ErrorCode> {
+    pub(crate) fn push(&self, scoped_gas_limit: Option<u64>) -> Result<ScopeGuard<GasStack<CALL_STACK_LIMIT>>, ErrorCode> {
         let frame = if let Some(scoped_gas_limit) = scoped_gas_limit {
             // first get the amount of gas that has been consumed
             let gas_start = self.gas.consumed.get();
@@ -52,7 +53,8 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
         };
         self.stack.borrow_mut().try_push(frame).map_err(|_| {
             ErrorCode::SystemCode(ixc_message_api::code::SystemCode::CallStackOverflow)
-        })
+        })?;
+        Ok(ScopeGuard::new(self))
     }
 
     // returns 0 if there is no gas limit
@@ -64,17 +66,16 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
         }
     }
 
-    pub(crate) fn pop(&self) -> Result<(), ErrorCode> {
-        self.stack.borrow_mut().pop().ok_or(ErrorCode::SystemCode(
-            ixc_message_api::code::SystemCode::FatalExecutionError,
-        ))?;
-        // when we pop, we update the gas meter's limit
-        self.gas.limit.set(self.cur_gas_limit());
-        Ok(())
-    }
-
     pub(crate) fn meter(&self) -> &GasMeter {
         &self.gas
+    }
+}
+
+impl<const CALL_STACK_LIMIT: usize> ScopeGuardStack for GasStack<CALL_STACK_LIMIT> {
+    fn pop(&self) {
+        self.stack.borrow_mut().pop();
+        // when we pop, we update the gas meter's limit
+        self.gas.limit.set(self.cur_gas_limit());
     }
 }
 
@@ -88,28 +89,28 @@ mod tests {
         let gas_stack: GasStack<256> = GasStack::new(Some(100));
         assert_eq!(gas_stack.meter().left(), Some(100));
         {
-            gas_stack.push(Some(20)).unwrap();
+            let scope = gas_stack.push(Some(20)).unwrap();
             assert_eq!(gas_stack.meter().left(), Some(20));
             gas_stack.meter().consume(1).unwrap();
             assert_eq!(gas_stack.meter().left(), Some(19));
             {
-                gas_stack.push(Some(10)).unwrap();
+                let scope = gas_stack.push(Some(10)).unwrap();
                 assert_eq!(gas_stack.meter().left(), Some(10));
                 {
-                    gas_stack.push(None).unwrap();
+                    let scope = gas_stack.push(None).unwrap();
                     // inherit child limit
                     assert_eq!(gas_stack.meter().left(), Some(10));
                     {
-                        gas_stack.push(Some(100)).unwrap();
+                        let scope = gas_stack.push(Some(100)).unwrap();
                         // cannot exceed parent limit
                         assert_eq!(gas_stack.meter().left(), Some(10));
                         // consume all the gas
                         assert_eq!(gas_stack.meter().consume(10), Ok(()));
-                        gas_stack.pop().unwrap();
+                        scope.pop();
                     }
                     assert_eq!(gas_stack.meter().left(), Some(0));
                     assert_eq!(gas_stack.meter().consumed(), 11);
-                    gas_stack.pop().unwrap();
+                    scope.pop();
                 }
 
                 assert_eq!(gas_stack.meter().left(), Some(0));
@@ -120,13 +121,13 @@ mod tests {
                 );
                 assert_eq!(gas_stack.meter().consumed(), 12);
                 assert_eq!(gas_stack.meter().left(), Some(0));
-                gas_stack.pop().unwrap();
+                scope.pop();
             }
             assert_eq!(gas_stack.meter().left(), Some(8));
             assert_eq!(gas_stack.meter().consume(5), Ok(()));
             assert_eq!(gas_stack.meter().left(), Some(3));
             assert_eq!(gas_stack.meter().consumed(), 17);
-            gas_stack.pop().unwrap();
+            scope.pop();
         }
         assert_eq!(gas_stack.meter().left(), Some(83));
         assert_eq!(gas_stack.meter().consumed(), 17);
@@ -140,31 +141,31 @@ mod tests {
         assert_eq!(gas_stack.meter().consumed(), 100);
         assert_eq!(gas_stack.meter().left(), None);
         {
-            gas_stack.push(Some(20)).unwrap();
+            let scope = gas_stack.push(Some(20)).unwrap();
             assert_eq!(gas_stack.meter().left(), Some(20));
             gas_stack.meter().consume(10).unwrap();
             assert_eq!(gas_stack.meter().left(), Some(10));
             {
-                gas_stack.push(Some(100)).unwrap();
+                let scope = gas_stack.push(Some(100)).unwrap();
                 // cannot exceed parent limit
                 assert_eq!(gas_stack.meter().left(), Some(10));
                 {
-                    gas_stack.push(None).unwrap();
+                    let scope = gas_stack.push(None).unwrap();
                     // inherit child limit
                     assert_eq!(gas_stack.meter().left(), Some(10));
                     {
-                        gas_stack.push(Some(5)).unwrap();
+                        let scope = gas_stack.push(Some(5)).unwrap();
                         //cannot exceed parent limit
                         assert_eq!(gas_stack.meter().left(), Some(5));
                         assert_eq!(gas_stack.meter().consume(6), Err(ErrorCode::SystemCode(SystemCode::OutOfGas)));
-                        gas_stack.pop().unwrap();
+                        scope.pop();
                     }
                     assert_eq!(gas_stack.meter().left(), Some(4));
-                    gas_stack.pop().unwrap();
+                    scope.pop();
                 }
-                gas_stack.pop().unwrap();
+                scope.pop();
             }
-            gas_stack.pop().unwrap();
+            scope.pop();
         }
         assert_eq!(gas_stack.meter().left(), None);
         assert_eq!(gas_stack.gas.consumed.get(), 116);

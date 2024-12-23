@@ -64,7 +64,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         message: &Message,
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
-        self.gas_stack.push(invoke_params.gas_limit)?;
+        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
         let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
@@ -124,7 +124,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
                 .map_err(|_| SystemCode(InvalidHandler))?;
         }
 
-        self.gas_stack.pop()?;
+        gas_scope.pop();
         res
     }
 
@@ -134,6 +134,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         invoke_params: &InvokeParams<'a>,
     ) -> Result<Response<'a>, ErrorCode> {
         // create a nested query execution frame
+        let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
         let state_handler = self.state_handler.borrow();
         let query_ctx = QueryContext::new(
             self.account_manager,
@@ -141,7 +142,9 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
             &self.call_stack,
             &self.gas_stack,
         );
-        query_ctx.invoke_query(message, invoke_params)
+        let res = query_ctx.invoke_query(message, invoke_params);
+        gas_scope.pop();
+        res
     }
 
     pub(crate) fn do_update_state<'a>(
@@ -151,12 +154,14 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     ) -> Result<Response<'a>, ErrorCode> {
         let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
         let active_account = self.call_stack.active_account()?;
-        self.state_handler.borrow_mut().handle_exec(
+        let res = self.state_handler.borrow_mut().handle_exec(
             active_account,
             req,
             self.gas_stack.meter(),
             invoke_params.allocator,
-        )
+        );
+        gas_scope.pop();
+        res
     }
 
     pub(crate) fn do_query_state<'a>(
@@ -166,12 +171,14 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
     ) -> Result<Response<'a>, ErrorCode> {
         let gas_scope = self.gas_stack.push(invoke_params.gas_limit)?;
         let active_account = self.call_stack.active_account()?;
-        self.state_handler.borrow_mut().handle_query(
+        let res = self.state_handler.borrow_mut().handle_query(
             active_account,
             req,
             self.gas_stack.meter(),
             invoke_params.allocator,
-        )
+        );
+        gas_scope.pop();
+        res
     }
 
     pub(crate) fn do_consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
