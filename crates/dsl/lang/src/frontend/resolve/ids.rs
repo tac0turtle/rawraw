@@ -1,4 +1,4 @@
-use crate::frontend::syntax::{SyntaxElement, SyntaxNode, SyntaxToken};
+use crate::frontend::syntax::{IXCLanguage, SyntaxNode};
 use rowan::ast::AstNode;
 use salsa::Database;
 
@@ -8,14 +8,14 @@ pub struct AstPtr<'db, N: AstNode + ?Sized> {
     path: NodeId<'db>,
 }
 
-impl<'db, N: AstNode> AstPtr<'db, N> {
-    pub fn new(db: &'db dyn Database, node: &N) -> Option<Self> {
+impl<'db, N: AstNode<Language = IXCLanguage>> AstPtr<'db, N> {
+    pub fn new(db: &'db dyn Database, node: &N) -> Self {
         let path = NodePath::new(node.syntax());
         let id = NodeId::new(db, path);
-        Some(AstPtr {
+        AstPtr {
             _marker: Default::default(),
             path: id,
-        })
+        }
     }
 
     pub fn resolve(&self, db: &'db dyn Database, node: &SyntaxNode) -> Option<N> {
@@ -54,5 +54,12 @@ impl NodePath {
             idx -= 1;
         }
         Some(node)
+    }
+
+    pub fn parent_path(&self) -> Option<NodePath> {
+        if self.0.len() < 2 {
+            return None;
+        }
+        Some(NodePath(self.0[1..].clone()))
     }
 }
