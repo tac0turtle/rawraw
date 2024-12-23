@@ -43,8 +43,7 @@ pub struct Param<'a> {
     typ: ParamType,
 }
 
-#[derive(Default, Clone, Copy)]
-#[non_exhaustive]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 enum ParamType {
     /// An empty response.
@@ -236,6 +235,43 @@ impl<'a> Param<'a> {
         match self.typ {
             ParamType::AccountID => unsafe { Ok(self.value.account_id) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+        }
+    }
+
+    /// Returns true if the parameter is empty.
+    pub fn is_empty(&self) -> bool {
+        self.typ == ParamType::Empty
+    }
+
+    /// Returns the paremeter as a slice if it is a slice.
+    pub fn as_slice(&self) -> Option<&'a [u8]> {
+        match self.typ {
+            ParamType::Slice => unsafe { Some(self.value.slice) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as a string if it is a string.
+    pub fn as_string(&self) -> Option<&'a str> {
+        match self.typ {
+            ParamType::String => unsafe { Some(self.value.string) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as a u128 if it is a u128.
+    pub fn as_u128(&self) -> Option<u128> {
+        match self.typ {
+            ParamType::U128 => unsafe { Some(self.value.u128) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as an account ID if it is an account ID.
+    pub fn as_account_id(&self) -> Option<AccountID> {
+        match self.typ {
+            ParamType::AccountID => unsafe { Some(self.value.account_id) },
+            _ => None,
         }
     }
 }
