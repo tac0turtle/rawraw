@@ -2,33 +2,49 @@
 use quote::quote;
 use std::collections::HashMap;
 use std::io::Write;
+use serde::Deserialize;
 
-fn main() {
-    let known_accounts = std::env::var("IXC_KNOWN_ACCOUNTS").unwrap_or_default();
-    println!("cargo:rerun-if-env-changed=IXC_KNOWN_ACCOUNTS");
+#[derive(Deserialize, Default)]
+struct Config {
+    accounts: HashMap<String, String>,
+}
 
-    let known_accounts: HashMap<String, String> = toml::from_str(&known_accounts).unwrap_or_default();
+fn process_config() -> anyhow::Result<()> {
+    // read the IXC_CONFIG environment variable
+    let config = std::env::var("IXC_CONFIG");
+    println!("cargo:rerun-if-env-changed=IXC_CONFIG");
 
-    let mut entries: Vec<_> = known_accounts.iter()
-        .map(|(k, v)| (k, u128::from_str_radix(v, 16).unwrap()))
-        .collect();
-    entries.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+    // process the context of the environment variable as a TOML string
+    // if there is no environment variable, use the default config
+    let config: Config = match config {
+        Ok(config) => toml::from_str(&config)?,
+        Err(_) => Default::default(),
+    };
 
-    let entries = entries.iter().map(|(k, v)| {
-        quote! {
-            (#k, #v)
-        }
-    });
+    // get the "accounts" key
+    let known_accounts = &config.accounts;
 
-    let out_dir = std::env::var("OUT_DIR").unwrap();
-    let mut file = std::fs::File::create(format!("{}/known_accounts.rs", out_dir)).unwrap();
+    let mut account_names = Vec::new();
+    let mut ids = Vec::new();
+    for (k, v) in known_accounts {
+        account_names.push(k);
+        let id = u128::from_str_radix(v, 16)?;
+        ids.push(id);
+    }
 
     let output = quote! {
         /// Well-known account mappings.
         pub const KNOWN_ACCOUNTS: &[(&str, u128)] = &[
-            #(#entries),*
+            #((#account_names, #ids)),*
         ];
     };
 
-    write!(file, "{}", output).unwrap();
+    let out_dir = std::env::var("OUT_DIR").unwrap();
+    let mut file = std::fs::File::create(format!("{}/known_accounts.rs", out_dir))?;
+    write!(file, "{}", output)?;
+    Ok(())
+}
+
+fn main() {
+    process_config().unwrap()
 }
