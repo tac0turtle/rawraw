@@ -4,16 +4,22 @@ use salsa::Database;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AstPtr<'db, N: AstNode + ?Sized> {
-    // _marker: std::marker::PhantomData<N>,
+    _marker: std::marker::PhantomData<fn(N)>,
     path: NodeId<'db>,
 }
+
+// impl <N: AstNode + ?Sized> Debug for AstPtr<'_, N> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "AstPtr({:?})", self.path.path(self.db()).resolve(&self.syntax()))
+//     }
+// }
 
 impl<'db, N: AstNode<Language = IXCLanguage>> AstPtr<'db, N> {
     pub fn new(db: &'db dyn Database, node: &N) -> Self {
         let path = NodePath::new(node.syntax());
         let id = NodeId::new(db, path);
         AstPtr {
-            // _marker: Default::default(),
+            _marker: Default::default(),
             path: id,
         }
     }
@@ -31,6 +37,15 @@ pub struct NodeId<'db> {
     // TODO:
     // #[return_ref]
     // pub file_id: FileId<'db>,
+}
+
+impl<'db> NodeId<'db> {
+    pub fn parent_path(&self, db: &'db dyn Database) -> Option<NodeId<'db>> {
+        if let Some(parent) = self.path(db).parent_path() {
+            return NodeId::new(db, parent)
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -54,13 +69,6 @@ impl NodePath {
             idx -= 1;
         }
         Some(node)
-    }
-
-    pub fn parent_path(&self) -> Option<NodePath> {
-        if self.0.len() < 1 {
-            return None;
-        }
-        Some(NodePath(self.0[1..].to_vec()))
     }
 
     pub fn is_root(&self) -> bool {

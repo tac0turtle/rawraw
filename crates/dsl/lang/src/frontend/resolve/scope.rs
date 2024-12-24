@@ -19,7 +19,8 @@ pub fn resolve_scope<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_path:
         scope: Scope::default(),
         db,
     };
-    registry.providers.get(&node.kind())?.call_box((node, &mut builder));
+    let f = registry.providers.get(&node.kind())?;
+    f(node, &mut builder);
     Some(builder.scope)
 }
 
@@ -34,13 +35,13 @@ pub fn resolve_name_ref<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_id
                 return resolve_name_ref(db, ast, parent, name_ref);
             }
         } else {
-            maybe_node_path = node_path.parent_path();
+            maybe_node_path = node_path.parent_path(db);
         }
     }
     None
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Clone)]
 pub struct ScopeProviderRegistry {
     providers: DashMap<SyntaxKind, Box<dyn Fn(SyntaxNode, &mut ScopeBuilder)>>,
 }
@@ -53,7 +54,7 @@ impl ScopeProviderRegistry {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Scope<'db> {
     parent: Option<NodeId<'db>>,
     names: DashMap<String, ItemPtr<'db>>,
@@ -75,8 +76,8 @@ impl<'db> ScopeBuilder<'db> {
     }
 
     pub fn inherit_parent_node_scope(&mut self) {
-        if let Some(parent) = self.path.path(self.db).parent_path() {
-            self.scope.parent = Some(NodeId::new(self.db, parent));
+        if let Some(parent) = self.path.parent_path(self.db) {
+            self.scope.parent = Some(parent);
         }
     }
 
@@ -86,7 +87,7 @@ impl<'db> ScopeBuilder<'db> {
 }
 
 // TODO find a way to const initialize this
-#[salsa::tracked]
+// #[salsa::tracked]
 fn init_registry(db: &dyn Database) -> ScopeProviderRegistry {
     let mut registry = ScopeProviderRegistry::default();
     registry.register_provider::<File>(|node, builder| {
