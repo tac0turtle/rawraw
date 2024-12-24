@@ -13,8 +13,6 @@ pub enum SchemaType<'a> {
     Struct(StructType<'a>),
     /// An enum type.
     Enum(EnumType<'a>),
-    /// A one-of type.
-    OneOf(OneOfType<'a>),
     /// A state object type.
     StateObjectType(StateObjectType<'a>),
 }
@@ -25,7 +23,6 @@ impl<'a> SchemaType<'a> {
         match self {
             SchemaType::Struct(s) => s.name,
             SchemaType::Enum(e) => e.name,
-            SchemaType::OneOf(o) => o.name,
             SchemaType::StateObjectType(s) => s.name,
         }
     }

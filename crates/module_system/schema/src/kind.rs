@@ -1,11 +1,14 @@
 //! Field kinds.
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use ixc_schema_macros::SchemaValue;
 
 /// The basic type of a field.
 #[non_exhaustive]
-#[repr(u32)]
-#[derive(TryFromPrimitive, IntoPrimitive, Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(i32)]
+#[derive(TryFromPrimitive, IntoPrimitive, Debug, Clone, Copy, PartialEq, Eq, SchemaValue, Default)]
 pub enum Kind {
+    #[default]
+    Unknown = 0,
     /// A string.
     String = 1,
     /// A byte array.

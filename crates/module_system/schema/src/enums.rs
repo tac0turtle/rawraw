@@ -1,26 +1,27 @@
 use crate::kind::Kind;
 use crate::types::{ReferenceableType, Type};
 use ixc_schema_macros::SchemaValue;
+use crate::structs::StructType;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct EnumType<'a> {
     pub name: &'a str,
-    pub values: &'a [EnumValueDefinition<'a>],
+    pub variants: &'a [EnumVariantDefinition<'a>],
     pub numeric_kind: Kind,
     pub sealed: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, SchemaValue)]
 #[non_exhaustive]
-pub struct EnumValueDefinition<'a> {
+pub struct EnumVariantDefinition<'a> {
     pub name: &'a str,
-    pub value: i32,
+    pub discriminant: i32,
 }
 
-impl<'a> EnumValueDefinition<'a> {
+impl<'a> EnumVariantDefinition<'a> {
     pub const fn new(name: &'a str, value: i32) -> Self {
-        Self { name, value }
+        Self { name, discriminant: value }
     }
 }
 
@@ -30,7 +31,7 @@ pub unsafe trait EnumSchema:
     ReferenceableType + TryFrom<Self::NumericType> + Into<Self::NumericType> + Clone
 {
     const NAME: &'static str;
-    const VALUES: &'static [EnumValueDefinition<'static>];
+    const VARIANTS: &'static [EnumVariantDefinition<'static>];
     const SEALED: bool;
     #[allow(private_bounds)]
     type NumericType: EnumNumericType;
@@ -40,7 +41,7 @@ pub unsafe trait EnumSchema:
 pub const fn to_enum_type<E: EnumSchema>() -> EnumType<'static> {
     EnumType {
         name: E::NAME,
-        values: E::VALUES,
+        variants: E::VARIANTS,
         numeric_kind: E::NumericType::KIND,
         sealed: E::SEALED,
     }

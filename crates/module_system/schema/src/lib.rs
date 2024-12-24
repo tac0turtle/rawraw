@@ -24,7 +24,6 @@ pub mod kind;
 pub mod list;
 pub mod mem;
 mod message;
-mod oneof;
 pub mod schema;
 pub mod state_object;
 pub mod structs;
