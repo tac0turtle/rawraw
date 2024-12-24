@@ -1,6 +1,7 @@
 use crate::frontend::ast::*;
 use crate::frontend::resolve::ids::AstPtr;
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ItemPtr<'db> {
     File(AstPtr<'db, File>),
     Interface(AstPtr<'db, Interface>),

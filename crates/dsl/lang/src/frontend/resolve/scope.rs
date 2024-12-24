@@ -1,7 +1,7 @@
-use crate::frontend::ast::{ConcreteNode, File, Interface, InterfaceItem, Item};
+use crate::frontend::ast::{ConcreteNode, File, Interface, InterfaceItem, Item, ParsedAST};
 use crate::frontend::diagnostic::Diagnostic;
 use crate::frontend::resolve::definer::ItemDefiner;
-use crate::frontend::resolve::ids::{AstPtr, NodePath};
+use crate::frontend::resolve::ids::{AstPtr, NodeId, NodePath};
 use crate::frontend::resolve::item_ref::ItemPtr;
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 use rowan::ast::AstNode;
@@ -10,7 +10,37 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 use dashmap::DashMap;
 
-#[derive(Default)]
+#[salsa::tracked]
+pub fn resolve_scope<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_path: NodeId<'db>) -> Option<Scope<'db>> {
+    let registry = init_registry(db);
+    let node = node_path.path(db).resolve(&ast.syntax(db))?;
+    let mut builder = ScopeBuilder {
+        path: node_path,
+        scope: Scope::default(),
+        db,
+    };
+    registry.providers.get(&node.kind())?.call_box((node, &mut builder));
+    Some(builder.scope)
+}
+
+pub fn resolve_name_ref<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_id: NodeId<'db>, name_ref: &str) -> Option<ItemPtr<'db>> {
+    let mut maybe_node_path = Some(node_id.clone());
+    while let Some(ref node_path) = maybe_node_path {
+        if let Some(scope) = resolve_scope(db, ast, node_id.clone()) {
+            if let Some(item) = scope.names.get(name_ref) {
+                return Some(item.clone());
+            }
+            if let Some(parent) = scope.parent {
+                return resolve_name_ref(db, ast, parent, name_ref);
+            }
+        } else {
+            maybe_node_path = node_path.parent_path();
+        }
+    }
+    None
+}
+
+#[derive(Default, Debug)]
 pub struct ScopeProviderRegistry {
     providers: DashMap<SyntaxKind, Box<dyn Fn(SyntaxNode, &mut ScopeBuilder)>>,
 }
@@ -23,13 +53,14 @@ impl ScopeProviderRegistry {
     }
 }
 
+#[derive(Default, Debug)]
 pub struct Scope<'db> {
-    parent: Option<NodePath>,
-    names: HashMap<String, ItemPtr<'db>>,
+    parent: Option<NodeId<'db>>,
+    names: DashMap<String, ItemPtr<'db>>,
 }
 
 pub struct ScopeBuilder<'db> {
-    path: NodePath,
+    path: NodeId<'db>,
     scope: Scope<'db>,
     db: &'db dyn Database
 }
@@ -44,7 +75,9 @@ impl<'db> ScopeBuilder<'db> {
     }
 
     pub fn inherit_parent_node_scope(&mut self) {
-        self.scope.parent = self.path.parent_path();
+        if let Some(parent) = self.path.path(self.db).parent_path() {
+            self.scope.parent = Some(NodeId::new(self.db, parent));
+        }
     }
 
     pub fn report_diagnostic(&self, diagnostic: Diagnostic) {
@@ -52,9 +85,9 @@ impl<'db> ScopeBuilder<'db> {
     }
 }
 
-static REGISTRY: LazyLock<ScopeProviderRegistry> = LazyLock::new(|| init_registry());
-
-fn init_registry() -> ScopeProviderRegistry {
+// TODO find a way to const initialize this
+#[salsa::tracked]
+fn init_registry(db: &dyn Database) -> ScopeProviderRegistry {
     let mut registry = ScopeProviderRegistry::default();
     registry.register_provider::<File>(|node, builder| {
         builder.inherit_parent_node_scope();

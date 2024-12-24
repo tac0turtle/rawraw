@@ -4,7 +4,7 @@ use salsa::Database;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AstPtr<'db, N: AstNode + ?Sized> {
-    _marker: std::marker::PhantomData<N>,
+    // _marker: std::marker::PhantomData<N>,
     path: NodeId<'db>,
 }
 
@@ -13,7 +13,7 @@ impl<'db, N: AstNode<Language = IXCLanguage>> AstPtr<'db, N> {
         let path = NodePath::new(node.syntax());
         let id = NodeId::new(db, path);
         AstPtr {
-            _marker: Default::default(),
+            // _marker: Default::default(),
             path: id,
         }
     }
@@ -57,9 +57,13 @@ impl NodePath {
     }
 
     pub fn parent_path(&self) -> Option<NodePath> {
-        if self.0.len() < 2 {
+        if self.0.len() < 1 {
             return None;
         }
-        Some(NodePath(self.0[1..].clone()))
+        Some(NodePath(self.0[1..].to_vec()))
+    }
+
+    pub fn is_root(&self) -> bool {
+        self.0.is_empty()
     }
 }
