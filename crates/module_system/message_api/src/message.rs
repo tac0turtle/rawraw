@@ -55,6 +55,8 @@ enum ParamType {
     String,
     /// A u128 parameter.
     U128,
+    /// A u64 parameter.
+    U64(u64),
     /// An account ID parameter.
     AccountID,
 }
@@ -230,6 +232,14 @@ impl<'a> Param<'a> {
         }
     }
 
+    /// Expect the parameter to be a u64 or return an encoding error.
+    pub fn expect_u64(&self) -> Result<u64, ErrorCode> {
+        match self {
+            Param::U64(u64) => Ok(*u64),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+        }
+    }
+
     /// Expect the parameter to be an account ID or return an encoding error.
     pub fn expect_account_id(&self) -> Result<AccountID, ErrorCode> {
         match self.typ {
@@ -300,6 +310,12 @@ impl From<u128> for Param<'_> {
             typ: ParamType::U128,
             value: ParamValue { u128 },
         }
+    }
+}
+
+impl From<u64> for Param<'_> {
+    fn from(u64: u64) -> Self {
+        Param::U64(u64)
     }
 }
 

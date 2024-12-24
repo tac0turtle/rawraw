@@ -25,7 +25,7 @@ pub mod bank {
         _denom_burn_hooks: Map<Str, AccountID>,
     }
 
-    #[derive(SchemaValue, Clone, Default)]
+    #[derive(SchemaValue, Clone, Default, Debug, Eq, PartialEq)]
     #[sealed]
     pub struct Coin<'a> {
         pub denom: &'a str,
@@ -97,7 +97,7 @@ pub mod bank {
         ) -> Result<()>;
     }
 
-    #[derive(SchemaValue, Clone, Default)]
+    #[derive(SchemaValue, Clone, Default, Debug, Eq, PartialEq)]
     #[non_exhaustive]
     pub struct EventSend<'a> {
         pub from: AccountID,
@@ -105,7 +105,7 @@ pub mod bank {
         pub coin: Coin<'a>,
     }
 
-    #[derive(SchemaValue, Clone, Default)]
+    #[derive(SchemaValue, Clone, Default, Debug, Eq, PartialEq)]
     #[non_exhaustive]
     pub struct EventMint<'a> {
         pub to: AccountID,
@@ -226,6 +226,7 @@ pub mod bank {
 mod tests {
     use super::bank::*;
     use ixc_core::account_api::ROOT_ACCOUNT;
+    use ixc_core::handler::Client;
     use ixc_testing::*;
 
     #[test]
@@ -260,6 +261,17 @@ mod tests {
             .create_denom(&mut root, "foo", alice_id)
             .unwrap();
         bank_client.mint(&mut alice, alice_id, "foo", 1000).unwrap();
+        assert_eq!(
+            app.last_message_events()
+                .select::<EventMint>(bank_client.target_account()),
+            vec![EventMint {
+                to: alice_id,
+                coin: Coin {
+                    denom: "foo".into(),
+                    amount: 1000
+                }
+            }]
+        );
 
         // ensure alice has 1000 foo coins
         let alice_balance = bank_client.get_balance(&alice, alice_id, "foo").unwrap();
@@ -277,6 +289,18 @@ mod tests {
                 }],
             )
             .unwrap();
+        assert_eq!(
+            app.last_message_events()
+                .select::<EventSend>(bank_client.target_account()),
+            vec![EventSend {
+                from: alice_id,
+                to: bob.self_account_id(),
+                coin: Coin {
+                    denom: "foo".into(),
+                    amount: 100
+                }
+            }]
+        );
 
         // ensure alice has 900 foo coins and bob has 100 foo coins
         let alice_balance = bank_client
