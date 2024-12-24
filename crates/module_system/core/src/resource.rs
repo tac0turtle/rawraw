@@ -68,7 +68,7 @@ impl ResourceScope<'_> {
         &self,
         name: &str,
         default: Option<AccountID>,
-    ) -> core::result::Result<AccountID, InitializationError> {
+    ) -> Result<AccountID, InitializationError> {
         self.account_resolver
             .map(|resolver| resolver.resolve(name))
             .unwrap_or_else(|| default.ok_or(InitializationError::AccountNotFound))
