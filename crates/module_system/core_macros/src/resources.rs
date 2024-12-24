@@ -2,7 +2,7 @@ use crate::util::maybe_extract_attribute;
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Data, DeriveInput};
+use syn::{Data, DeriveInput, Lit};
 
 /// Derive the `Resources` trait for a struct.
 pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStream2> {
@@ -35,12 +35,23 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             // TODO use the key and value attributes to populate the schema of the state object
         } else if let Some(client) = maybe_extract_attribute::<_, ClientAttr>(field)? {
             // extract the account ID from the client attribute
-            // TODO read the account ID from the environment based on a name
-            let account_id = client.0;
-            // add the client field to the initializers
-            field_inits.push(quote! {
-                #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
-            });
+            match client.0 {
+                Lit::Int(account_id) => {
+                    // the account ID is hard-coded as a u128
+                    let account_id = account_id.base10_parse::<u128>()?;
+                    field_inits.push(quote! {
+                        #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
+                    });
+                }
+                Lit::Str(account_name) => {
+                    let account_name = account_name.value();
+                    // the account ID needs to be resolved at compile time or runtime
+                    field_inits.push(quote! {
+                        #field_name: <#ty as ::ixc::core::handler::Client>::new(scope.resolve_account(#account_name, ::ixc::core::known_accounts::lookup_known_account(#account_name))?)
+                    });
+                }
+                x => bail!("client attribute must be a u128 or a string, got {x:?}"),
+            }
         } else {
             bail!("only fields with #[state] or #[client] attributes are supported currently");
         }
@@ -71,4 +82,4 @@ struct StateAttr {
 /// The data in a #[client] attribute.
 #[derive(deluxe::ExtractAttributes, Debug)]
 #[deluxe(attributes(client))]
-struct ClientAttr(u128);
+struct ClientAttr(Lit);
