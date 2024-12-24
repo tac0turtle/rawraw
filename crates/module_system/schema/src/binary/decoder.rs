@@ -86,7 +86,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
-        visitor.init(size, self.scope)?;
+        visitor.reserve(size, self.scope)?;
         let mut sub = Decoder {
             buf: self.buf,
             scope: self.scope,

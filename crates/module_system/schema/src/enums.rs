@@ -50,19 +50,3 @@ impl EnumNumericType for u16 {}
 impl EnumNumericType for i16 {}
 impl EnumNumericType for u8 {}
 impl EnumNumericType for i8 {}
-
-// TODO
-// fn encode_enum<E: EnumSchema>(x: &E, encoder: &mut dyn Encoder) -> Result<(), EncodeError>
-// where
-//     E::NumericType: Into<i32>,
-// {
-//     encoder.encode_i32(E::into(x.clone()).into())
-// }
-//
-// fn decode_enum<E: EnumSchema>(decoder: &mut dyn Decoder) -> Result<E, DecodeError>
-// where
-//     E::NumericType: From<i32>,
-// {
-//     let x = decoder.decode_enum(&E::ENUM_TYPE)?;
-//     E::try_from(x.into()).map_err(|_| DecodeError::InvalidData)
-// }

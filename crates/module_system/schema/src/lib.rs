@@ -21,7 +21,10 @@ pub mod encoder;
 mod enums;
 pub mod field;
 mod fields;
+
+#[cfg(feature = "std")]
 mod json;
+
 pub mod kind;
 pub mod list;
 pub mod mem;
@@ -31,6 +34,9 @@ pub mod state_object;
 pub mod structs;
 pub mod types;
 pub mod value;
+
+#[cfg(test)]
+mod testdata;
 
 pub use state_object::{Bytes, Str};
 pub use value::SchemaValue;

@@ -55,8 +55,11 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
             writer: self.writer,
         };
         let mut inner = InnerEncoder::<W> { outer: &mut sub };
-        let size = visitor.encode_reverse(&mut inner)?;
-        self.encode_u32(size)?;
+        let size = visitor.size();
+        for i in 0..size {
+            visitor.encode(size- i - 1, &mut inner)?;
+        }
+        self.encode_u32(size as u32)?;
         Ok(())
     }
 
@@ -164,8 +167,9 @@ impl crate::encoder::Encoder for EncodeSizer {
 
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {
         self.size += 4;
-        let mut sub = InnerEncodeSizer { outer: self };
-        visitor.encode_reverse(&mut sub)?;
+        for i in 0..visitor.size() {
+            visitor.encode(i, self)?;
+        }
         Ok(())
     }
 

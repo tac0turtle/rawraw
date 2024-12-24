@@ -8,12 +8,10 @@ use allocator_api2::vec::Vec;
 
 /// A visitor for encoding list types.
 pub trait ListEncodeVisitor {
-    /// Get the size of the list if it is known or None if it is not known.
-    fn size_hint(&self) -> Option<u32>;
+    /// Get the size of the list.
+    fn size(&self) -> usize;
     /// Encode the list.
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<u32, EncodeError>;
-    /// Encode the list in reverse order.
-    fn encode_reverse(&self, encoder: &mut dyn Encoder) -> Result<u32, EncodeError>;
+    fn encode(&self, idx: usize, encoder: &mut dyn Encoder) -> Result<(), EncodeError>;
 }
 
 /// A visitor for decoding list types.
@@ -21,7 +19,7 @@ pub trait ListDecodeVisitor<'a> {
     /// Initialize the visitor with the length of the list.
     /// This method may or may not be called depending on whether the underlying
     /// encoding specifies the length of the list.
-    fn init(&mut self, len: usize, scope: &'a MemoryManager) -> Result<(), DecodeError>;
+    fn reserve(&mut self, len: usize, scope: &'a MemoryManager) -> Result<(), DecodeError>;
     /// Decode the next element in the list.
     fn next(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError>;
 }
@@ -47,7 +45,7 @@ impl<'a, T: SchemaValue<'a>> AllocatorVecBuilder<'a, T> {
 }
 
 impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for AllocatorVecBuilder<'a, T> {
-    fn init(&mut self, len: usize, scope: &'a MemoryManager) -> Result<(), DecodeError> {
+    fn reserve(&mut self, len: usize, scope: &'a MemoryManager) -> Result<(), DecodeError> {
         self.get_xs(scope).reserve(len);
         Ok(())
     }
@@ -62,7 +60,7 @@ impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for AllocatorVecBuilder<'a, T
 
 #[cfg(feature = "std")]
 impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for alloc::vec::Vec<T> {
-    fn init(&mut self, len: usize, _scope: &'a MemoryManager) -> Result<(), DecodeError> {
+    fn reserve(&mut self, len: usize, _scope: &'a MemoryManager) -> Result<(), DecodeError> {
         self.reserve(len);
         Ok(())
     }
@@ -76,42 +74,22 @@ impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for alloc::vec::Vec<T> {
 }
 
 impl<'a, T: SchemaValue<'a>> ListEncodeVisitor for &'a [T] {
-    fn size_hint(&self) -> Option<u32> {
-        Some(self.len() as u32)
+    fn size(&self) -> usize {
+        self.len()
     }
 
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<u32, EncodeError> {
-        for x in self.iter() {
-            x.encode(encoder)?;
-        }
-        Ok(self.len() as u32)
-    }
-
-    fn encode_reverse(&self, encoder: &mut dyn Encoder) -> Result<u32, EncodeError> {
-        for x in self.iter().rev() {
-            x.encode(encoder)?;
-        }
-        Ok(self.len() as u32)
+    fn encode(&self, idx: usize, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
+        self[idx].encode(encoder)
     }
 }
 
 #[cfg(feature = "std")]
 impl<'a, T: SchemaValue<'a>> ListEncodeVisitor for alloc::vec::Vec<T> {
-    fn size_hint(&self) -> Option<u32> {
-        Some(self.len() as u32)
+    fn size(&self) -> usize {
+        self.len()
     }
 
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<u32, EncodeError> {
-        for x in self.iter() {
-            x.encode(encoder)?;
-        }
-        Ok(self.len() as u32)
-    }
-
-    fn encode_reverse(&self, encoder: &mut dyn Encoder) -> Result<u32, EncodeError> {
-        for x in self.iter().rev() {
-            x.encode(encoder)?;
-        }
-        Ok(self.len() as u32)
+    fn encode(&self, idx: usize, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
+        self[idx].encode(encoder)
     }
 }
