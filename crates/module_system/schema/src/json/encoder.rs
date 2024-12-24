@@ -9,6 +9,7 @@ use base64::prelude::*;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 use std::io::Write;
+use crate::enums::EnumType;
 
 pub fn encode_value<'a>(
     value: &dyn ValueCodec,
@@ -107,7 +108,7 @@ impl crate::encoder::Encoder for Encoder<'_> {
     }
 
     fn encode_i64(&mut self, x: i64) -> Result<(), EncodeError> {
-        write!(self.writer, "{}", x)
+        write!(self.writer, "\"{}\"", x)
     }
 
     fn encode_i128(&mut self, x: i128) -> Result<(), EncodeError> {
@@ -132,5 +133,11 @@ impl crate::encoder::Encoder for Encoder<'_> {
         } else {
             write!(self.writer, "null")
         }
+    }
+
+    fn encode_enum_discriminant(&mut self, x: i32, enum_type: &EnumType) -> Result<(), EncodeError> {
+        let variant = enum_type.variants.get(x as usize)
+            .ok_or(EncodeError::UnknownError)?;
+        write!(self.writer, "\"{}\"", variant.name)
     }
 }
