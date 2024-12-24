@@ -1,33 +1,18 @@
 use crate::result::ClientResult;
-use crate::Context;
+use crate::{low_level, Context};
+use ixc_schema::SchemaValue;
 
-use allocator_api2::vec::Vec;
+use ixc_schema::structs::StructSchema;
 
 /// An event bus that can be used to emit events.
-pub struct EventBus<T> {
-    events: Vec<T>,
+#[derive(Default, Copy, Clone)]
+pub struct EventBus<E> {
+    _marker: core::marker::PhantomData<E>,
 }
 
-impl<T> Default for EventBus<T> {
-    fn default() -> Self {
-        Self { events: Vec::new() }
-    }
-}
-
-impl<T: Clone> EventBus<T> {
+impl<'a, E: StructSchema + SchemaValue<'a>> EventBus<E> {
     /// Emits an event to the event bus.
-    pub fn emit(&mut self, _ctx: &mut Context, event: &T) -> ClientResult<()> {
-        self.events.push(event.clone());
-        Ok(())
-    }
-
-    /// Returns all events that have been emitted.
-    pub fn get_events(&self) -> &[T] {
-        &self.events
-    }
-
-    /// Clears all events from the bus.
-    pub fn clear(&mut self) {
-        self.events.clear();
+    pub fn emit(&mut self, ctx: &mut Context, event: &E) -> ClientResult<()> {
+        low_level::emit_event(ctx, event)
     }
 }

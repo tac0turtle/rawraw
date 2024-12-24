@@ -43,8 +43,8 @@ pub trait Client {
     /// Create a new client with the given account ID.
     fn new(account_id: AccountID) -> Self;
 
-    /// Get the address of the account this client is associated with.
-    fn account_id(&self) -> AccountID;
+    /// Get the address of the account that this client sends messages to.
+    fn target_account(&self) -> AccountID;
 }
 
 /// The client of a handler.
