@@ -15,7 +15,7 @@ pub mod resource;
 pub mod result;
 pub mod routing;
 mod unique_id;
-mod known_accounts;
+pub mod known_accounts;
 
 pub use account_api::create_account;
 pub use context::Context;

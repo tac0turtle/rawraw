@@ -13,7 +13,7 @@ use ixc_account_manager::AccountManager;
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
 use ixc_core::account_api::{create_account_raw, ROOT_ACCOUNT};
-use ixc_core::handler::{Client, Handler, HandlerClient};
+use ixc_core::handler::{Client, Handler, HandlerClient, HandlerResources};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
@@ -68,9 +68,10 @@ impl<V: NativeVM + 'static> TestApp<V> {
         client_bindings: &[(&'static str, AccountID)],
     ) -> core::result::Result<(), InitializationError> {
         let mut scope = ResourceScope::default();
-        let mut backend = self.backend.lock().unwrap();
         let binding_map = BTreeMap::<&str, AccountID>::from_iter(client_bindings.iter().cloned());
         scope.account_resolver = Some(&binding_map);
+        let mut backend = self.backend.lock().unwrap();
+        backend.client_bindings.insert(H::NAME, binding_map.clone());
         unsafe {
             backend
                 .vm
@@ -125,8 +126,18 @@ impl<V: NativeVM + 'static> TestApp<V> {
     where
         F: FnOnce(&HC::Handler, &mut Context) -> R,
     {
-        // TODO lookup handler ID to make sure this is the correct handler
-        let scope = ResourceScope::default();
+        let bindings = {
+            // this block is necessary to make sure that the mutex gets released before we call into the handler
+            // otherwise the program hangs because we get in a deadlock
+            let backend = self.backend.lock().unwrap();
+            if let Some(bindings) = backend.client_bindings.get(HC::Handler::NAME) {
+                bindings.clone()
+            } else {
+                Default::default()
+            }
+        };
+        let mut scope = ResourceScope::default();
+        scope.account_resolver = Some(&bindings);
         let h = unsafe { HC::Handler::new(&scope) }.unwrap();
         let mut ctx = self.client_context_for(client.account_id());
         f(&h, &mut ctx)
@@ -137,6 +148,7 @@ struct Backend<V> {
     vm: V,
     state: VersionedMultiStore,
     id_gen: IncrementingIDGenerator,
+    client_bindings: BTreeMap<&'static str, BTreeMap<&'static str, AccountID>>,
 }
 
 struct BackendWrapper<V> {
@@ -150,6 +162,7 @@ impl<V: ixc_vm_api::VM + Default> Default for Backend<V> {
             vm: V::default(),
             state: VersionedMultiStore::default(),
             id_gen: IncrementingIDGenerator::default(),
+            client_bindings: Default::default(),
         }
     }
 }

@@ -2,7 +2,7 @@ use crate::util::maybe_extract_attribute;
 use manyhow::{bail, manyhow};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{Data, DeriveInput, Lit};
+use syn::{Data, DeriveInput, Expr, Lit};
 
 /// Derive the `Resources` trait for a struct.
 pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStream2> {
@@ -36,21 +36,28 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
         } else if let Some(client) = maybe_extract_attribute::<_, ClientAttr>(field)? {
             // extract the account ID from the client attribute
             match client.0 {
-                Lit::Int(account_id) => {
-                    // the account ID is hard-coded as a u128
-                    let account_id = account_id.base10_parse::<u128>()?;
-                    field_inits.push(quote! {
-                        #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
-                    });
+                Expr::Lit(lit) => {
+                    if let Lit::Int(account_id) = lit.lit {
+                        // the account ID is hard-coded as a u128
+                        let account_id = account_id.base10_parse::<u128>()?;
+                        field_inits.push(quote! {
+                            #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
+                        });
+                    } else {
+                        bail!("client attribute must be a u128 or identifier, got {lit:?}");
+                    }
                 }
-                Lit::Str(account_name) => {
-                    let account_name = account_name.value();
+                Expr::Path(path) => {
+                    if path.path.segments.len() != 1 {
+                        bail!("client attribute must be a u128 or identifier, got {path:?}");
+                    }
+                    let account_name = path.path.segments.first().unwrap().ident.to_string();
                     // the account ID needs to be resolved at compile time or runtime
                     field_inits.push(quote! {
                         #field_name: <#ty as ::ixc::core::handler::Client>::new(scope.resolve_account(#account_name, ::ixc::core::known_accounts::lookup_known_account(#account_name))?)
                     });
                 }
-                x => bail!("client attribute must be a u128 or a string, got {x:?}"),
+                x => bail!("client attribute must be a u128 or identifier, got {x:?}"),
             }
         } else {
             bail!("only fields with #[state] or #[client] attributes are supported currently");
@@ -82,4 +89,4 @@ struct StateAttr {
 /// The data in a #[client] attribute.
 #[derive(deluxe::ExtractAttributes, Debug)]
 #[deluxe(attributes(client))]
-struct ClientAttr(Lit);
+struct ClientAttr(Expr);
