@@ -1,7 +1,6 @@
 use crate::kind::Kind;
 use crate::types::{ReferenceableType, Type};
 use ixc_schema_macros::SchemaValue;
-use crate::structs::StructType;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[non_exhaustive]
@@ -27,9 +26,7 @@ impl<'a> EnumVariantDefinition<'a> {
 
 /// # Safety
 /// the function is marked as unsafe to detour users from calling it directly
-pub unsafe trait EnumSchema:
-    ReferenceableType + TryFrom<Self::NumericType> + Into<Self::NumericType> + Clone
-{
+pub unsafe trait EnumSchema: ReferenceableType + Sized {
     const NAME: &'static str;
     const VARIANTS: &'static [EnumVariantDefinition<'static>];
     const SEALED: bool;

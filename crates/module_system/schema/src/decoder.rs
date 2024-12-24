@@ -59,7 +59,7 @@ pub trait Decoder<'a> {
     /// Decode an account ID.
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError>;
     /// Encode an enum value.
-    fn decode_enum(&mut self, _enum_type: &EnumType) -> Result<i32, DecodeError> {
+    fn decode_enum_discriminant(&mut self, _enum_type: &EnumType) -> Result<i32, DecodeError> {
         self.decode_i32()
     }
     /// Decode time.

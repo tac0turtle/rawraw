@@ -1,7 +1,6 @@
 //! Schema definition.
 use crate::enums::EnumType;
 use crate::message::MessageDescriptor;
-use crate::oneof::OneOfType;
 use crate::state_object::StateObjectType;
 use crate::structs::StructType;
 

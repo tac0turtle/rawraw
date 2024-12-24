@@ -1,5 +1,7 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
-#![no_std]
+
+// prop-test has problems with no_std, so we disable it during tests
+#![cfg_attr(not(test), no_std)]
 
 #[cfg(feature = "std")]
 extern crate alloc;

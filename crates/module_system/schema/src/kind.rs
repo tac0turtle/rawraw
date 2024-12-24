@@ -7,6 +7,7 @@ use ixc_schema_macros::SchemaValue;
 #[repr(i32)]
 #[derive(TryFromPrimitive, IntoPrimitive, Debug, Clone, Copy, PartialEq, Eq, SchemaValue, Default)]
 pub enum Kind {
+    /// An unknown and invalid kind.
     #[default]
     Unknown = 0,
     /// A string.

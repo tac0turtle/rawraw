@@ -58,6 +58,7 @@ mod tests {
         lp: Vec<Prims>,
         os: Option<String>,
         op: Option<Prims>,
+        e: TestEnum,
     }
 
     #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
@@ -74,6 +75,16 @@ mod tests {
         a_i64: i64,
         a_i128: i128,
         a_bool: bool,
+    }
+
+    #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
+    #[non_exhaustive]
+    enum TestEnum {
+        #[default]
+        A,
+        B = 10,
+        C = 20,
+        D,
     }
 
     proptest! {

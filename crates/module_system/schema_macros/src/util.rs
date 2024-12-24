@@ -4,23 +4,17 @@ use quote::quote;
 use syn::Attribute;
 use proc_macro2::TokenStream as TokenStream2;
 
-/// Extracts and parses an attribute from the item if it is present.
-/// This is a helper function for working around this bug in deluxe: https://github.com/jf2048/deluxe/issues/24
-pub(crate) fn maybe_extract_attribute<T, R>(t: &mut T) -> manyhow::Result<Option<R>>
+pub(crate) fn has_attribute<I>(attrs: &Vec<Attribute>, ident: &I) -> bool
 where
-    T: deluxe::HasAttributes,
-    R: deluxe::ExtractAttributes<T>,
+    I: ?Sized,
+    Ident: PartialEq<I>,
 {
-    let mut have_attr = false;
-    for attr in t.attrs() {
-        if R::path_matches(attr.meta.path()) {
-            have_attr = true;
+    for attr in attrs {
+        if attr.path().is_ident(ident) {
+            return true;
         }
     }
-    if !have_attr {
-        return Ok(None);
-    }
-    Ok(Some(R::extract_attributes(t)?))
+    false
 }
 
 // this is to make macros work with a single import of the ixc crate

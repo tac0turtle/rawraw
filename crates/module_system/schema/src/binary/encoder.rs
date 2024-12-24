@@ -186,10 +186,6 @@ impl crate::encoder::Encoder for EncodeSizer {
         Ok(())
     }
 
-    fn encode_enum(&mut self, x: i32, enum_type: &EnumType) -> Result<(), EncodeError> {
-        self.encode_i32(x)
-    }
-
     fn encode_bool(&mut self, x: bool) -> Result<(), EncodeError> {
         self.size += 1;
         Ok(())
