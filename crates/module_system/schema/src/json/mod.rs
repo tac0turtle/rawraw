@@ -1,8 +1,5 @@
 mod decoder;
 mod encoder;
-mod tokenizer;
-mod escape;
-mod unescape;
 
 #[cfg(test)]
 mod tests {

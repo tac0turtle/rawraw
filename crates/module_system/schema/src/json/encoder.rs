@@ -112,7 +112,7 @@ impl crate::encoder::Encoder for Encoder<'_> {
     }
 
     fn encode_i128(&mut self, x: i128) -> Result<(), EncodeError> {
-        write!(self.writer, "{}", x)
+        write!(self.writer, "\"{}\"", x)
     }
 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
