@@ -9,7 +9,7 @@ use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use core::iter::Peekable;
 use core::str::FromStr;
-use ixc_message_api::alloc_util::copy_bytes;
+use ixc_message_api::alloc_util::{copy_bytes, copy_str};
 use ixc_message_api::AccountID;
 use logos::{Lexer, Logos};
 use simple_time::{Duration, Time};
@@ -90,9 +90,12 @@ impl<'a> Decoder<'a> {
         }
     }
 
-    fn expect_str(&mut self) -> Result<&'a str, DecodeError> {
+    fn expect_str(&mut self) -> Result<String, DecodeError> {
         match self.next_token()? {
-            Token::String(s) => Ok(s),
+            Token::String(s) => {
+                let s = &s[1..s.len() - 1];
+              escape8259::unescape(s).map_err(|_| DecodeError::InvalidData)
+            },
             _ => Err(DecodeError::InvalidData),
         }
     }
@@ -120,12 +123,12 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_u64(&mut self) -> Result<u64, DecodeError> {
         let s = self.expect_str()?;
-        Ok(u64::from_str(s).map_err(|_| DecodeError::InvalidData)?)
+        Ok(u64::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
     }
 
     fn decode_u128(&mut self) -> Result<u128, DecodeError> {
         let s = self.expect_str()?;
-        Ok(u128::from_str(s).map_err(|_| DecodeError::InvalidData)?)
+        Ok(u128::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
     }
 
     fn decode_i8(&mut self) -> Result<i8, DecodeError> {
@@ -142,17 +145,17 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_i64(&mut self) -> Result<i64, DecodeError> {
         let s = self.expect_str()?;
-        Ok(i64::from_str(s).map_err(|_| DecodeError::InvalidData)?)
+        Ok(i64::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
     }
 
     fn decode_i128(&mut self) -> Result<i128, DecodeError> {
         let s = self.expect_str()?;
-        Ok(i128::from_str(s).map_err(|_| DecodeError::InvalidData)?)
+        Ok(i128::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
     }
 
     fn decode_borrowed_str(&mut self) -> Result<&'a str, DecodeError> {
-        // TODO escape characters
-        self.expect_str()
+        let s = self.expect_str()?;
+        unsafe { copy_str(self.mem, &s).map_err(|_| DecodeError::InvalidData) }
     }
 
     fn decode_owned_str(&mut self) -> Result<String, DecodeError> {
@@ -188,6 +191,11 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
             let field_name = self.expect_str()?;
             let idx = struct_type.fields.iter().position(|f| f.name == field_name)
                 .ok_or(DecodeError::InvalidData)?;
+
+            if Token::Colon != self.next_token()? {
+                return Err(DecodeError::InvalidData);
+            }
+
             visitor.decode_field(idx, self)?;
 
             let peek = self.peek_token()?;

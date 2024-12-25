@@ -47,8 +47,8 @@ impl crate::encoder::Encoder for Encoder<'_> {
     }
 
     fn encode_str(&mut self, x: &str) -> Result<(), EncodeError> {
-        // TODO escape the string
-        write!(self.writer, "\"{}\"", x)
+        let escaped = escape8259::escape(x);
+        write!(self.writer, "\"{}\"", escaped)
     }
 
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {

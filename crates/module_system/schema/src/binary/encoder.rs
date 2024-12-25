@@ -133,6 +133,10 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
             Ok(())
         }
     }
+
+    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
+        self.encode_i32(x)
+    }
 }
 
 pub(crate) struct EncodeSizer {
@@ -245,6 +249,10 @@ impl crate::encoder::Encoder for EncodeSizer {
             Ok(())
         }
     }
+
+    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
+        self.encode_i32(x)
+    }
 }
 
 pub(crate) struct InnerEncoder<'b, 'a: 'b, W> {
@@ -346,6 +354,10 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
             self.encode_bool(false)?;
         }
         Ok(())
+    }
+
+    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
+        self.encode_i32(x)
     }
 }
 
@@ -451,6 +463,10 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
             visitor.encode(self)?;
         }
         Ok(())
+    }
+
+    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
+        self.encode_i32(x)
     }
 }
 
