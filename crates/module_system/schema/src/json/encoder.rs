@@ -3,6 +3,7 @@ extern crate std;
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::ops::Index;
 use crate::encoder::EncodeError;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
@@ -148,7 +149,7 @@ impl crate::encoder::Encoder for Encoder {
     }
 
     fn encode_enum_discriminant(&mut self, x: i32, enum_type: &EnumType) -> Result<(), EncodeError> {
-        let variant = enum_type.variants.get(x as usize)
+        let variant = enum_type.variants.iter().find(|v| v.discriminant == x)
             .ok_or(EncodeError::UnknownError)?;
         write!(self.writer, "\"{}\"", variant.name)
     }

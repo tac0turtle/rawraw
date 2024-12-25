@@ -6,7 +6,7 @@ mod tests {
     use proptest::proptest;
     use crate::json::decoder::decode_value;
     use crate::json::encoder::encode_value;
-    use crate::testdata::ABitOfEverything;
+    use crate::testdata::{ABitOfEverything, TestEnum};
     use crate::testdata::Prims;
 
     extern crate std;
@@ -14,12 +14,7 @@ mod tests {
     #[test]
     fn test_encode() {
         let mut value = ABitOfEverything::default();
-        value.ls.push("hello".into());
-        value.lp.push(Prims{
-            a_u8: 1,
-            a_u16: 2,
-            ..Default::default()
-        });
+        value.e = TestEnum::B;
 
         let s = encode_value(&value).unwrap();
         std::println!("{}", s);
