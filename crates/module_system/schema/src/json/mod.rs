@@ -3,33 +3,36 @@ mod encoder;
 
 #[cfg(test)]
 mod tests {
+    use proptest::proptest;
     use crate::json::decoder::decode_value;
     use crate::json::encoder::encode_value;
     use crate::testdata::ABitOfEverything;
-    use alloc::vec;
-    use proptest::proptest;
+    use crate::testdata::Prims;
 
     extern crate std;
 
     #[test]
     fn test_encode() {
-        let mut writer = vec![];
-        let value = ABitOfEverything::default();
-        encode_value(&value, &mut writer).unwrap();
-        let s = std::str::from_utf8(&writer).unwrap();
+        let mut value = ABitOfEverything::default();
+        value.ls.push("hello".into());
+        value.lp.push(Prims{
+            a_u8: 1,
+            a_u16: 2,
+            ..Default::default()
+        });
+
+        let s = encode_value(&value).unwrap();
         std::println!("{}", s);
-        let res = decode_value::<ABitOfEverything>(s, &Default::default()).unwrap();
+        let res = decode_value::<ABitOfEverything>(&s, &Default::default()).unwrap();
         assert_eq!(res, value);
     }
 
-    // proptest! {
-    //     #[test]
-    //     fn test_roundtrip(value: ABitOfEverything) {
-    //         let mut writer = vec![];
-    //         encode_value(&value, &mut writer).unwrap();
-    //         let s = std::str::from_utf8(&writer).unwrap();
-    //         let res = decode_value::<ABitOfEverything>(s, &Default::default()).unwrap();
-    //         assert_eq!(res, value);
-    //     }
-    // }
+    proptest! {
+        #[test]
+        fn test_roundtrip(value: ABitOfEverything) {
+            let res = encode_value(&value).unwrap();
+            let decoded = decode_value::<ABitOfEverything>(&res, &Default::default()).unwrap();
+            assert_eq!(value, decoded);
+        }
+    }
 }
