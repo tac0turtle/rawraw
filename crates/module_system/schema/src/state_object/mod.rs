@@ -7,6 +7,7 @@ mod prefix;
 mod value;
 mod value_field;
 
+use ixc_schema_macros::SchemaValue;
 use crate::field::Field;
 pub use key::{decode_object_key, encode_object_key, ObjectKey};
 pub use key_field::KeyFieldValue;
@@ -16,7 +17,7 @@ pub use value_field::{Bytes, ObjectFieldValue, Str};
 
 /// A type representing objects stored in key-value store state.
 #[non_exhaustive]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
 pub struct StateObjectType<'a> {
     /// The name of the object.
     pub name: &'a str,

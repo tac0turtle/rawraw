@@ -3,7 +3,7 @@ use crate::types::{ReferenceableType, Type};
 use ixc_schema_macros::SchemaValue;
 use crate::field::Field;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
 #[non_exhaustive]
 pub struct EnumType<'a> {
     pub name: &'a str,

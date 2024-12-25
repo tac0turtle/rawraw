@@ -1,7 +1,7 @@
 use manyhow::bail;
-use proc_macro2::Ident;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::Attribute;
+use syn::{Attribute, ImplGenerics, Lifetime, TypeGenerics};
 use proc_macro2::TokenStream as TokenStream2;
 
 pub(crate) fn has_attribute<I>(attrs: &Vec<Attribute>, ident: &I) -> bool
@@ -35,4 +35,44 @@ pub(crate) fn is_sealed(input: &syn::DeriveInput) -> manyhow::Result<bool> {
         bail!("struct or enum cannot be both sealed and non_exhaustive")
     };
     Ok(sealed)
+}
+
+pub(crate) fn extract_generics(input: &syn::DeriveInput) -> manyhow::Result<GenericInfo> {
+    let generics = &input.generics;
+    if generics.lifetimes().count() > 1 {
+        bail!("only one lifetime parameter is allowed")
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let lifetime = if let Some(lifetime) = generics.lifetimes().next() {
+        lifetime.lifetime.clone()
+    } else {
+        Lifetime::new("'a", Span::call_site())
+    };
+    let lifetime2 = if lifetime.ident == "b" {
+        Lifetime::new("'c", Span::call_site())
+    } else {
+        Lifetime::new("'b", Span::call_site())
+    };
+    let ty_generics2 = if let Some(_lifetime) = generics.lifetimes().next() {
+        quote! { < #lifetime2 > }
+    } else {
+        quote! {}
+    };
+    Ok(GenericInfo {
+        lifetime,
+        lifetime2,
+        ty_generics2,
+        impl_generics,
+        where_clause,
+        ty_generics,
+    })
+}
+
+pub(crate) struct GenericInfo<'a> {
+    pub(crate) lifetime: Lifetime,
+    pub(crate) lifetime2: Lifetime,
+    pub(crate) ty_generics2: TokenStream,
+    pub(crate) impl_generics: ImplGenerics<'a>,
+    pub(crate) where_clause: Option<&'a syn::WhereClause>,
+    pub(crate) ty_generics: TypeGenerics<'a>,
 }

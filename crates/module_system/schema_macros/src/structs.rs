@@ -1,5 +1,5 @@
 use crate::mesage_selector::type_selector_from_str;
-use crate::util::{is_sealed, mk_ixc_schema_path};
+use crate::util::{extract_generics, is_sealed, mk_ixc_schema_path, GenericInfo};
 use manyhow::bail;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
@@ -11,27 +11,15 @@ pub(crate) fn derive_struct_schema(
 ) -> manyhow::Result<TokenStream2> {
     let ixc_schema_path = mk_ixc_schema_path();
     let struct_name = &input.ident;
-    // extract struct lifetime
-    let generics = &input.generics;
-    if generics.lifetimes().count() > 1 {
-        bail!("only one lifetime parameter is allowed")
-    }
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let lifetime = if let Some(lifetime) = generics.lifetimes().next() {
-        lifetime.lifetime.clone()
-    } else {
-        Lifetime::new("'a", Span::call_site())
-    };
-    let lifetime2 = if lifetime.ident == "b" {
-        Lifetime::new("'c", Span::call_site())
-    } else {
-        Lifetime::new("'b", Span::call_site())
-    };
-    let ty_generics2 = if let Some(_lifetime) = generics.lifetimes().next() {
-        quote! { < #lifetime2 > }
-    } else {
-        quote! {}
-    };
+
+    let GenericInfo {
+        lifetime,
+        lifetime2,
+        ty_generics2,
+        impl_generics,
+        where_clause,
+        ty_generics,
+    } = extract_generics(input)?;
 
     let sealed = is_sealed(input)?;
 

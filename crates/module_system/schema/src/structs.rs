@@ -1,4 +1,6 @@
 //! Struct codec and schema traits.
+
+use ixc_schema_macros::SchemaValue;
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::field::Field;
@@ -39,7 +41,8 @@ pub unsafe trait StructEncodeVisitor {
 /// StructType contains the schema of a struct.
 /// # Safety
 /// the trait is marked as unsafe to detour users from using it
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
+#[non_exhaustive]
 pub struct StructType<'a> {
     /// The name of the struct.
     pub name: &'a str,

@@ -1,9 +1,11 @@
 //! Field definition.
+
+use ixc_schema_macros::SchemaValue;
 use crate::kind::Kind;
 
 /// A field in a type.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default, SchemaValue)]
 pub struct Field<'a> {
     /// The name of the field.
     pub name: &'a str,

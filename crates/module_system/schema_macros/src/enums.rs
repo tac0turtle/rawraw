@@ -1,4 +1,4 @@
-use crate::util::{is_sealed, mk_ixc_schema_path};
+use crate::util::{extract_generics, is_sealed, mk_ixc_schema_path, GenericInfo};
 use deluxe::ParseAttributes;
 use manyhow::bail;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
@@ -11,7 +11,18 @@ pub(crate) fn derive_enum_schema(
 ) -> manyhow::Result<TokenStream2> {
     let ixc_schema_path = mk_ixc_schema_path();
     let enum_name = &input.ident;
+
+    let GenericInfo {
+        lifetime,
+        lifetime2,
+        ty_generics2,
+        impl_generics,
+        where_clause,
+        ty_generics,
+    } = extract_generics(input)?;
+
     let is_sealed = is_sealed(input)?;
+
     // extract repr attribute
     let mut repr = "i32";
     for attr in &input.attrs {
@@ -61,13 +72,15 @@ pub(crate) fn derive_enum_schema(
         }
 
         let field_def = if let Some(field) = field {
+            let field_ty = &field.ty;
+            // TODO strip lifetimes
             quote! {
-                Some(Field {
+                Some(#ixc_schema_path::field::Field {
                     name: "",
-                    kind: #ixc_schema_path::kind::Kind::Struct,
+                    kind: <<#field_ty as #ixc_schema_path::SchemaValue>::Type as #ixc_schema_path::types::Type>::KIND,
                     nullable: false,
                     element_kind: None,
-                    referenced_type: stringify!(#field),
+                    referenced_type: #ixc_schema_path::reference_type_name(#field_ty),
                 })
             }
         } else {
@@ -79,7 +92,7 @@ pub(crate) fn derive_enum_schema(
             #ixc_schema_path::enums::EnumVariantDefinition {
                 name: stringify!(#variant_name),
                 discriminant: #discriminant,
-                field: #field_def,
+                value: #field_def,
             }
         };
         variants.push(variant_def);
@@ -119,7 +132,7 @@ pub(crate) fn derive_enum_schema(
         discriminant += 1;
     }
     let res = quote! {
-        unsafe impl #ixc_schema_path::enums::EnumSchema for #enum_name {
+        unsafe impl #impl_generics #ixc_schema_path::enums::EnumSchema for #enum_name #ty_generics #where_clause {
             const NAME: &'static str = stringify!(#enum_name);
             const VARIANTS: &'static [#ixc_schema_path::enums::EnumVariantDefinition<'static>] = &[
                 #(#variants),*
@@ -128,20 +141,20 @@ pub(crate) fn derive_enum_schema(
             type NumericType = #repr;
         }
 
-        unsafe impl #ixc_schema_path::types::ReferenceableType for #enum_name {
+        unsafe impl #impl_generics #ixc_schema_path::types::ReferenceableType for #enum_name #ty_generics #where_clause {
             const SCHEMA_TYPE: Option<#ixc_schema_path::schema::SchemaType<'static>> = Some(
                 #ixc_schema_path::schema::SchemaType::Enum(<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE)
             );
         }
 
-        impl < 'a > #ixc_schema_path::value::ValueCodec < 'a > for #enum_name {
+        impl < #lifetime > #ixc_schema_path::value::ValueCodec < #lifetime > for #enum_name #ty_generics #where_clause {
             fn decode(
                 &mut self,
                 decoder: &mut dyn #ixc_schema_path::decoder::Decoder< 'a >,
             ) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
                 let discriminant = decoder.decode_enum_discriminant(&<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE)?;
                  *self = match discriminant {
-                    #(#variant_decoders)*
+                    // #(#variant_decoders)*
                     _ => return Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
                 };
                 Ok(())
@@ -156,14 +169,14 @@ pub(crate) fn derive_enum_schema(
             }
         }
 
-        impl < 'a > #ixc_schema_path::SchemaValue < 'a > for #enum_name {
-            type Type = #ixc_schema_path::types::EnumT< #enum_name >;
+        impl < #lifetime > #ixc_schema_path::SchemaValue < #lifetime > for #enum_name #ty_generics #where_clause {
+            type Type = #ixc_schema_path::types::EnumT< #enum_name #ty_generics >;
         }
 
-        impl < 'a > #ixc_schema_path::value::ListElementValue < 'a > for #enum_name {}
-        impl #ixc_schema_path::state_object::ObjectFieldValue for #enum_name {
-            type In< 'b > = #enum_name;
-            type Out< 'b > = #enum_name;
+        impl < #lifetime > #ixc_schema_path::value::ListElementValue < #lifetime > for #enum_name #ty_generics #where_clause {}
+        impl #impl_generics #ixc_schema_path::state_object::ObjectFieldValue for #enum_name #ty_generics #where_clause {
+            type In< #lifetime2 > = #enum_name #ty_generics2;
+            type Out< #lifetime2 > = #enum_name #ty_generics2;
         }
     };
     Ok(res)
