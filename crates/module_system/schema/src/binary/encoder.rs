@@ -172,7 +172,7 @@ impl crate::encoder::Encoder for EncodeSizer {
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {
         self.size += 4;
         for i in 0..visitor.size() {
-            visitor.encode(i, self)?;
+            visitor.encode(i, &mut InnerEncodeSizer { outer: self })?;
         }
         Ok(())
     }
