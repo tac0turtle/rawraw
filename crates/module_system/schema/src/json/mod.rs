@@ -11,17 +11,6 @@ mod tests {
 
     extern crate std;
 
-    #[test]
-    fn test_encode() {
-        let mut value = ABitOfEverything::default();
-        value.e = TestEnum::B;
-
-        let s = encode_value(&value).unwrap();
-        std::println!("{}", s);
-        let res = decode_value::<ABitOfEverything>(&s, &Default::default()).unwrap();
-        assert_eq!(res, value);
-    }
-
     proptest! {
         #[test]
         fn test_roundtrip(value: ABitOfEverything) {

@@ -12,7 +12,10 @@ use manyhow::{bail, manyhow};
 use proc_macro2::TokenStream as TokenStream2;
 use syn::Data;
 
-/// This derives a struct codec. The struct must implement Default.
+/// This derives a struct or enum codec.
+/// The struct or enum must implement Default.
+/// The default value of an enum must be its variant with discriminant 0.
+/// Enums may be marked with repr u8, u16, i8, i16, or i32 (the default).
 #[manyhow]
 #[proc_macro_derive(SchemaValue, attributes(sealed, schema, proto))]
 pub fn derive_schema_value(input: syn::DeriveInput) -> manyhow::Result<TokenStream2> {
