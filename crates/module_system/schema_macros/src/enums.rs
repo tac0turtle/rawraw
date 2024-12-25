@@ -1,9 +1,9 @@
-use deluxe::ParseAttributes;
 use crate::util::{is_sealed, mk_ixc_schema_path};
+use deluxe::ParseAttributes;
 use manyhow::bail;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{Attribute, DataEnum, Expr, ExprLit, Lit};
+use syn::{Attribute, DataEnum, Expr, ExprLit, Fields, Lit};
 
 pub(crate) fn derive_enum_schema(
     input: &syn::DeriveInput,
@@ -34,36 +34,84 @@ pub(crate) fn derive_enum_schema(
     let mut variant_decoders = vec![];
     let mut variant_encoders = vec![];
     for variant in &enm.variants {
-        if variant.fields.len() != 0 {
-            bail!("currently, only enums with no fields are supported");
-        }
+        let field = match &variant.fields {
+            Fields::Named(_) => {
+                bail!("currently, only enums with no fields or one unnamed field are supported")
+            }
+            Fields::Unnamed(fields) => {
+                if fields.unnamed.len() != 1 {
+                    bail!(
+                        "currently, only enums with no fields or one unnamed field are supported"
+                    );
+                }
+                Some(&fields.unnamed[0])
+            }
+            Fields::Unit => None,
+        };
         let variant_name = &variant.ident;
         if let Some(variant_discriminant) = &variant.discriminant {
-            if let Expr::Lit(ExprLit { lit: Lit::Int(int), .. }) = &variant_discriminant.1 {
+            if let Expr::Lit(ExprLit {
+                lit: Lit::Int(int), ..
+            }) = &variant_discriminant.1
+            {
                 discriminant = int.base10_parse::<i32>()?;
             } else {
                 bail!("unsupported discriminant {:?}", variant_discriminant);
             }
         }
 
+        let field_def = if let Some(field) = field {
+            quote! {
+                Some(Field {
+                    name: "",
+                    kind: #ixc_schema_path::kind::Kind::Struct,
+                    nullable: false,
+                    element_kind: None,
+                    referenced_type: stringify!(#field),
+                })
+            }
+        } else {
+            quote! { None }
+        };
+
         // generate the variant definition
         let variant_def = quote! {
             #ixc_schema_path::enums::EnumVariantDefinition {
                 name: stringify!(#variant_name),
                 discriminant: #discriminant,
+                field: #field_def,
             }
         };
         variants.push(variant_def);
 
         // generate the variant encoder
-        let encode_matcher = quote! {
-            #enum_name::#variant_name => #discriminant,
+        let encode_matcher = if let Some(field) = field {
+            quote! {
+                #enum_name::#variant_name(value) => {
+                    value.encode(encoder)?;
+                    #discriminant
+                },
+            }
+        } else {
+            quote! {
+                #enum_name::#variant_name => #discriminant,
+            }
         };
         variant_encoders.push(encode_matcher);
 
         // generate the variant decoder
-        let decode_matcher = quote! {
-            #discriminant => #enum_name::#variant_name,
+        let decode_matcher = if let Some(field) = field {
+            quote! {
+                #discriminant => {
+                    let mut value = #field::default();
+                    value.decode(decoder)?;
+                    #enum_name::#variant_name(value)
+                },
+            }
+        } else {
+            quote! {
+                #discriminant => #enum_name::#variant_name,
+            }
         };
         variant_decoders.push(decode_matcher);
 

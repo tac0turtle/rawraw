@@ -1,6 +1,7 @@
 use crate::kind::Kind;
 use crate::types::{ReferenceableType, Type};
 use ixc_schema_macros::SchemaValue;
+use crate::field::Field;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[non_exhaustive]
@@ -16,11 +17,12 @@ pub struct EnumType<'a> {
 pub struct EnumVariantDefinition<'a> {
     pub name: &'a str,
     pub discriminant: i32,
+    pub value: Option<Field<'a>>,
 }
 
 impl<'a> EnumVariantDefinition<'a> {
-    pub const fn new(name: &'a str, value: i32) -> Self {
-        Self { name, discriminant: value }
+    pub const fn new(name: &'a str, discriminant: i32, value: Option<Field<'a>>) -> Self {
+        Self { name, discriminant, value }
     }
 }
 
