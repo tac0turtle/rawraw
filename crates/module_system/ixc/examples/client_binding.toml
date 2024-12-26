@@ -1,2 +1,3 @@
 [accounts]
-foo = "3"
+foo = "57" # 0x39
+bar = "0xabcdef1234567890"
