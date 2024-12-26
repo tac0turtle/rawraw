@@ -299,9 +299,9 @@ impl APIBuilder {
             };
             self.client_signatures.push(signature.clone());
             let dynamic_invoke = if is_query {
-                quote! { ::ixc::core::low_level::dynamic_invoke_query(ctx, _acct_id, _msg) }
+                quote! { ::ixc::core::low_level::dynamic_invoke_query(#context_name, _acct_id, _msg) }
             } else {
-                quote! { ::ixc::core::low_level::dynamic_invoke_msg(ctx, _acct_id, _msg) }
+                quote! { ::ixc::core::low_level::dynamic_invoke_msg(#context_name, _acct_id, _msg) }
             };
             self.client_methods.push(quote! {
                 # signature {
