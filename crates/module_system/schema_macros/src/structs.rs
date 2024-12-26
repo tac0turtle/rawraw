@@ -52,11 +52,11 @@ pub(crate) fn derive_struct_schema(
     let type_selector = type_selector_from_str(&struct_name.to_string());
     Ok(quote! {
         unsafe impl #impl_generics #ixc_schema_path::structs::StructSchema for #struct_name #ty_generics #where_clause {
-            const STRUCT_TYPE: #ixc_schema_path::structs::StructType<'static> = #ixc_schema_path::structs::StructType {
-                name: stringify!(#struct_name),
-                fields: &[#(#fields)*],
-                sealed: #sealed,
-            };
+            const STRUCT_TYPE: #ixc_schema_path::structs::StructType<'static> = #ixc_schema_path::structs::StructType::new(
+                stringify!(#struct_name),
+                 &[#(#fields)*],
+                 #sealed,
+            );
 
             const TYPE_SELECTOR: u64 = #type_selector;
 

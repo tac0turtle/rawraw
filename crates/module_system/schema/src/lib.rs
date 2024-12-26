@@ -28,7 +28,7 @@ mod json;
 pub mod kind;
 pub mod list;
 pub mod mem;
-mod message;
+pub mod message;
 pub mod schema;
 pub mod state_object;
 pub mod structs;
@@ -38,6 +38,7 @@ pub mod value;
 #[cfg(test)]
 mod testdata;
 mod client;
+mod handler;
 
 pub use state_object::{Bytes, Str};
 pub use value::SchemaValue;

@@ -8,6 +8,7 @@ use crate::mem::MemoryManager;
 use crate::types::*;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::message::Param;
+use crate::schema::SchemaType;
 
 /// A visitor for decoding values. Unlike SchemaValue, this trait is object safe.
 pub trait ValueCodec<'a> {
@@ -396,6 +397,12 @@ pub trait OptionalValue<'a> {
         value: &Self::Value,
         writer_factory: &'b dyn Allocator,
     ) -> Result<Option<&'b [u8]>, EncodeError>;
+
+    /// The schema type of the value, if any.
+    const SCHEMA_TYPE: Option<SchemaType<'static>> = None;
+
+    /// Visit the value's type, if any.
+    fn visit_type<V: TypeVisitor>(visitor: &mut V);
 }
 
 impl<'a> OptionalValue<'a> for () {
@@ -416,6 +423,10 @@ impl<'a> OptionalValue<'a> for () {
     ) -> Result<Option<&'b [u8]>, EncodeError> {
         Ok(None)
     }
+
+    const SCHEMA_TYPE: Option<SchemaType<'static>> = None;
+
+    fn visit_type<V: TypeVisitor>(_visitor: &mut V) {}
 }
 
 impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
@@ -436,6 +447,12 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
         writer_factory: &'b dyn Allocator,
     ) -> Result<Option<&'b [u8]>, EncodeError> {
         Ok(Some(cdc.encode_value(value, writer_factory)?))
+    }
+
+    const SCHEMA_TYPE: Option<SchemaType<'static>> = <V as SchemaValue<'a>>::Type::SCHEMA_TYPE;
+
+    fn visit_type<Visitor: TypeVisitor>(visitor: &mut Visitor) {
+        visitor.visit::<V::Type>();
     }
 }
 

@@ -17,6 +17,7 @@ pub unsafe trait StructSchema {
     /// Can be used to decode a struct from a message by matching on its type selector.
     const TYPE_SELECTOR: u64;
 
+    /// Visit the struct's field types.
     fn visit_field_types<V: TypeVisitor>(visitor: &mut V);
 }
 
@@ -53,4 +54,11 @@ pub struct StructType<'a> {
     /// Sealed indicates whether new fields can be added to the struct.
     /// If sealed is true, the struct is considered sealed and new fields cannot be added.
     pub sealed: bool,
+}
+
+impl<'a> StructType<'a> {
+    /// Create a new struct type.
+    pub const fn new(name: &'a str, fields: &'a [Field<'a>], sealed: bool) -> Self {
+        Self { name, fields, sealed }
+    }
 }

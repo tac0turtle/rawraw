@@ -1,6 +1,6 @@
+use ixc_schema_macros::SchemaValue;
 use crate::kind::Kind;
 use crate::types::{Type, TypeVisitor};
-use ixc_schema_macros::SchemaValue;
 use crate::decoder::{DecodeError, Decoder};
 use crate::field::Field;
 

@@ -63,6 +63,9 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
         quote! {
             impl ::ixc::core::handler::Handler for #handler {
                 type Init<'a> = #on_create_msg #create_msg_lifetime;
+
+                fn visit_schema<V: ::ixc::core::handler::HandlerSchemaVisitor>(visitor: &mut V) {
+                }
             }
         },
     )?;

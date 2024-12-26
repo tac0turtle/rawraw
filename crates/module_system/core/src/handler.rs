@@ -4,13 +4,19 @@ use crate::routing::Router;
 use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
+use ixc_schema::message::MessageDescriptor;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::SchemaValue;
+use ixc_schema::state_object::StateObjectDescriptor;
+use ixc_schema::types::TypeVisitor;
 
 /// Handler trait for account and module handlers.
 pub trait Handler: RawHandler + Router + HandlerResources + Service {
     /// The parameter used for initializing the handler.
     type Init<'a>: InitMessage<'a>;
+
+    /// Visit the schema of the handler.
+    fn visit_schema<V: HandlerSchemaVisitor>(visitor: &mut V);
 }
 
 /// The resources associated with a handler. This specifies the name of the handler.
@@ -45,6 +51,9 @@ pub trait Client {
 
     /// Get the address of the account that this client sends messages to.
     fn target_account(&self) -> AccountID;
+
+    /// Visit the schema of the client.
+    fn visit_schema<V: ClientSchemaVisitor>(visitor: &mut V);
 }
 
 /// The client of a handler.
@@ -52,3 +61,16 @@ pub trait HandlerClient: Client {
     /// The handler type.
     type Handler: Handler;
 }
+
+/// A visitor for the schema of a handler.
+pub trait HandlerSchemaVisitor: ClientSchemaVisitor {
+    /// Visit the state objects of the handler.
+    fn visit_state_objects(&mut self, state_objects: &[StateObjectDescriptor]) -> Self;
+}
+
+/// A visitor for the schema of a client.
+pub trait ClientSchemaVisitor: TypeVisitor {
+    /// Visit the client's messages.
+    fn visit_messages(&mut self, messages: &[MessageDescriptor]) -> Self;
+}
+

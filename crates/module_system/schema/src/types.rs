@@ -31,10 +31,13 @@ pub trait Type {
     /// The schema type of this type that can be referred to by other types.
     const SCHEMA_TYPE: Option<SchemaType<'static>> = None;
 
+    /// Visit the types reference by this type directly or transitively.
     fn visit_referenced_types<V: TypeVisitor>(_visitor: &mut V) {}
 }
 
+/// A type that visits types.
 pub trait TypeVisitor {
+    /// Visit a type.
     fn visit<T: Type>(&mut self);
 }
 
@@ -237,6 +240,7 @@ impl<T: EnumSchema> ListElementType for EnumT<T> {}
 
 #[cfg(feature = "std")]
 
+/// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]
 pub fn collect_types<'a, T: SchemaValue<'a>>() -> Result<alloc::collections::BTreeMap<&'static str, SchemaType<'static>>, alloc::vec::Vec<&'static str>> {
     #[derive(Default)]

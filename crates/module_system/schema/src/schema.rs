@@ -6,13 +6,10 @@
 #[cfg(feature = "use_ixc_macro_path")]
 pub(crate) use crate::*;
 
-use crate::client::ClientDescriptor;
 use crate::enums::EnumType;
-use crate::message::MessageDescriptor;
-use crate::state_object::StateObjectDescriptor;
 use crate::structs::StructType;
-use crate::SchemaValue;
-use ixc_schema_macros::SchemaValue;
+pub use crate::SchemaValue;
+pub use ixc_schema_macros::SchemaValue;
 
 /// A type in a schema.
 #[non_exhaustive]
@@ -48,38 +45,5 @@ impl PartialOrd for SchemaType<'_> {
 impl Ord for SchemaType<'_> {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.name().cmp(other.name())
-    }
-}
-
-/// An account handler schema.
-#[non_exhaustive]
-#[derive(Debug, Clone, Eq, PartialEq, Default, SchemaValue)]
-pub struct Schema<'a> {
-    pub types: &'a [SchemaType<'a>],
-    pub messages: &'a [MessageDescriptor<'a>],
-    pub state_objects: &'a [StateObjectDescriptor<'a>],
-    pub clients: &'a [ClientDescriptor<'a>],
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::json;
-    use crate::types::collect_types;
-    use alloc::vec;
-    use alloc::vec::Vec;
-
-    #[test]
-    fn test_schema_in_schema() {
-        let types_map = collect_types::<SchemaType>().unwrap();
-        let types_vec = types_map.values().cloned().collect::<Vec<_>>();
-        let schema_schema = Schema {
-            types: types_vec.as_slice(),
-            messages: &[],
-            state_objects: &[],
-            clients: &[],
-        };
-        let as_json = json::encode_value(&schema_schema).unwrap();
-        println!("{}", as_json);
     }
 }
