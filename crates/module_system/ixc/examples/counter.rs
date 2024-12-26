@@ -63,4 +63,6 @@ mod tests {
     }
 }
 
-fn main() {}
+fn main() {
+    ixc_core::schema::print_handler_schema::<counter::Counter>().unwrap();
+}

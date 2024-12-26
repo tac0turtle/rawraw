@@ -16,6 +16,9 @@ pub mod result;
 pub mod routing;
 mod unique_id;
 
+#[cfg(feature = "std")]
+pub mod schema;
+
 pub use account_api::create_account;
 pub use context::Context;
 pub use events::EventBus;

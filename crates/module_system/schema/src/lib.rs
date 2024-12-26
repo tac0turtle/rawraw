@@ -22,9 +22,6 @@ mod enums;
 pub mod field;
 mod fields;
 
-#[cfg(feature = "std")]
-mod json;
-
 pub mod kind;
 pub mod list;
 pub mod mem;
@@ -34,11 +31,16 @@ pub mod state_object;
 pub mod structs;
 pub mod types;
 pub mod value;
+pub mod client;
+
+#[cfg(feature = "std")]
+pub mod handler;
+#[cfg(feature = "json")]
+pub mod json;
+
 
 #[cfg(test)]
 mod testdata;
-mod client;
-mod handler;
 
 pub use state_object::{Bytes, Str};
 pub use value::SchemaValue;

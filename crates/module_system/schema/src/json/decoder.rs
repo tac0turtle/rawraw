@@ -15,6 +15,7 @@ use logos::{Lexer, Logos};
 use simple_time::{Duration, Time};
 use crate::enums::{EnumDecodeVisitor, EnumType, EnumVariantDefinition};
 
+/// Decode the value from the JSON input string.
 pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
     input: &'a str,
     memory_manager: &'a MemoryManager,

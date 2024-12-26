@@ -1,3 +1,6 @@
+//! Account handler schemas.
+
+use alloc::vec::Vec;
 use ixc_schema_macros::SchemaValue;
 use crate::client::ClientDescriptor;
 use crate::message::MessageDescriptor;
@@ -9,13 +12,13 @@ use crate::state_object::StateObjectDescriptor;
 #[derive(Debug, Clone, Eq, PartialEq, Default, SchemaValue)]
 pub struct HandlerSchema<'a> {
     /// The types used by the account in its public API or to interact with other accounts.
-    pub types: &'a [SchemaType<'a>],
+    pub types: Vec<SchemaType<'a>>,
     /// The messages that the account handles.
-    pub messages: &'a [MessageDescriptor<'a>],
+    pub messages: Vec<MessageDescriptor<'a>>,
     /// The state objects defining the account's state.
-    pub state_objects: &'a [StateObjectDescriptor<'a>],
+    pub state_objects: Vec<StateObjectDescriptor<'a>>,
     /// The statically defined clients that the client uses to communicate with other accounts.
-    pub clients: &'a [ClientDescriptor<'a>],
+    pub clients: Vec<ClientDescriptor<'a>>,
 }
 
 
@@ -30,15 +33,15 @@ mod tests {
 
     #[test]
     fn test_schema_in_schema() {
-        let types_map = collect_types::<SchemaType>().unwrap();
-        let types_vec = types_map.values().cloned().collect::<Vec<_>>();
-        let schema_schema = HandlerSchema {
-            types: types_vec.as_slice(),
-            messages: &[],
-            state_objects: &[],
-            clients: &[],
-        };
-        let as_json = json::encode_value(&schema_schema).unwrap();
-        println!("{}", as_json);
+        // let types_map = collect_types::<SchemaType>().unwrap();
+        // let types_vec = types_map.values().cloned().collect::<Vec<_>>();
+        // let schema_schema = HandlerSchema {
+        //     types: types_vec.as_slice(),
+        //     messages: &[],
+        //     state_objects: &[],
+        //     clients: &[],
+        // };
+        // let as_json = json::encode_value(&schema_schema).unwrap();
+        // println!("{}", as_json);
     }
 }

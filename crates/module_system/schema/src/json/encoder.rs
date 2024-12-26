@@ -14,6 +14,7 @@ use simple_time::{Duration, Time};
 use std::io::Write;
 use crate::enums::EnumType;
 
+/// Encode the value to a JSON string.
 pub fn encode_value<'a>(
     value: &dyn ValueCodec,
 ) -> Result<String, EncodeError> {

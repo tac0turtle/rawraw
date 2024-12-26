@@ -1,6 +1,6 @@
 //! The Message trait for invoking messages dynamically.
 
-use crate::handler::InitMessage;
+use crate::handler::{ClientSchemaVisitor, InitMessage};
 use ixc_message_api::code::HandlerCode;
 use ixc_schema::codec::Codec;
 use ixc_schema::message::{MessageDescriptor, MessageKind};
@@ -20,8 +20,8 @@ pub trait MessageBase<'a>: SchemaValue<'a> + StructSchema {
 
 /// The Message trait for invoking messages dynamically.
 pub trait Message<'a>: MessageBase<'a> {
-    // /// Visit the events that can be emitted by the message.
-    // fn visit_events<V: TypeVisitor>(visitor: &mut V);
+    /// Visit the events that can be emitted by the message.
+    fn visit_events<V: TypeVisitor>(visitor: &mut V);
 }
 
 /// The QueryMessage trait for invoking query messages dynamically.
@@ -45,27 +45,29 @@ impl<R, E: HandlerCode> ExtractResponseTypes for crate::Result<R, E> {
 }
 
 /// Extract the message descriptor for an init message.
-pub const fn extract_init_descriptor<'a, M: InitMessage<'a>>() -> MessageDescriptor<'static> {
+pub fn visit_init_descriptor<'a, M: InitMessage<'a>, V: ClientSchemaVisitor<'a>>(visitor: &mut V)  {
     let mut desc = MessageDescriptor::new(M::STRUCT_TYPE.name);
     desc.kind = MessageKind::Constructor;
-    desc
+    visitor.visit_message(&desc);
+    visitor.visit::<M::Type>();
 }
 
 /// Extract the message descriptor for a message.
-pub const fn extract_message_descriptor<'a, M: Message<'a>>() -> MessageDescriptor<'static> {
-    let mut desc = extract_message_descriptor_base::<M>();
+pub fn visit_message_descriptor<'a, M: Message<'a>, V: ClientSchemaVisitor<'a>>(visitor: &mut V)  {
+    let mut desc = visit_message_base::<M, V>(visitor);
     desc.kind = MessageKind::Volatile;
-    desc
+    visitor.visit_message(&desc);
 }
 
 /// Extract the message descriptor for a query message.
-pub const fn extract_query_descriptor<'a, M: QueryMessage<'a>>() -> MessageDescriptor<'static> {
-    let mut desc = extract_message_descriptor_base::<M>();
+pub fn visit_query_descriptor<'a, M: QueryMessage<'a>, V: ClientSchemaVisitor<'a>>(visitor: &mut V)  {
+    let mut desc = visit_message_base::<M, V>(visitor);
     desc.kind = MessageKind::Query;
-    desc
+    visitor.visit_message(&desc);
 }
 
-const fn extract_message_descriptor_base<'a, M: MessageBase<'a>>() -> MessageDescriptor<'static> {
+fn visit_message_base<'a, M: MessageBase<'a>, V: ClientSchemaVisitor<'a>>(visitor: &mut V) -> MessageDescriptor<'static> {
+    M::visit_type(visitor);
     let mut desc: MessageDescriptor = MessageDescriptor::new(M::STRUCT_TYPE.name);
     if let Some(res) = M::Response::SCHEMA_TYPE {
         desc.response_type = Some(res.name());

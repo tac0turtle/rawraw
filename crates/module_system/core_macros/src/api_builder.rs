@@ -19,7 +19,7 @@ pub(crate) struct APIBuilder {
     client_methods: Vec<TokenStream2>,
     pub(crate) create_msg_name: Option<Ident>,
     pub(crate) create_msg_lifetime: TokenStream2,
-    pub(crate) extract_message_descs: Vec<TokenStream2>,
+    pub(crate) visit_messages: Vec<TokenStream2>,
 }
 
 impl APIBuilder {
@@ -31,7 +31,7 @@ impl APIBuilder {
                 pub struct #client_ident(::ixc::message_api::AccountID);
             },
         )?;
-        let extract_message = self.extract_message_descs.clone();
+        let visit_messages = self.visit_messages.clone();
         push_item(
             &mut self.items,
             quote! {
@@ -44,11 +44,8 @@ impl APIBuilder {
                         self.0
                     }
 
-                    fn visit_schema<V: ::ixc::core::handler::ClientSchemaVisitor>(visitor: &mut V) {
-                        const MESSAGES: &'static [::ixc::schema::message::MessageDescriptor<'static>] = &[
-                            #(#extract_message),*
-                        ];
-                        visitor.visit_messages(MESSAGES);
+                    fn visit_schema<'a, V: ::ixc::core::handler::ClientSchemaVisitor<'a>>(visitor: &mut V) {
+                            #(#visit_messages)*
                     }
                 }
             },
@@ -289,17 +286,17 @@ impl APIBuilder {
                 } else {
                     quote! {
                         impl < 'a >::ixc::core::message::Message < 'a > for # msg_struct_name # opt_lifetime {
-                            // fn visit_events<V: ::ixc:schema::types::TypeVisitor>(visitor: &mut V) {
-                            //
-                            // }
+                            fn visit_events<V: ::ixc::schema::types::TypeVisitor>(visitor: &mut V) {
+                                #(#event_visit)*
+                            }
                         }
                     }
                 },
             )?;
-            self.extract_message_descs.push(if is_query {
-                quote! { ::ixc::core::message::extract_query_descriptor::<#msg_struct_name>() }
+            self.visit_messages.push(if is_query {
+                quote! { ::ixc::core::message::visit_query_descriptor::<#msg_struct_name, V>(visitor); }
             } else {
-                quote! { ::ixc::core::message::extract_message_descriptor::<#msg_struct_name>() }
+                quote! { ::ixc::core::message::visit_message_descriptor::<#msg_struct_name, V>(visitor); }
             });
             ensure!(context_name.is_some(), "no context parameter found");
             let context_name = context_name.unwrap();

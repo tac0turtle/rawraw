@@ -238,36 +238,50 @@ impl<T: EnumSchema> Type for EnumT<T> {
 }
 impl<T: EnumSchema> ListElementType for EnumT<T> {}
 
+/// A type visitor that collects types.
 #[cfg(feature = "std")]
+#[derive(Default)]
+#[non_exhaustive]
+pub struct TypeCollector {
+    /// The collected types.
+    pub types: alloc::collections::BTreeMap<&'static str, SchemaType<'static>>,
+    /// The errors that occurred during type collection.
+    pub errors: alloc::vec::Vec<&'static str>,
+}
+
+#[cfg(feature = "std")]
+impl TypeVisitor for TypeCollector {
+    fn visit<T: Type>(&mut self) {
+        if let Some(t) = T::SCHEMA_TYPE {
+            if let Some(existing) = self.types.get(t.name()) {
+                if existing != &t {
+                    self.errors.push(t.name());
+                }
+            } else {
+                self.types.insert(t.name(), t);
+            }
+        }
+        T::visit_referenced_types(self);
+    }
+}
+
+#[cfg(feature = "std")]
+impl TypeCollector {
+    /// Finish type collection and return the collected types or errors if there were any.
+    pub fn finish(self) -> Result<alloc::collections::BTreeMap<&'static str, SchemaType<'static>>, alloc::vec::Vec<&'static str>> {
+        if self.errors.is_empty() {
+            Ok(self.types)
+        } else {
+            Err(self.errors)
+        }
+    }
+}
 
 /// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]
 pub fn collect_types<'a, T: SchemaValue<'a>>() -> Result<alloc::collections::BTreeMap<&'static str, SchemaType<'static>>, alloc::vec::Vec<&'static str>> {
-    #[derive(Default)]
-    struct Visitor {
-        types: alloc::collections::BTreeMap<&'static str, SchemaType<'static>>,
-        errors: alloc::vec::Vec<&'static str>,
-    }
-    impl TypeVisitor for Visitor {
-        fn visit<T: Type>(&mut self) {
-            if let Some(t) = T::SCHEMA_TYPE {
-                if let Some(existing) = self.types.get(t.name()) {
-                    if existing != &t {
-                        self.errors.push(t.name());
-                    }
-                } else {
-                    self.types.insert(t.name(), t);
-                }
-            }
-            T::visit_referenced_types(self);
-        }
-    }
-    let mut visitor = Visitor::default();
+    let mut visitor = TypeCollector::default();
     visitor.visit::<T::Type>();
     <T::Type>::visit_referenced_types(&mut visitor);
-    if visitor.errors.is_empty() {
-        Ok(visitor.types)
-    } else {
-        Err(visitor.errors)
-    }
+    visitor.finish()
 }

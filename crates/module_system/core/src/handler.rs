@@ -1,14 +1,17 @@
 //! Handler traits for account and module handlers.
+
 use crate::resource::Resources;
 use crate::routing::Router;
 use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
+use ixc_schema::client::ClientDescriptor;
 use ixc_schema::codec::Codec;
+use ixc_schema::handler::HandlerSchema;
 use ixc_schema::message::MessageDescriptor;
-use ixc_schema::structs::StructSchema;
-use ixc_schema::SchemaValue;
 use ixc_schema::state_object::StateObjectDescriptor;
-use ixc_schema::types::TypeVisitor;
+use ixc_schema::structs::StructSchema;
+use ixc_schema::types::{Type, TypeCollector, TypeVisitor};
+use ixc_schema::SchemaValue;
 
 /// Handler trait for account and module handlers.
 pub trait Handler: RawHandler + Router + HandlerResources + Service {
@@ -16,7 +19,7 @@ pub trait Handler: RawHandler + Router + HandlerResources + Service {
     type Init<'a>: InitMessage<'a>;
 
     /// Visit the schema of the handler.
-    fn visit_schema<V: HandlerSchemaVisitor>(visitor: &mut V);
+    fn visit_schema<'a, V: HandlerSchemaVisitor<'a>>(visitor: &mut V);
 }
 
 /// The resources associated with a handler. This specifies the name of the handler.
@@ -53,7 +56,7 @@ pub trait Client {
     fn target_account(&self) -> AccountID;
 
     /// Visit the schema of the client.
-    fn visit_schema<V: ClientSchemaVisitor>(visitor: &mut V);
+    fn visit_schema<'a, V: ClientSchemaVisitor<'a>>(visitor: &mut V);
 }
 
 /// The client of a handler.
@@ -63,14 +66,15 @@ pub trait HandlerClient: Client {
 }
 
 /// A visitor for the schema of a handler.
-pub trait HandlerSchemaVisitor: ClientSchemaVisitor {
+pub trait HandlerSchemaVisitor<'a>: ClientSchemaVisitor<'a> {
     /// Visit the state objects of the handler.
-    fn visit_state_objects(&mut self, state_objects: &[StateObjectDescriptor]) -> Self;
+    fn visit_state_objects(&mut self, state_objects: &[StateObjectDescriptor<'a>]);
+    /// Visit a client of the handler.
+    fn visit_client<C: Client>(&mut self);
 }
 
 /// A visitor for the schema of a client.
-pub trait ClientSchemaVisitor: TypeVisitor {
+pub trait ClientSchemaVisitor<'a>: TypeVisitor {
     /// Visit the client's messages.
-    fn visit_messages(&mut self, messages: &[MessageDescriptor]) -> Self;
+    fn visit_message(&mut self, messages: &MessageDescriptor<'a>);
 }
-
