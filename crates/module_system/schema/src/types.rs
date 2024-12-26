@@ -11,6 +11,7 @@ use crate::enums::EnumSchema;
 use crate::field::Field;
 use crate::kind::Kind;
 use crate::schema::SchemaType;
+use crate::SchemaValue;
 use crate::structs::StructSchema;
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
@@ -55,6 +56,16 @@ pub unsafe trait ReferenceableType {
 
 unsafe impl ReferenceableType for () {
     const SCHEMA_TYPE: Option<SchemaType<'static>> = None;
+}
+
+/// Get the name of the type that is referenced by the given type.
+/// Used in macros to generate code for enums and structs.
+pub const fn reference_type_name<'a, V: SchemaValue<'a>>() -> &'static str {
+    if let Some(t) = <<V::Type as Type>::ReferencedType as ReferenceableType>::SCHEMA_TYPE {
+        t.name()
+    } else {
+        ""
+    }
 }
 
 impl Private for u8 {}

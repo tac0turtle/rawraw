@@ -73,14 +73,13 @@ pub(crate) fn derive_enum_schema(
 
         let field_def = if let Some(field) = field {
             let field_ty = &field.ty;
-            // TODO strip lifetimes
             quote! {
                 Some(#ixc_schema_path::field::Field {
                     name: "",
-                    kind: <<#field_ty as #ixc_schema_path::SchemaValue>::Type as #ixc_schema_path::types::Type>::KIND,
+                    kind: < < #field_ty as #ixc_schema_path::SchemaValue>::Type as #ixc_schema_path::types::Type>::KIND,
                     nullable: false,
                     element_kind: None,
-                    referenced_type: #ixc_schema_path::reference_type_name(#field_ty),
+                    referenced_type: #ixc_schema_path::types::reference_type_name::<#field_ty>(),
                 })
             }
         } else {
@@ -116,7 +115,7 @@ pub(crate) fn derive_enum_schema(
         let decode_matcher = if let Some(field) = field {
             quote! {
                 #discriminant => {
-                    let mut value = #field::default();
+                    let mut value: #field = ::core::default::Default::default();
                     value.decode(decoder)?;
                     #enum_name::#variant_name(value)
                 },
@@ -154,7 +153,7 @@ pub(crate) fn derive_enum_schema(
             ) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
                 let discriminant = decoder.decode_enum_discriminant(&<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE)?;
                  *self = match discriminant {
-                    // #(#variant_decoders)*
+                    #(#variant_decoders)*
                     _ => return Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
                 };
                 Ok(())

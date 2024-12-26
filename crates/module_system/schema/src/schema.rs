@@ -34,16 +34,6 @@ impl<'a> SchemaType<'a> {
     }
 }
 
-/// Get the name of the type that is referenced by the given type.
-/// Used in macros to generate code for enums and structs.
-pub const fn reference_type_name<'a, V: SchemaValue<'a>>() -> &'static str {
-    if let Some(t) = <<V::Type as Type>::ReferencedType as ReferenceableType>::SCHEMA_TYPE {
-        t.name()
-    } else {
-        ""
-    }
-}
-
 impl PartialOrd for SchemaType<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
