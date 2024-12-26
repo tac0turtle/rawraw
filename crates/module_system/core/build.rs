@@ -14,10 +14,10 @@ struct Config {
 }
 
 fn parse_account_id(s: &str) -> Result<u128, ParseIntError> {
-    if s.starts_with("0x") {
-        u128::from_str_radix(&s[2..], 16)
+    if let Some(stripped) = s.strip_prefix("0x") {
+        u128::from_str_radix(stripped, 16)
     } else {
-        u128::from_str_radix(s, 10)
+        u128::from_str(s)
     }
 }
 
@@ -52,8 +52,7 @@ fn process_config() -> anyhow::Result<()> {
     }
 
     let root_account = if let Some(root_account) = config.root_account_id {
-        let id = parse_account_id(&root_account)?;
-        id
+        parse_account_id(&root_account)?
     } else {
         0
     };
@@ -75,8 +74,7 @@ fn process_config() -> anyhow::Result<()> {
 }
 
 fn main() {
-    match process_config() {
-        Err(e) => panic!("{e}"),
-        _ => {}
+    if let Err(e) = process_config() {
+        panic!("{e}");
     }
 }
