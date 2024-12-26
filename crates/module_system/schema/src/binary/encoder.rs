@@ -134,8 +134,11 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
         }
     }
 
-    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
-        self.encode_i32(x)
+    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+        if let Some(value) = value {
+            todo!()
+        }
+        self.encode_i32(discriminant)
     }
 }
 
@@ -250,8 +253,11 @@ impl crate::encoder::Encoder for EncodeSizer {
         }
     }
 
-    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
-        self.encode_i32(x)
+    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+        if let Some(value) = value {
+            todo!()
+        }
+        self.encode_i32(discriminant)
     }
 }
 
@@ -356,8 +362,11 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         Ok(())
     }
 
-    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
-        self.encode_i32(x)
+    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+        if let Some(value) = value {
+            todo!()
+        }
+        self.encode_i32(discriminant)
     }
 }
 
@@ -465,8 +474,11 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
         Ok(())
     }
 
-    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError> {
-        self.encode_i32(x)
+    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+        if let Some(value) = value {
+            todo!()
+        }
+        self.encode_i32(discriminant)
     }
 }
 

@@ -50,7 +50,7 @@ pub trait Encoder {
     /// Encode an account ID.
     fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError>;
     /// Encode an enum value.
-    fn encode_enum_discriminant(&mut self, x: i32, _enum_type: &EnumType) -> Result<(), EncodeError>;
+    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError>;
     /// Encode time.
     fn encode_time(&mut self, x: simple_time::Time) -> Result<(), EncodeError>;
     /// Encode duration.

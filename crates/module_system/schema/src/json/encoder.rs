@@ -148,8 +148,8 @@ impl crate::encoder::Encoder for Encoder {
         }
     }
 
-    fn encode_enum_discriminant(&mut self, x: i32, enum_type: &EnumType) -> Result<(), EncodeError> {
-        let variant = enum_type.variants.iter().find(|v| v.discriminant == x)
+    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+        let variant = enum_type.variants.iter().find(|v| v.discriminant == discriminant)
             .ok_or(EncodeError::UnknownError)?;
         write!(self.writer, "\"{}\"", variant.name)
     }
@@ -290,11 +290,11 @@ impl crate::encoder::Encoder for FieldEncoder<'_> {
         self.outer.encode_account_id(x)
     }
 
-    fn encode_enum_discriminant(&mut self, x: i32, enum_type: &EnumType) -> Result<(), EncodeError> {
-        if x == 0 {
+    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+        if discriminant == 0 && value.is_none() {
             return self.mark_not_present();
         }
-        self.outer.encode_enum_discriminant(x, enum_type)
+        self.outer.encode_enum_variant(discriminant, enum_type, value)
     }
 
     fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {

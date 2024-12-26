@@ -19,6 +19,7 @@ pub(crate) struct ABitOfEverything {
     pub(crate) os: Option<String>,
     pub(crate) op: Option<Prims>,
     pub(crate) e: TestEnum,
+    pub(crate) ef: TestEnumWithFields,
 }
 
 #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
@@ -45,4 +46,13 @@ pub(crate) enum TestEnum {
     B = 10,
     C = 20,
     D,
+}
+
+#[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
+#[non_exhaustive]
+pub(crate) enum TestEnumWithFields {
+    #[default]
+    Default,
+    X(u8),
+    Y(Prims),
 }
