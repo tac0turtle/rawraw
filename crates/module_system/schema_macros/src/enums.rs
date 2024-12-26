@@ -44,6 +44,7 @@ pub(crate) fn derive_enum_schema(
     let mut variants = vec![];
     let mut variant_decoders = vec![];
     let mut variant_encoders = vec![];
+    let mut visit_variant_types = vec![];
     for variant in &enm.variants {
         let field = match &variant.fields {
             Fields::Named(_) => {
@@ -127,6 +128,13 @@ pub(crate) fn derive_enum_schema(
         };
         variant_decoders.push(decode_matcher);
 
+        if let Some(field) = field {
+            let field_ty = &field.ty;
+            visit_variant_types.push(quote! {
+                visitor.visit::< < #field_ty as #ixc_schema_path::SchemaValue< '_ >>::Type >();
+            });
+        };
+
         // increment the discriminant for the next variant
         discriminant += 1;
     }
@@ -138,12 +146,10 @@ pub(crate) fn derive_enum_schema(
             ];
             const SEALED: bool = #is_sealed;
             type NumericType = #repr;
-        }
 
-        unsafe impl #impl_generics #ixc_schema_path::types::ReferenceableType for #enum_name #ty_generics #where_clause {
-            const SCHEMA_TYPE: Option<#ixc_schema_path::schema::SchemaType<'static>> = Some(
-                #ixc_schema_path::schema::SchemaType::Enum(<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE)
-            );
+            fn visit_variant_types<V: #ixc_schema_path::types::TypeVisitor>(visitor: &mut V) {
+                #(#visit_variant_types)*
+            }
         }
 
         impl < #lifetime > #ixc_schema_path::value::ValueCodec < #lifetime > for #enum_name #ty_generics #where_clause {

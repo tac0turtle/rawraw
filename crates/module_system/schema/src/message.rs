@@ -1,15 +1,17 @@
+use ixc_schema_macros::SchemaValue;
+
 #[non_exhaustive]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
 pub struct MessageDescriptor<'a> {
     pub request_type: &'a str,
-    pub response_type: &'a str,
-    pub error_type: &'a str,
+    pub response_type: Option<&'a str>,
     pub events: &'a [&'a str],
+    pub error_codes: &'a [ErrorCodeDescriptor<'a>],
 }
 
-// pub trait Message<'a>: SchemaValue<'a> + StructSchema {
-//     const SELECTOR: MessageSelector;
-//     type Response<'b>: OptionalValue<'b>;
-//     type Error: OptionalValue<'static>; // TODO just accept error codes
-//     type Codec: Codec;
-// }
+#[non_exhaustive]
+#[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
+pub struct ErrorCodeDescriptor<'a> {
+    pub name: &'a str,
+    pub discriminant: u8,
+}

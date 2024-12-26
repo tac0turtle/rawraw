@@ -1,5 +1,5 @@
 use crate::kind::Kind;
-use crate::types::{ReferenceableType, Type};
+use crate::types::{Type, TypeVisitor};
 use ixc_schema_macros::SchemaValue;
 use crate::field::Field;
 
@@ -28,13 +28,15 @@ impl<'a> EnumVariantDefinition<'a> {
 
 /// # Safety
 /// the function is marked as unsafe to detour users from calling it directly
-pub unsafe trait EnumSchema: ReferenceableType + Sized {
+pub unsafe trait EnumSchema: Sized {
     const NAME: &'static str;
     const VARIANTS: &'static [EnumVariantDefinition<'static>];
     const SEALED: bool;
     #[allow(private_bounds)]
     type NumericType: EnumNumericType;
     const ENUM_TYPE: EnumType<'static> = to_enum_type::<Self>();
+
+    fn visit_variant_types<V: TypeVisitor>(visitor: &mut V);
 }
 
 pub const fn to_enum_type<E: EnumSchema>() -> EnumType<'static> {

@@ -1,5 +1,9 @@
+//! JSON encoding and decoding.
 mod decoder;
 mod encoder;
+
+pub use decoder::decode_value;
+pub use encoder::encode_value;
 
 #[cfg(test)]
 mod tests {

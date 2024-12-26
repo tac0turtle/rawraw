@@ -4,18 +4,20 @@ use ixc_schema_macros::SchemaValue;
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::field::Field;
-use crate::types::ReferenceableType;
+use crate::types::TypeVisitor;
 
 /// StructSchema describes the schema of a struct.
 /// # Safety
 /// The trait is marked as unsafe because it is meant to be implemented by macros.
-pub unsafe trait StructSchema: ReferenceableType {
+pub unsafe trait StructSchema {
     /// The schema of the struct.
     const STRUCT_TYPE: StructType<'static>;
 
     /// A hash of the struct's name which should be unique within a reasonable schema.
     /// Can be used to decode a struct from a message by matching on its type selector.
     const TYPE_SELECTOR: u64;
+
+    fn visit_field_types<V: TypeVisitor>(visitor: &mut V);
 }
 
 /// StructDecodeVisitor is the trait that should be derived to decode a struct.

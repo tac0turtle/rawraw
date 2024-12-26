@@ -9,7 +9,7 @@ use ixc_schema_macros::SchemaValue;
 pub enum Kind {
     /// An unknown and invalid kind.
     #[default]
-    Unknown = 0,
+    Invalid = 0,
     /// A string.
     String = 1,
     /// A byte array.

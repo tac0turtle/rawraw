@@ -23,6 +23,10 @@ pub(crate) fn derive_struct_schema(
 
     let sealed = is_sealed(input)?;
 
+    let visit_field_types = str.fields.iter().map(|field| {
+        let field_type = &field.ty;
+        quote! { visitor.visit::< < #field_type as #ixc_schema_path::SchemaValue< '_ >>::Type >(); }
+    });
     let fields = str.fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         let field_type = &field.ty;
@@ -55,12 +59,11 @@ pub(crate) fn derive_struct_schema(
             };
 
             const TYPE_SELECTOR: u64 = #type_selector;
-        }
 
-        unsafe impl #impl_generics #ixc_schema_path::types::ReferenceableType for #struct_name #ty_generics #where_clause {
-            const SCHEMA_TYPE: Option<#ixc_schema_path::schema::SchemaType<'static>> = Some(
-                #ixc_schema_path::schema::SchemaType::Struct(<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
-            );
+
+            fn visit_field_types<V: #ixc_schema_path::types::TypeVisitor>(visitor: &mut V) {
+                #(#visit_field_types);*
+            }
         }
 
         unsafe impl #impl_generics #ixc_schema_path::structs::StructEncodeVisitor for #struct_name #ty_generics #where_clause {

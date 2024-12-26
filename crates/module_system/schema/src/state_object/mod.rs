@@ -18,7 +18,7 @@ pub use value_field::{Bytes, ObjectFieldValue, Str};
 /// A type representing objects stored in key-value store state.
 #[non_exhaustive]
 #[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
-pub struct StateObjectType<'a> {
+pub struct StateObjectDescriptor<'a> {
     /// The name of the object.
     pub name: &'a str,
     /// The fields that make up the primary key.
