@@ -5,6 +5,7 @@ use ixc_core::create_account;
 use ixc_message_api::AccountID;
 use ixc_testing::TestApp;
 use std::str::FromStr;
+use ixc_core::known_accounts::ROOT_ACCOUNT;
 
 #[ixc::handler(ClientBindingTest)]
 mod client_binding {
@@ -50,11 +51,13 @@ fn main() {
     let foo = binding_test_client.who_is_foo(&alice).unwrap();
     let bar = binding_test_client.who_is_bar(&alice).unwrap();
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 {
+    if args.len() < 4 {
         panic!("expected at least two arguments");
     }
-    let expected_foo = u128::from_str_radix(&args[1], 16).unwrap();
-    let expected_bar = u128::from_str_radix(&args[2], 16).unwrap();
+    let expected_root = u128::from_str_radix(&args[1], 16).unwrap();
+    assert_eq!(ROOT_ACCOUNT, AccountID::new(expected_root));
+    let expected_foo = u128::from_str_radix(&args[2], 16).unwrap();
+    let expected_bar = u128::from_str_radix(&args[3], 16).unwrap();
     assert_eq!(foo, AccountID::new(expected_foo));
     assert_eq!(bar, AccountID::new(expected_bar));
     println!("Successfully matched expected account IDs");

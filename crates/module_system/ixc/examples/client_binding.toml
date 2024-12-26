@@ -1,3 +1,5 @@
+root_account_id = "2"
+
 [accounts]
 foo = "57" # 0x39
 bar = "0xabcdef1234567890"

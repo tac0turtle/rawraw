@@ -1,15 +1,16 @@
 //! Build script.
+use anyhow::bail;
 use quote::quote;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::io::Write;
 use std::num::ParseIntError;
 use std::str::FromStr;
-use anyhow::bail;
-use serde::Deserialize;
 
 #[derive(Deserialize, Default, Debug)]
 struct Config {
     accounts: HashMap<String, String>,
+    root_account_id: Option<String>,
 }
 
 fn parse_account_id(s: &str) -> Result<u128, ParseIntError> {
@@ -35,7 +36,7 @@ fn process_config() -> anyhow::Result<()> {
             println!("cargo:rerun-if-changed={config_file}");
             let config_str = std::fs::read_to_string(config_file)?;
             toml::from_str(&config_str)?
-        },
+        }
         Err(_) => Default::default(),
     };
 
@@ -50,11 +51,21 @@ fn process_config() -> anyhow::Result<()> {
         ids.push(id);
     }
 
+    let root_account = if let Some(root_account) = config.root_account_id {
+        let id = parse_account_id(&root_account)?;
+        id
+    } else {
+        0
+    };
+
     let output = quote! {
         /// Well-known account mappings.
         pub const KNOWN_ACCOUNTS: &[(&str, u128)] = &[
             #((#account_names, #ids)),*
         ];
+
+        /// The ID of the root account which creates and manages accounts.
+        pub const ROOT_ACCOUNT: AccountID = ixc_message_api::AccountID::new(#root_account);
     };
 
     let out_dir = std::env::var("OUT_DIR")?;

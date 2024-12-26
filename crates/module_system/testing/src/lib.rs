@@ -12,7 +12,7 @@ use ixc_account_manager::state_handler::StateHandler;
 use ixc_account_manager::AccountManager;
 #[doc(hidden)]
 pub use ixc_core::account_api::create_account;
-use ixc_core::account_api::{create_account_raw, ROOT_ACCOUNT};
+use ixc_core::account_api::{create_account_raw};
 use ixc_core::handler::{Client, Handler, HandlerClient, HandlerResources};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
@@ -28,6 +28,7 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
+use ixc_core::known_accounts::ROOT_ACCOUNT;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {

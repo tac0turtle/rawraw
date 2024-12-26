@@ -176,7 +176,13 @@ Any account may call any other account or module in the app by calling the clien
 that are generated for handlers and `#[handler_api]` traits.
 
 Clients can be defined as resources in the handler struct using the `#[client]`
-attribute and the `AccountID` as an integer (NOTE: more robust ways of setting this are planned).
+attribute and the `AccountID` as an identifier or an integer.
+If the client is defined as an integer, then the code is tightly coupled to this account ID. If an identifier is used, then account IDs can be defined at compile time.
+This can be done by specifying the name of a toml file as the `IXC_CONFIG` environment variable. This file should contain a `[accounts]` section with a mapping from account name to account ID. Example:
+```toml
+[accounts]
+some_account = "0xabcdef1234567890"
+```
 
 While clients can be instantiated and called dynamically, it's better
 to define them as explicit resources so that:
@@ -190,10 +196,27 @@ In this case we must cast that trait dynamically to `Service` to get its client 
 
 ```rust
 pub struct MyHandler {
-    #[client(123456789)]
+    #[client(some_account)]
     pub get_my_value_client: <dyn GetMyValue as Service>::Client,
 }
 ```
+
+In testing, you may want to use a different account ID than the one defined in the config file.
+To do this, you can specify client bindings at runtime using the `register_handler_with_bindings` method of the `TestApp` struct. Example:
+
+```rust
+let test_app = TestApp::default();
+test_app.register_handler_with_bindings::<MyHandler>(&[
+    ("some_account", some_account_id),
+]);
+```
+
+### Special Account IDs 
+
+A special global account ID called the `ROOT_ACCOUNT` is defined in the `ixc_core` crate and is used to create and manage accounts.
+By default, the `ROOT_ACCOUNT` is set to `1` but this can be changed by specifying the `root_account_id` field in the config file (separate from the `[accounts]` section).
+
+The account ID `0` is reserved for the "null account" meaning that the account is not valid or does not exist.
 
 ### Sending dynamic messages
 

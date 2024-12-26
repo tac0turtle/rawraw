@@ -2,13 +2,13 @@ use crate::call_stack::CallStack;
 use crate::state_handler::{get_account_handler_id, StateHandler};
 use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
+use ixc_core::known_accounts::ROOT_ACCOUNT;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::{AccountNotFound, MessageNotHandled};
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
-use ixc_message_api::ROOT_ACCOUNT;
 use ixc_vm_api::VM;
 
 pub(crate) struct QueryContext<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>

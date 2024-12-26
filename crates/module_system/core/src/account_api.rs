@@ -8,6 +8,7 @@ use ixc_core_macros::message_selector;
 use ixc_message_api::message::{Message, Request};
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
+use crate::known_accounts::ROOT_ACCOUNT;
 
 /// Creates a new account for the specified handler.
 pub fn create_account<H: Handler>(
@@ -75,9 +76,6 @@ const GET_HANDLER_ID_SELECTOR: u64 = message_selector!("ixc.account.v1.get_handl
 const MIGRATE_SELECTOR: u64 = message_selector!("ixc.account.v1.migrate");
 
 const SELF_DESTRUCT_SELECTOR: u64 = message_selector!("ixc.account.v1.self_destruct");
-
-/// The ID of the root account which creates and manages accounts.
-pub const ROOT_ACCOUNT: AccountID = AccountID::new(1);
 
 /// The message selector for the on_create message.
 pub const ON_CREATE_SELECTOR: u64 = message_selector!("ixc.account.v1.on_create");
