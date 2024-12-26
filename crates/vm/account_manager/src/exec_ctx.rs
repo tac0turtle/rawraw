@@ -9,6 +9,7 @@ use crate::wrapper::ExecContextWrapper;
 use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
 use core::cell::RefCell;
+use ixc_core::known_accounts::ROOT_ACCOUNT;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
@@ -18,7 +19,7 @@ use ixc_message_api::code::SystemCode::{
 use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
-use ixc_message_api::{AccountID, ROOT_ACCOUNT};
+use ixc_message_api::AccountID;
 use ixc_vm_api::VM;
 
 pub(crate) struct ExecContext<

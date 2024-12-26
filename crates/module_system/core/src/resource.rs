@@ -15,6 +15,7 @@ pub unsafe trait Resources: Sized {
 
 /// The resource scope.
 #[derive(Default)]
+#[non_exhaustive]
 pub struct ResourceScope<'a> {
     /// The prefix of all state objects under this scope.
     pub state_scope: &'a [u8],
@@ -68,7 +69,7 @@ impl ResourceScope<'_> {
         &self,
         name: &str,
         default: Option<AccountID>,
-    ) -> core::result::Result<AccountID, InitializationError> {
+    ) -> Result<AccountID, InitializationError> {
         self.account_resolver
             .map(|resolver| resolver.resolve(name))
             .unwrap_or_else(|| default.ok_or(InitializationError::AccountNotFound))

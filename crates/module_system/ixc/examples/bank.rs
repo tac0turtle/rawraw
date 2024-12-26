@@ -225,7 +225,7 @@ pub mod bank {
 #[cfg(test)]
 mod tests {
     use super::bank::*;
-    use ixc_core::account_api::ROOT_ACCOUNT;
+    use ixc_core::known_accounts::ROOT_ACCOUNT;
     use ixc_testing::*;
 
     #[test]
