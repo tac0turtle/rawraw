@@ -175,9 +175,9 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         }
     }
 
-    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor, enum_type: &EnumType) -> Result<(), DecodeError> {
-        todo!();
-        // self.decode_i32()
+    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor<'a>, enum_type: &EnumType) -> Result<(), DecodeError> {
+        let discriminant = self.decode_i32()?;
+        visitor.decode_variant(discriminant, self)
     }
 }
 
@@ -303,8 +303,8 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         }
     }
 
-    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor, enum_type: &EnumType) -> Result<(), DecodeError> {
-        todo!();
+    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor<'a>, enum_type: &EnumType) -> Result<(), DecodeError> {
+        self.outer.decode_enum_variant(visitor, enum_type)
     }
 }
 

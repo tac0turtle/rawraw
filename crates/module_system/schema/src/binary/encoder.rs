@@ -136,7 +136,7 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
 
     fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
         if let Some(value) = value {
-            todo!()
+            value.encode(self)?;
         }
         self.encode_i32(discriminant)
     }
@@ -255,7 +255,7 @@ impl crate::encoder::Encoder for EncodeSizer {
 
     fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
         if let Some(value) = value {
-            todo!()
+            value.encode(self)?;
         }
         self.encode_i32(discriminant)
     }
@@ -345,11 +345,11 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
     }
 
     fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        self.encode_i128(x.unix_nanos())
+        self.outer.encode_time(x)
     }
 
     fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        self.encode_i128(x.nanos())
+        self.outer.encode_duration(x)
     }
 
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
@@ -363,10 +363,7 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
     }
 
     fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
-        if let Some(value) = value {
-            todo!()
-        }
-        self.encode_i32(discriminant)
+        self.outer.encode_enum_variant(discriminant, enum_type, value)
     }
 }
 
@@ -459,11 +456,11 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
     }
 
     fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        self.encode_i128(x.unix_nanos())
+        self.outer.encode_time(x)
     }
 
     fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        self.encode_i128(x.nanos())
+        self.outer.encode_duration(x)
     }
 
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
@@ -475,10 +472,7 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
     }
 
     fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
-        if let Some(value) = value {
-            todo!()
-        }
-        self.encode_i32(discriminant)
+       self.outer.encode_enum_variant(discriminant, enum_type, value)
     }
 }
 
