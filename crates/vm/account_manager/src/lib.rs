@@ -12,6 +12,7 @@ mod query_ctx;
 mod scope_guard;
 pub mod state_handler;
 mod wrapper;
+mod observer;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
