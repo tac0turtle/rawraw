@@ -259,6 +259,7 @@ pub fn collect_types<'a, T: SchemaValue<'a>>() -> Result<alloc::collections::BTr
         }
     }
     let mut visitor = Visitor::default();
+    visitor.visit::<T::Type>();
     <T::Type>::visit_referenced_types(&mut visitor);
     if visitor.errors.is_empty() {
         Ok(visitor.types)

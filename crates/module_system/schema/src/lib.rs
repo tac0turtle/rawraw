@@ -37,6 +37,7 @@ pub mod value;
 
 #[cfg(test)]
 mod testdata;
+mod client;
 
 pub use state_object::{Bytes, Str};
 pub use value::SchemaValue;

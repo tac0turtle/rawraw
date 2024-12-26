@@ -6,16 +6,18 @@
 #[cfg(feature = "use_ixc_macro_path")]
 pub(crate) use crate::*;
 
-use ixc_schema_macros::SchemaValue;
+use crate::client::ClientDescriptor;
 use crate::enums::EnumType;
 use crate::message::MessageDescriptor;
-use crate::SchemaValue;
 use crate::state_object::StateObjectDescriptor;
 use crate::structs::StructType;
+use crate::SchemaValue;
+use ixc_schema_macros::SchemaValue;
 
 /// A type in a schema.
 #[non_exhaustive]
 #[derive(Debug, Clone, Eq, PartialEq, Default, SchemaValue)]
+#[repr(u8)]
 pub enum SchemaType<'a> {
     /// An invalid type.
     #[default]
@@ -49,22 +51,23 @@ impl Ord for SchemaType<'_> {
     }
 }
 
-/// A schema.
+/// An account handler schema.
 #[non_exhaustive]
 #[derive(Debug, Clone, Eq, PartialEq, Default, SchemaValue)]
 pub struct Schema<'a> {
-    types: &'a [SchemaType<'a>],
-    messages: &'a [MessageDescriptor<'a>],
-    state_objects: &'a [StateObjectDescriptor<'a>],
+    pub types: &'a [SchemaType<'a>],
+    pub messages: &'a [MessageDescriptor<'a>],
+    pub state_objects: &'a [StateObjectDescriptor<'a>],
+    pub clients: &'a [ClientDescriptor<'a>],
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::json;
+    use crate::types::collect_types;
     use alloc::vec;
     use alloc::vec::Vec;
-    use crate::types::{collect_types};
-    use crate::json;
-    use super::*;
 
     #[test]
     fn test_schema_in_schema() {
@@ -74,6 +77,7 @@ mod tests {
             types: types_vec.as_slice(),
             messages: &[],
             state_objects: &[],
+            clients: &[],
         };
         let as_json = json::encode_value(&schema_schema).unwrap();
         println!("{}", as_json);

@@ -151,7 +151,13 @@ impl crate::encoder::Encoder for Encoder {
     fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
         let variant = enum_type.variants.iter().find(|v| v.discriminant == discriminant)
             .ok_or(EncodeError::UnknownError)?;
-        write!(self.writer, "\"{}\"", variant.name)
+        if let Some(value) = value {
+            write!(self.writer, "{{\"{}\":", variant.name)?;
+            value.encode(self)?;
+            write!(self.writer, "}}")
+        } else {
+            write!(self.writer, "\"{}\"", variant.name)
+        }
     }
 }
 

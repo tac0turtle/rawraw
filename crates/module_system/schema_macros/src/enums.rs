@@ -100,14 +100,13 @@ pub(crate) fn derive_enum_schema(
         // generate the variant encoder
         let encode_matcher = if let Some(field) = field {
             quote! {
-                #enum_name::#variant_name(value) => {
-                    value.encode(encoder)?;
-                    #discriminant
-                },
+                #enum_name::#variant_name(value) =>
+                    encoder.encode_enum_variant(#discriminant, _schema, Some(value as &dyn #ixc_schema_path::value::ValueCodec)),
             }
         } else {
             quote! {
-                #enum_name::#variant_name => #discriminant,
+                #enum_name::#variant_name =>
+                    encoder.encode_enum_variant(#discriminant, _schema, None),
             }
         };
         variant_encoders.push(encode_matcher);
@@ -157,7 +156,8 @@ pub(crate) fn derive_enum_schema(
                 &mut self,
                 decoder: &mut dyn #ixc_schema_path::decoder::Decoder< 'a >,
             ) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
-                let discriminant = decoder.decode_enum_discriminant(&<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE)?;
+                let _schema = &<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE;
+                let discriminant = decoder.decode_enum_discriminant(_schema)?;
                  *self = match discriminant {
                     #(#variant_decoders)*
                     _ => return Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
@@ -166,11 +166,11 @@ pub(crate) fn derive_enum_schema(
             }
 
             fn encode(&self, encoder: &mut dyn #ixc_schema_path::encoder::Encoder) -> ::core::result::Result<(), #ixc_schema_path::encoder::EncodeError> {
-                let discriminant = match self {
+                let _schema = &<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE;
+                match self {
                     #(#variant_encoders)*
                     _ => return Err(#ixc_schema_path::encoder::EncodeError::UnknownError),
-                };
-                encoder.encode_enum_discriminant(discriminant, &<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE)
+                }
             }
         }
 
