@@ -22,11 +22,12 @@ pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    dynamic_invoke_msg_with_gas(context, account, message, None)
+    dynamic_invoke_msg_with_gas_tracker(context, account, message, None)
 }
 
-/// Dynamically invokes an account message with gas.
-pub fn dynamic_invoke_msg_with_gas<'a, 'b, 'c, M: Message<'b>>(
+/// Dynamically invokes a message with a gas tracker which can
+/// be used to limit and track gas consumption of the message.
+pub fn dynamic_invoke_msg_with_gas_tracker<'a, 'b, 'c, M: Message<'b>>(
     context: &mut Context<'a>,
     account: AccountID,
     message: M,
@@ -45,13 +46,12 @@ pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    dynamic_invoke_query_with_gas(context, account, message, None)
+    dynamic_invoke_query_with_gas_tracker(context, account, message, None)
 }
 
-/// Dynamically invokes an account query message.
-/// Static account client instances should be preferred wherever possible,
-/// so that static dependency analysis can be performed.
-pub fn dynamic_invoke_query_with_gas<'a, 'b, 'c, M: QueryMessage<'b>>(
+/// Dynamically invokes a query message with a gas tracker which can
+/// be used to limit and track gas consumption of the message.
+pub fn dynamic_invoke_query_with_gas_tracker<'a, 'b, 'c, M: QueryMessage<'b>>(
     context: &Context<'a>,
     account: AccountID,
     message: M,
