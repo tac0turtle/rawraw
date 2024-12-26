@@ -3,7 +3,7 @@ use deluxe::ParseAttributes;
 use manyhow::bail;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{Attribute, DataEnum, Expr, ExprLit, Fields, Lit, PathSegment, Type};
+use syn::{Attribute, DataEnum, Expr, ExprLit, Fields, Lit};
 
 pub(crate) fn derive_enum_schema(
     input: &syn::DeriveInput,
@@ -98,7 +98,7 @@ pub(crate) fn derive_enum_schema(
         variants.push(variant_def);
 
         // generate the variant encoder
-        let encode_matcher = if let Some(field) = field {
+        let encode_matcher = if let Some(_) = field {
             quote! {
                 #enum_name::#variant_name(value) =>
                     encoder.encode_enum_variant(#discriminant, _schema, Some(value as &dyn #ixc_schema_path::value::ValueCodec)),
@@ -116,7 +116,7 @@ pub(crate) fn derive_enum_schema(
             quote! {
                 #discriminant => {
                     let mut value: #field = ::core::default::Default::default();
-                    value.decode(decoder)?;
+                    <#field as #ixc_schema_path::value::ValueCodec<'_>>::decode(&mut value, decoder)?;
                     #enum_name::#variant_name(value)
                 },
             }
@@ -151,18 +151,26 @@ pub(crate) fn derive_enum_schema(
             }
         }
 
+        unsafe impl < #lifetime > #ixc_schema_path::enums::EnumDecodeVisitor< #lifetime > for #enum_name #ty_generics #where_clause {
+            fn decode_variant(
+                &mut self,
+                discriminant: i32,
+                decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >,
+            ) -> Result<(), #ixc_schema_path::decoder::DecodeError> {
+                *self = match discriminant {
+                    #(#variant_decoders)*
+                    _ => return Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
+                };
+                Ok(())
+            }
+        }
+
         impl < #lifetime > #ixc_schema_path::value::ValueCodec < #lifetime > for #enum_name #ty_generics #where_clause {
             fn decode(
                 &mut self,
                 decoder: &mut dyn #ixc_schema_path::decoder::Decoder< 'a >,
             ) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
-                let _schema = &<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE;
-                let discriminant = decoder.decode_enum_discriminant(_schema)?;
-                 *self = match discriminant {
-                    #(#variant_decoders)*
-                    _ => return Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
-                };
-                Ok(())
+                decoder.decode_enum_variant(self, &<Self as #ixc_schema_path::enums::EnumSchema>::ENUM_TYPE)
             }
 
             fn encode(&self, encoder: &mut dyn #ixc_schema_path::encoder::Encoder) -> ::core::result::Result<(), #ixc_schema_path::encoder::EncodeError> {

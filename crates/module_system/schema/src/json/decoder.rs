@@ -13,7 +13,7 @@ use ixc_message_api::alloc_util::{copy_bytes, copy_str};
 use ixc_message_api::AccountID;
 use logos::{Lexer, Logos};
 use simple_time::{Duration, Time};
-use crate::enums::EnumType;
+use crate::enums::{EnumDecodeVisitor, EnumType, EnumVariantDefinition};
 
 pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
     input: &'a str,
@@ -41,16 +41,16 @@ enum Token<'source> {
     Bool(bool),
 
     #[token("{")]
-    BraceOpen,
+    CurlyOpen,
 
     #[token("}")]
-    BraceClose,
+    CurlyClose,
 
     #[token("[")]
-    BracketOpen,
+    SquareOpen,
 
     #[token("]")]
-    BracketClose,
+    SquareClose,
 
     #[token(":")]
     Colon,
@@ -98,6 +98,13 @@ impl<'a> Decoder<'a> {
             },
             _ => Err(DecodeError::InvalidData),
         }
+    }
+
+    fn expect(&mut self, token: Token) -> Result<(), DecodeError> {
+        if self.next_token()? != token {
+            return Err(DecodeError::InvalidData)
+        }
+        Ok(())
     }
 }
 
@@ -180,10 +187,10 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         struct_type: &StructType,
     ) -> Result<(), DecodeError> {
         let start = self.next_token()?;
-        if start != Token::BraceOpen {
+        if start != Token::CurlyOpen {
             return Err(DecodeError::InvalidData);
         }
-        if let Token::BraceClose = self.peek_token()? {
+        if let Token::CurlyClose = self.peek_token()? {
             self.tokens.next();
             return Ok(());
         }
@@ -201,7 +208,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
             let peek = self.peek_token()?;
             if Token::Comma == peek {
                 self.tokens.next();
-            } else if Token::BraceClose == peek {
+            } else if Token::CurlyClose == peek {
                 self.tokens.next();
                 return Ok(());
             } else {
@@ -212,11 +219,11 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
         let start = self.next_token()?;
-        if start != Token::BracketOpen {
+        if start != Token::SquareOpen {
             return Err(DecodeError::InvalidData);
         }
 
-        if Token::BracketClose == self.peek_token()? {
+        if Token::SquareClose == self.peek_token()? {
             self.tokens.next();
             return Ok(());
         }
@@ -226,7 +233,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
             let peek = self.peek_token()?;
             if Token::Comma == peek {
                 self.tokens.next();
-            } else if Token::BracketClose == peek {
+            } else if Token::SquareClose == peek {
                 self.tokens.next();
                 return Ok(());
             } else {
@@ -257,14 +264,28 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         todo!()
     }
 
-    fn decode_enum_discriminant(&mut self, enum_type: &EnumType) -> Result<i32, DecodeError> {
-        let s = self.expect_str()?;
-        let variant = enum_type.variants.iter().find(|v| v.name == s)
-            .ok_or(DecodeError::InvalidData)?;
-        Ok(variant.discriminant)
+    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor<'a>, enum_type: &EnumType) -> Result<(), DecodeError> {
+        let peek = self.peek_token()?;
+        if peek == Token::CurlyOpen {
+            self.tokens.next();
+            let name = self.expect_str()?;
+            let variant = find_variant(enum_type, &name)?;
+            self.expect(Token::Colon)?;
+            visitor.decode_variant(variant.discriminant, self)?;
+            self.expect(Token::CurlyClose)
+        } else {
+            let name = self.expect_str()?;
+            let variant = find_variant(enum_type, &name)?;
+            visitor.decode_variant(variant.discriminant, self)
+        }
     }
 
     fn mem_manager(&self) -> &'a MemoryManager {
         self.mem
     }
+}
+
+fn find_variant<'a>(enum_type: &EnumType<'a>, name: &str) -> Result<&'a EnumVariantDefinition<'a>, DecodeError> {
+    enum_type.variants.iter().find(|v| v.name == name)
+        .ok_or(DecodeError::InvalidData)
 }

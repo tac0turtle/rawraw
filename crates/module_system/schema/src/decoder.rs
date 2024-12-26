@@ -1,6 +1,6 @@
 //! The decoder trait and error type.
 
-use crate::enums::EnumType;
+use crate::enums::{EnumDecodeVisitor, EnumType};
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::structs::{StructDecodeVisitor, StructType};
@@ -59,7 +59,7 @@ pub trait Decoder<'a> {
     /// Decode an account ID.
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError>;
     /// Encode an enum value.
-    fn decode_enum_discriminant(&mut self, _enum_type: &EnumType) -> Result<i32, DecodeError>;
+    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor<'a>, enum_type: &EnumType) -> Result<(), DecodeError>;
     /// Decode time.
     fn decode_time(&mut self) -> Result<simple_time::Time, DecodeError>;
     /// Decode duration.

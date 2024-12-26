@@ -7,7 +7,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use crate::enums::EnumType;
+use crate::enums::{EnumDecodeVisitor, EnumType};
 
 pub fn decode_value<'a>(
     input: &'a [u8],
@@ -175,8 +175,9 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         }
     }
 
-    fn decode_enum_discriminant(&mut self, _enum_type: &EnumType) -> Result<i32, DecodeError> {
-        self.decode_i32()
+    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor, enum_type: &EnumType) -> Result<(), DecodeError> {
+        todo!();
+        // self.decode_i32()
     }
 }
 
@@ -302,8 +303,8 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         }
     }
 
-    fn decode_enum_discriminant(&mut self, _enum_type: &EnumType) -> Result<i32, DecodeError> {
-        self.decode_i32()
+    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor, enum_type: &EnumType) -> Result<(), DecodeError> {
+        todo!();
     }
 }
 

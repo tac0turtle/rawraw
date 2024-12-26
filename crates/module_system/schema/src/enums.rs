@@ -1,6 +1,7 @@
 use crate::kind::Kind;
 use crate::types::{Type, TypeVisitor};
 use ixc_schema_macros::SchemaValue;
+use crate::decoder::{DecodeError, Decoder};
 use crate::field::Field;
 
 #[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
@@ -37,6 +38,15 @@ pub unsafe trait EnumSchema: Sized {
     const ENUM_TYPE: EnumType<'static> = to_enum_type::<Self>();
 
     fn visit_variant_types<V: TypeVisitor>(visitor: &mut V);
+}
+
+pub unsafe trait EnumDecodeVisitor<'a> {
+    /// Decode a field from the input data.
+    fn decode_variant(
+        &mut self,
+        discriminant: i32,
+        decoder: &mut dyn Decoder<'a>,
+    ) -> Result<(), DecodeError>;
 }
 
 pub const fn to_enum_type<E: EnumSchema>() -> EnumType<'static> {
