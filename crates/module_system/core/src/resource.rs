@@ -15,6 +15,7 @@ pub unsafe trait Resources: Sized {
 
 /// The resource scope.
 #[derive(Default)]
+#[non_exhaustive]
 pub struct ResourceScope<'a> {
     /// The prefix of all state objects under this scope.
     pub state_scope: &'a [u8],

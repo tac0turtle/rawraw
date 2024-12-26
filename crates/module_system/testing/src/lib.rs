@@ -137,8 +137,10 @@ impl<V: NativeVM + 'static> TestApp<V> {
                 Default::default()
             }
         };
-        let mut scope = ResourceScope::default();
-        scope.account_resolver = Some(&bindings);
+        let scope = ResourceScope {
+            account_resolver: Some(&bindings),
+            ..Default::default()
+        };
         let h = unsafe { HC::Handler::new(&scope) }.unwrap();
         let mut ctx = self.client_context_for(client.account_id());
         f(&h, &mut ctx)

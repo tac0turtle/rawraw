@@ -5,7 +5,6 @@ use ixc_core::create_account;
 use ixc_core::known_accounts::ROOT_ACCOUNT;
 use ixc_message_api::AccountID;
 use ixc_testing::TestApp;
-use std::str::FromStr;
 
 #[ixc::handler(ClientBindingTest)]
 mod client_binding {
@@ -26,17 +25,17 @@ mod client_binding {
 
     impl ClientBindingTest {
         #[on_create]
-        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+        pub fn create(&self, _ctx: &mut Context) -> Result<()> {
             Ok(())
         }
 
         #[publish]
-        pub fn who_is_foo(&self, ctx: &Context) -> Result<AccountID> {
+        pub fn who_is_foo(&self, _ctx: &Context) -> Result<AccountID> {
             Ok(self.foo_client.account_id())
         }
 
         #[publish]
-        pub fn who_is_bar(&self, ctx: &Context) -> Result<AccountID> {
+        pub fn who_is_bar(&self, _ctx: &Context) -> Result<AccountID> {
             Ok(self.bar_client.account_id())
         }
     }
