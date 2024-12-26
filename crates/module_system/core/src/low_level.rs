@@ -5,7 +5,7 @@ use crate::message::{Message, MessageBase, QueryMessage};
 use crate::result::ClientResult;
 use crate::Context;
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::code::{ErrorCode, HandlerCode};
+use ixc_message_api::code::{ErrorCode, HandlerCode, StdCode};
 use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
@@ -155,11 +155,8 @@ pub fn encode_default_response<'b>(res: crate::Result<()>) -> Result<Response<'b
 pub fn encode_handler_error<E: HandlerCode>(
     err: HandlerError<E>,
 ) -> ixc_message_api::error::HandlerError {
-    let code = match &err.code {
-        None => StdCode::Other.into(),
-        Some(c) => ErrorCode::Custom((*c).into()),
-    };
-    let mut res = ixc_message_api::error::HandlerError::new(code);
+    let code: u16 = err.code.into();
+    let mut res = ixc_message_api::error::HandlerError::new(code.into());
     set_error_message(err, &mut res);
     res
 }

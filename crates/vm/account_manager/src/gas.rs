@@ -1,6 +1,6 @@
 //! Gas metering utility.
 use core::cell::Cell;
-use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::code::{ErrorCode, StdCode, SystemCode};
 
 /// A wrapper for gas.
 #[derive(Debug, Default, Clone)]
@@ -55,7 +55,7 @@ impl GasMeter {
         self.consumed.set(consumed);
         let limit = self.limit.get();
         if limit > 0 && consumed > limit {
-            Err(ErrorCode::SystemCode(SystemCode::OutOfGas))
+            Err(ErrorCode::Std(StdCode::OutOfGas))
         } else {
             Ok(())
         }
@@ -94,7 +94,7 @@ mod tests {
         assert_eq!(gas_meter.left(), Some(0));
         assert_eq!(
             gas_meter.consume(1),
-            Err(ErrorCode::SystemCode(SystemCode::OutOfGas))
+            Err(ErrorCode::Std(StdCode::OutOfGas))
         );
         assert_eq!(gas_meter.consumed(), 101); // gas is consumed even if it's out of gas
         assert_eq!(gas_meter.left(), Some(0));

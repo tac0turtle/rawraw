@@ -1,7 +1,7 @@
 use crate::gas::GasMeter;
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
-use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::code::{ErrorCode, StdCode, SystemCode};
 use ixc_message_api::gas::GasTracker;
 
 #[derive(Debug)]
@@ -40,7 +40,7 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
     ) -> Result<GasScopeGuard<'a, CALL_STACK_LIMIT>, ErrorCode> {
         // if we're already out of gas then just error out
         if self.meter().out_of_gas() {
-            return Err(ErrorCode::SystemCode(SystemCode::OutOfGas));
+            return Err(ErrorCode::Std(StdCode::OutOfGas));
         }
 
         let gas_start = self.gas.consumed.get();
@@ -69,7 +69,7 @@ impl<const CALL_STACK_LIMIT: usize> GasStack<CALL_STACK_LIMIT> {
             }
         };
         self.stack.borrow_mut().try_push(frame).map_err(|_| {
-            ErrorCode::SystemCode(ixc_message_api::code::SystemCode::CallStackOverflow)
+            ErrorCode::System(SystemCode::CallStackOverflow)
         })?;
         Ok(GasScopeGuard {
             stack: self,
@@ -163,7 +163,7 @@ mod tests {
                 // consuming any more causes an out of gas error
                 assert_eq!(
                     gas_stack.meter().consume(1),
-                    Err(ErrorCode::SystemCode(SystemCode::OutOfGas))
+                    Err(ErrorCode::Std(StdCode::OutOfGas))
                 );
                 assert_eq!(gas_stack.meter().consumed(), 12);
                 assert_eq!(gas_stack.meter().left(), Some(0));
@@ -228,7 +228,7 @@ mod tests {
                         assert_eq!(gas_stack.meter().left(), Some(5));
                         assert_eq!(
                             gas_stack.meter().consume(6),
-                            Err(ErrorCode::SystemCode(SystemCode::OutOfGas))
+                            Err(ErrorCode::Std(StdCode::OutOfGas))
                         );
                         scope.pop();
                         assert_eq!(tracker.consumed.get(), 6);

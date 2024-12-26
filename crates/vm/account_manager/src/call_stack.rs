@@ -2,8 +2,6 @@ use crate::scope_guard::{ScopeGuard, ScopeGuardStack};
 use arrayvec::ArrayVec;
 use core::cell::RefCell;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::StdCode::OutOfGas;
-use ixc_message_api::gas::Gas;
 use ixc_message_api::AccountID;
 
 #[derive(Debug)]
@@ -33,7 +31,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
             active_account: account_id,
         };
         self.call_stack.borrow_mut().try_push(frame).map_err(|_| {
-            ErrorCode::SystemCode(ixc_message_api::code::SystemCode::CallStackOverflow)
+            ErrorCode::System(ixc_message_api::code::SystemCode::CallStackOverflow)
         })?;
         Ok(ScopeGuard::new(self))
     }

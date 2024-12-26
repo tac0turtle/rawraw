@@ -17,24 +17,6 @@ pub struct HandlerError<E: HandlerCode = u8> {
 }
 
 impl<E: HandlerCode> HandlerError<E> {
-    /// Create a new error message.
-    pub fn new(msg: String) -> Self {
-        HandlerError {
-            code: ErrorCode::SystemCode(SystemCode::Other),
-            #[cfg(feature = "std")]
-            msg,
-        }
-    }
-
-    /// Create a new error message with a code.
-    pub fn new_with_code(code: E, msg: String) -> Self {
-        HandlerError {
-            code: ErrorCode::HandlerCode(code),
-            #[cfg(feature = "std")]
-            msg,
-        }
-    }
-
     /// Format a new error message.
     pub fn new_fmt(args: core::fmt::Arguments<'_>) -> Self {
         #[cfg(feature = "std")]
@@ -42,7 +24,7 @@ impl<E: HandlerCode> HandlerError<E> {
         #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
         Self {
-            code: None,
+            code: ErrorCode::Std(StdCode::Other),
             #[cfg(feature = "std")]
             msg: Some(message),
         }
@@ -55,7 +37,7 @@ impl<E: HandlerCode> HandlerError<E> {
         #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
         Self {
-            code: None,
+            code: ErrorCode::Custom(code),
             #[cfg(feature = "std")]
             msg: Some(message),
         }
@@ -64,23 +46,23 @@ impl<E: HandlerCode> HandlerError<E> {
     /// Format a new error message with a code.
     pub fn new_from_code(code: E) -> Self {
         Self {
-            code: None,
+            code: ErrorCode::Custom(code),
             #[cfg(feature = "std")]
             msg: None,
         }
-
+    }
 
     #[cfg(feature = "std")]
     fn fmt_error(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         if let Some(msg) = &self.msg {
-            if let Some(code) = &self.code {
-                write!(f, "code: {:?}: {}", code, msg)
+            if ErrorCode::Std(StdCode::Other) != self.code {
+                write!(f, "code: {:?}: {}", self.code, msg)
             } else {
                 write!(f, "{}", msg)
             }
         } else {
-            if let Some(code) = &self.code {
-                write!(f, "code: {:?}: ", code)
+            if ErrorCode::Std(StdCode::Other) != self.code {
+                write!(f, "code: {:?}: ", self.code)
             } else {
                 write!(f, "unknown error")
             }
@@ -109,11 +91,15 @@ impl<E: HandlerCode> Display for HandlerError<E> {
     }
 }
 
-impl<E: Error, F: HandlerCode> From<E> for HandlerError<F> {
-    fn from(value: E) -> Self {
+impl<E: HandlerCode, F: HandlerCode> From<ClientError<E>> for HandlerError<F> {
+    fn from(value: ClientError<E>) -> Self {
+        let code: ErrorCode<F> = if value.code == ErrorCode::Std(StdCode::OutOfGas) {
+            ErrorCode::Std(StdCode::OutOfGas)
+        } else {
+            ErrorCode::Std(StdCode::Other)
+        };
         HandlerError {
             code,
-            #[cfg(feature = "std")]
             #[cfg(feature = "std")]
             msg: Some(alloc::format!("got error: {}", value)),
         }
