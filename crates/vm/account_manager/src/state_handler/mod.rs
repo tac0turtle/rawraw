@@ -1,13 +1,13 @@
 //! State handler traits.
 pub mod std;
 
+use crate::gas::GasMeter;
 use crate::id_generator;
 use crate::id_generator::IDGenerator;
 use alloc::format;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::StdCode::EncodingError;
-use ixc_message_api::gas::Gas;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
 
@@ -18,7 +18,7 @@ pub trait StateHandler {
         &self,
         account_id: AccountID,
         key: &[u8],
-        gas: &Gas,
+        gas: &GasMeter,
         allocator: &'a dyn Allocator,
     ) -> Result<Option<&'a [u8]>, ErrorCode>;
     /// Set the value of the key.
@@ -27,23 +27,28 @@ pub trait StateHandler {
         account_id: AccountID,
         key: &[u8],
         value: &[u8],
-        gas: &Gas,
+        gas: &GasMeter,
     ) -> Result<(), ErrorCode>;
     /// Delete the value of the key.
-    fn kv_delete(&mut self, account_id: AccountID, key: &[u8], gas: &Gas) -> Result<(), ErrorCode>;
+    fn kv_delete(
+        &mut self,
+        account_id: AccountID,
+        key: &[u8],
+        gas: &GasMeter,
+    ) -> Result<(), ErrorCode>;
     /// Begin a transaction.
-    fn begin_tx(&mut self, gas: &Gas) -> Result<(), ErrorCode>;
+    fn begin_tx(&mut self, gas: &GasMeter) -> Result<(), ErrorCode>;
     /// Commit a transaction.
-    fn commit_tx(&mut self, gas: &Gas) -> Result<(), ErrorCode>;
+    fn commit_tx(&mut self, gas: &GasMeter) -> Result<(), ErrorCode>;
     /// Rollback a transaction.
-    fn rollback_tx(&mut self, gas: &Gas) -> Result<(), ErrorCode>;
+    fn rollback_tx(&mut self, gas: &GasMeter) -> Result<(), ErrorCode>;
 
     /// Handle a message packet.
     fn handle_exec<'a>(
         &mut self,
         account_id: AccountID,
         request: &Request,
-        gas: &Gas,
+        gas: &GasMeter,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode>;
 
@@ -52,21 +57,29 @@ pub trait StateHandler {
         &self,
         account_id: AccountID,
         request: &Request,
-        gas: &Gas,
+        gas: &GasMeter,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode>;
 
     /// Create storage for a new account.
-    fn create_account_storage(&mut self, account: AccountID, gas: &Gas) -> Result<(), ErrorCode>;
+    fn create_account_storage(
+        &mut self,
+        account: AccountID,
+        gas: &GasMeter,
+    ) -> Result<(), ErrorCode>;
 
     /// Delete all of an account's storage.
-    fn delete_account_storage(&mut self, account: AccountID, gas: &Gas) -> Result<(), ErrorCode>;
+    fn delete_account_storage(
+        &mut self,
+        account: AccountID,
+        gas: &GasMeter,
+    ) -> Result<(), ErrorCode>;
 }
 
 pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
     state_handler: &ST,
     account_id: AccountID,
-    gas: &Gas,
+    gas: &GasMeter,
     allocator: &'a dyn Allocator,
 ) -> Result<Option<&'a str>, ErrorCode> {
     let id: u128 = account_id.into();
@@ -86,7 +99,7 @@ pub(crate) fn init_next_account<ST: StateHandler, IDG: IDGenerator>(
     state_handler: &mut ST,
     handler_id: &str,
     allocator: &dyn Allocator,
-    gas: &Gas,
+    gas: &GasMeter,
 ) -> Result<AccountID, ErrorCode> {
     let id: u128 = id_generator
         .new_account_id(&mut StoreWrapper::wrap(state_handler, gas, allocator))?
@@ -101,7 +114,7 @@ pub(crate) fn set_handler_id<ST: StateHandler>(
     state_handler: &mut ST,
     account_id: AccountID,
     new_handler_id: &str,
-    gas: &Gas,
+    gas: &GasMeter,
 ) -> Result<(), ErrorCode> {
     let id: u128 = account_id.into();
     state_handler.kv_set(
@@ -116,7 +129,7 @@ pub(crate) fn set_handler_id<ST: StateHandler>(
 pub(crate) fn destroy_account_data<ST: StateHandler>(
     state_handler: &mut ST,
     account: AccountID,
-    gas: &Gas,
+    gas: &GasMeter,
 ) -> Result<(), ErrorCode> {
     let id: u128 = account.into();
     let key = format!("h:{}", id);
@@ -126,12 +139,12 @@ pub(crate) fn destroy_account_data<ST: StateHandler>(
 
 struct StoreWrapper<'a, S: StateHandler> {
     state_handler: &'a mut S,
-    gas: &'a Gas,
+    gas: &'a GasMeter,
     allocator: &'a dyn Allocator,
 }
 
 impl<'a, S: StateHandler> StoreWrapper<'a, S> {
-    fn wrap(state_handler: &'a mut S, gas: &'a Gas, allocator: &'a dyn Allocator) -> Self {
+    fn wrap(state_handler: &'a mut S, gas: &'a GasMeter, allocator: &'a dyn Allocator) -> Self {
         Self {
             state_handler,
             gas,

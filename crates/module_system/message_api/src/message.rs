@@ -21,11 +21,11 @@ pub type MessageSelector = u64;
 #[non_exhaustive]
 #[repr(C)]
 pub struct Request<'a> {
-    /// The message selector.
-    message_selector: MessageSelector,
-    /// The inputs to the message.
-    /// There can be up to three inputs.
-    inputs: [Param<'a>; 3],
+    // this struct is packed in this order so that we have the largest and most aligned items first
+    // and then smaller and less aligned items last
+    inputs_values: [ParamValue<'a>; 3], // size 16 * 3, aligned to 16 bytes
+    message_selector: MessageSelector,  // size 8, aligned to 8 bytes
+    inputs_types: [ParamType; 3],       // size 3, aligned to 1 byte
 }
 
 /// A message response.
@@ -33,27 +33,46 @@ pub struct Request<'a> {
 #[derive(Default)]
 #[repr(C)]
 pub struct Response<'a> {
-    /// The outputs of the message.
-    /// There can be up to two outputs.
-    outputs: [Param<'a>; 2],
+    outputs_values: [ParamValue<'a>; 2], // size 16 * 2, aligned to 16 bytes
+    outputs_types: [ParamType; 2],       // size 2, aligned to 1 byte
 }
 
 /// A message response.
 #[derive(Default)]
-#[non_exhaustive]
-#[repr(C, u8)]
-pub enum Param<'a> {
+pub struct Param<'a> {
+    value: ParamValue<'a>,
+    typ: ParamType,
+}
+
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+enum ParamType {
     /// An empty response.
     #[default]
     Empty,
     /// A slice parameter.
-    Slice(&'a [u8]),
+    Slice,
     /// A String parameter.
-    String(&'a str),
+    String,
     /// A u128 parameter.
-    U128(u128),
+    U128,
     /// An account ID parameter.
-    AccountID(AccountID),
+    AccountID,
+}
+
+#[derive(Clone, Copy)]
+union ParamValue<'a> {
+    empty: (),
+    slice: &'a [u8],
+    string: &'a str,
+    u128: u128,
+    account_id: AccountID,
+}
+
+impl Default for ParamValue<'_> {
+    fn default() -> Self {
+        Self { empty: () }
+    }
 }
 
 impl<'a> Message<'a> {
@@ -81,7 +100,8 @@ impl<'a> Request<'a> {
     pub fn new(message_selector: MessageSelector) -> Self {
         Self {
             message_selector,
-            inputs: Default::default(),
+            inputs_values: Default::default(),
+            inputs_types: Default::default(),
         }
     }
 
@@ -89,7 +109,8 @@ impl<'a> Request<'a> {
     pub fn new1(message_selector: MessageSelector, in1: Param<'a>) -> Self {
         Self {
             message_selector,
-            inputs: [in1, Param::Empty, Param::Empty],
+            inputs_values: [in1.value, ParamValue::default(), ParamValue::default()],
+            inputs_types: [in1.typ, ParamType::Empty, ParamType::Empty],
         }
     }
 
@@ -97,7 +118,8 @@ impl<'a> Request<'a> {
     pub fn new2(message_selector: MessageSelector, in1: Param<'a>, in2: Param<'a>) -> Self {
         Self {
             message_selector,
-            inputs: [in1, in2, Param::Empty],
+            inputs_values: [in1.value, in2.value, ParamValue::default()],
+            inputs_types: [in1.typ, in2.typ, ParamType::Empty],
         }
     }
 
@@ -110,7 +132,8 @@ impl<'a> Request<'a> {
     ) -> Self {
         Self {
             message_selector,
-            inputs: [in1, in2, in3],
+            inputs_values: [in1.value, in2.value, in3.value],
+            inputs_types: [in1.typ, in2.typ, in3.typ],
         }
     }
 
@@ -120,18 +143,27 @@ impl<'a> Request<'a> {
     }
 
     /// Get the first input parameter.
-    pub fn in1(&self) -> &Param<'a> {
-        &self.inputs[0]
+    pub fn in1(&self) -> Param<'a> {
+        Param {
+            typ: self.inputs_types[0],
+            value: self.inputs_values[0],
+        }
     }
 
     /// Get the second input parameter.
-    pub fn in2(&self) -> &Param<'a> {
-        &self.inputs[1]
+    pub fn in2(&self) -> Param<'a> {
+        Param {
+            typ: self.inputs_types[1],
+            value: self.inputs_values[1],
+        }
     }
 
     /// Get the third input parameter.
-    pub fn in3(&self) -> &Param<'a> {
-        &self.inputs[2]
+    pub fn in3(&self) -> Param<'a> {
+        Param {
+            typ: self.inputs_types[2],
+            value: self.inputs_values[2],
+        }
     }
 }
 
@@ -144,82 +176,139 @@ impl<'a> Response<'a> {
     /// Create a new response with one output.
     pub fn new1(out1: Param<'a>) -> Self {
         Self {
-            outputs: [out1, Param::Empty],
+            outputs_values: [out1.value, ParamValue::default()],
+            outputs_types: [out1.typ, ParamType::Empty],
         }
     }
 
     /// Create a new response with two outputs.
     pub fn new2(out1: Param<'a>, out2: Param<'a>) -> Self {
         Self {
-            outputs: [out1, out2],
+            outputs_values: [out1.value, out2.value],
+            outputs_types: [out1.typ, out2.typ],
         }
     }
 
     /// Get the first output parameter.
-    pub fn out1(&self) -> &Param<'a> {
-        &self.outputs[0]
+    pub fn out1(&self) -> Param<'a> {
+        Param {
+            typ: self.outputs_types[0],
+            value: self.outputs_values[0],
+        }
     }
 
     /// Get the second output parameter.
-    pub fn out2(&self) -> &Param<'a> {
-        &self.outputs[1]
+    pub fn out2(&self) -> Param<'a> {
+        Param {
+            typ: self.outputs_types[1],
+            value: self.outputs_values[1],
+        }
     }
 }
 
 impl<'a> Param<'a> {
     /// Expect the parameter to be a slice or return an encoding error.
     pub fn expect_bytes(&self) -> Result<&'a [u8], ErrorCode> {
-        match self {
-            Param::Slice(slice) => Ok(slice),
+        match self.typ {
+            ParamType::Slice => unsafe { Ok(self.value.slice) },
             _ => Err(EncodingError.into()),
         }
     }
 
     /// Expect the parameter to be a string or return an encoding error.
     pub fn expect_string(&self) -> Result<&'a str, ErrorCode> {
-        match self {
-            Param::String(string) => Ok(string),
+        match self.typ {
+            ParamType::String => unsafe { Ok(self.value.string) },
             _ => Err(EncodingError.into()),
         }
     }
 
     /// Expect the parameter to be a u128 or return an encoding error.
     pub fn expect_u128(&self) -> Result<u128, ErrorCode> {
-        match self {
-            Param::U128(u128) => Ok(*u128),
+        match self.typ {
+            ParamType::U128 => unsafe { Ok(self.value.u128) },
             _ => Err(EncodingError.into()),
         }
     }
 
     /// Expect the parameter to be an account ID or return an encoding error.
     pub fn expect_account_id(&self) -> Result<AccountID, ErrorCode> {
-        match self {
-            Param::AccountID(account_id) => Ok(*account_id),
+        match self.typ {
+            ParamType::AccountID => unsafe { Ok(self.value.account_id) },
             _ => Err(EncodingError.into()),
+        }
+    }
+
+    /// Returns true if the parameter is empty.
+    pub fn is_empty(&self) -> bool {
+        self.typ == ParamType::Empty
+    }
+
+    /// Returns the paremeter as a slice if it is a slice.
+    pub fn as_slice(&self) -> Option<&'a [u8]> {
+        match self.typ {
+            ParamType::Slice => unsafe { Some(self.value.slice) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as a string if it is a string.
+    pub fn as_string(&self) -> Option<&'a str> {
+        match self.typ {
+            ParamType::String => unsafe { Some(self.value.string) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as a u128 if it is a u128.
+    pub fn as_u128(&self) -> Option<u128> {
+        match self.typ {
+            ParamType::U128 => unsafe { Some(self.value.u128) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as an account ID if it is an account ID.
+    pub fn as_account_id(&self) -> Option<AccountID> {
+        match self.typ {
+            ParamType::AccountID => unsafe { Some(self.value.account_id) },
+            _ => None,
         }
     }
 }
 
 impl<'a> From<&'a [u8]> for Param<'a> {
     fn from(slice: &'a [u8]) -> Self {
-        Param::Slice(slice)
+        Param {
+            typ: ParamType::Slice,
+            value: ParamValue { slice },
+        }
     }
 }
 
 impl<'a> From<&'a str> for Param<'a> {
     fn from(string: &'a str) -> Self {
-        Param::String(string)
+        Param {
+            typ: ParamType::String,
+            value: ParamValue { string },
+        }
     }
 }
 
 impl From<u128> for Param<'_> {
     fn from(u128: u128) -> Self {
-        Param::U128(u128)
+        Param {
+            typ: ParamType::U128,
+            value: ParamValue { u128 },
+        }
     }
 }
 
 impl From<AccountID> for Param<'_> {
     fn from(account_id: AccountID) -> Self {
-        Param::AccountID(account_id)
+        Param {
+            typ: ParamType::AccountID,
+            value: ParamValue { account_id },
+        }
     }
 }

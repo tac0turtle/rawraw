@@ -1,5 +1,6 @@
 #[cfg(feature = "std")]
 extern crate alloc;
+use crate::result::ClientResult;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::HostBackend;
 use ixc_message_api::AccountID;
@@ -85,8 +86,15 @@ impl<'a> Context<'a> {
     }
 
     /// Consume gas. Returns an out of gas error if there is not enough gas.
-    pub fn consume_gas(&mut self, gas: u64) -> Result<(), ErrorCode> {
-        self.with_backend(|backend| backend.consume_gas(gas))
+    pub fn consume_gas(&mut self, gas: u64) -> ClientResult<()> {
+        self.with_backend(|backend| backend.consume_gas(gas))?;
+        Ok(())
+    }
+
+    /// Returns true if there is not enough gas to continue execution.
+    pub fn out_of_gas(&self) -> ClientResult<bool> {
+        let res = self.with_backend(|backend| backend.out_of_gas())?;
+        Ok(res)
     }
 
     /// Get the memory manager.

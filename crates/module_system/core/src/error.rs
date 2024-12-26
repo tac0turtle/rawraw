@@ -11,12 +11,30 @@ use ixc_schema::encoder::EncodeError;
 /// The standard error type returned by handlers.
 #[derive(Clone)]
 pub struct HandlerError<E: HandlerCode = u8> {
-    pub(crate) code: Option<E>,
+    pub(crate) code: ErrorCode<E>,
     #[cfg(feature = "std")]
     pub(crate) msg: Option<alloc::string::String>,
 }
 
 impl<E: HandlerCode> HandlerError<E> {
+    /// Create a new error message.
+    pub fn new(msg: String) -> Self {
+        HandlerError {
+            code: ErrorCode::SystemCode(SystemCode::Other),
+            #[cfg(feature = "std")]
+            msg,
+        }
+    }
+
+    /// Create a new error message with a code.
+    pub fn new_with_code(code: E, msg: String) -> Self {
+        HandlerError {
+            code: ErrorCode::HandlerCode(code),
+            #[cfg(feature = "std")]
+            msg,
+        }
+    }
+
     /// Format a new error message.
     pub fn new_fmt(args: core::fmt::Arguments<'_>) -> Self {
         #[cfg(feature = "std")]
@@ -50,7 +68,7 @@ impl<E: HandlerCode> HandlerError<E> {
             #[cfg(feature = "std")]
             msg: None,
         }
-    }
+
 
     #[cfg(feature = "std")]
     fn fmt_error(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
@@ -94,7 +112,8 @@ impl<E: HandlerCode> Display for HandlerError<E> {
 impl<E: Error, F: HandlerCode> From<E> for HandlerError<F> {
     fn from(value: E) -> Self {
         HandlerError {
-            code: None,
+            code,
+            #[cfg(feature = "std")]
             #[cfg(feature = "std")]
             msg: Some(alloc::format!("got error: {}", value)),
         }

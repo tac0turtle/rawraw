@@ -5,6 +5,7 @@ mod store;
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 use crate::store::VersionedMultiStore;
 use allocator_api2::alloc::Allocator;
+use ixc_account_manager::gas::GasMeter;
 use ixc_account_manager::id_generator::IncrementingIDGenerator;
 use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
 use ixc_account_manager::state_handler::std::StdStateHandler;
@@ -20,7 +21,6 @@ use ixc_core::Context;
 use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, StdCode};
-use ixc_message_api::gas::Gas;
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
@@ -160,7 +160,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn invoke_msg<'a>(
         &mut self,
         message: &Message,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         let mut backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
@@ -183,7 +183,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn invoke_query<'a>(
         &self,
         message: &Message,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         // TODO add a read only state handler impl for query
         let backend = self.backend.lock().unwrap();
@@ -196,7 +196,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn update_state<'a>(
         &mut self,
         req: &Request,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         let mut backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
@@ -204,7 +204,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         let res = state.handle_exec(
             self.account,
             req,
-            &Gas::unlimited(),
+            &GasMeter::unlimited(),
             invoke_params.allocator,
         )?;
         backend
@@ -217,7 +217,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
     fn query_state<'a>(
         &self,
         req: &Request,
-        invoke_params: &InvokeParams<'a>,
+        invoke_params: &InvokeParams<'a, '_>,
     ) -> Result<Response<'a>, ErrorCode> {
         let backend = self.backend.lock().unwrap();
         let mut tx = backend.state.new_transaction();
@@ -225,13 +225,17 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         state.handle_query(
             self.account,
             req,
-            &Gas::unlimited(),
+            &GasMeter::unlimited(),
             invoke_params.allocator,
         )
     }
 
     fn consume_gas(&self, _gas: u64) -> Result<(), ErrorCode> {
         Ok(())
+    }
+
+    fn out_of_gas(&self) -> Result<bool, ErrorCode> {
+        Ok(false)
     }
 }
 
