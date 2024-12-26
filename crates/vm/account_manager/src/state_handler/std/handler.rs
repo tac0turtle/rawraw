@@ -5,7 +5,7 @@ use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::ErrorCode::SystemCode;
-use ixc_message_api::code::SystemCode::{FatalExecutionError, MessageNotHandled};
+use ixc_message_api::code::SystemCode::MessageNotHandled;
 use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
 
@@ -48,9 +48,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         _gas: &GasMeter,
         allocator: &'a dyn Allocator,
     ) -> Result<Option<&'a [u8]>, ErrorCode> {
-        self.state
-            .kv_get(account_id, None, key, allocator)
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.kv_get(account_id, None, key, allocator)
     }
 
     fn kv_set(
@@ -60,9 +58,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         value: &[u8],
         _gas: &GasMeter,
     ) -> Result<(), ErrorCode> {
-        self.state
-            .kv_set(account_id, None, key, value)
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.kv_set(account_id, None, key, value)
     }
 
     fn kv_delete(
@@ -71,27 +67,19 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         key: &[u8],
         _gas: &GasMeter,
     ) -> Result<(), ErrorCode> {
-        self.state
-            .kv_delete(account_id, None, key)
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.kv_delete(account_id, None, key)
     }
 
     fn begin_tx(&mut self, _gas: &GasMeter) -> Result<(), ErrorCode> {
-        self.state
-            .begin_tx()
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.begin_tx()
     }
 
     fn commit_tx(&mut self, _gas: &GasMeter) -> Result<(), ErrorCode> {
-        self.state
-            .commit_tx()
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.commit_tx()
     }
 
     fn rollback_tx(&mut self, _gas: &GasMeter) -> Result<(), ErrorCode> {
-        self.state
-            .rollback_tx()
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.rollback_tx()
     }
 
     fn handle_exec<'a>(
@@ -111,6 +99,12 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
             DELETE_SELECTOR => {
                 let key = request.in1().expect_bytes()?;
                 self.kv_delete(account_id, key, gas)?;
+                Ok(Default::default())
+            }
+            EMIT_EVENT_SELECTOR => {
+                let body = request.in1().expect_bytes()?;
+                let type_selector = request.in2().expect_u64()?;
+                self.state.emit_event(account_id, type_selector, body)?;
                 Ok(Default::default())
             }
             _ => Err(SystemCode(MessageNotHandled)),
@@ -142,9 +136,7 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         account: AccountID,
         _gas: &GasMeter,
     ) -> Result<(), ErrorCode> {
-        self.state
-            .create_account_storage(account)
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.create_account_storage(account)
     }
 
     fn delete_account_storage(
@@ -152,12 +144,11 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
         account: AccountID,
         _gas: &GasMeter,
     ) -> Result<(), ErrorCode> {
-        self.state
-            .delete_account_storage(account)
-            .map_err(|_| SystemCode(FatalExecutionError))
+        self.state.delete_account_storage(account)
     }
 }
 
 const GET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.get");
 const SET_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.set");
 const DELETE_SELECTOR: MessageSelector = message_selector!("ixc.store.v1.delete");
+const EMIT_EVENT_SELECTOR: MessageSelector = message_selector!("ixc.events.1.emit");

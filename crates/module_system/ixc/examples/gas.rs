@@ -99,7 +99,7 @@ mod tests {
         let tracker = GasTracker::unlimited();
         let res = dynamic_invoke_msg_with_gas_tracker(
             &mut alice,
-            gas1_client.account_id(),
+            gas1_client.target_account(),
             GasEater1EatSomeGas {},
             Some(&tracker),
         );
@@ -108,7 +108,7 @@ mod tests {
         let tracker = GasTracker::new(Some(50));
         let res = dynamic_invoke_msg_with_gas_tracker(
             &mut alice,
-            gas1_client.account_id(),
+            gas1_client.target_account(),
             GasEater1EatSomeGas {},
             Some(&tracker),
         );
@@ -121,15 +121,15 @@ mod tests {
 
         app.register_handler::<GasEater2>().unwrap();
         let gas2_client = create_account::<GasEater2>(&mut alice, GasEater2Create {}).unwrap();
-        let res = gas2_client.call_eat_gas(&mut alice, gas1_client.account_id(), None);
+        let res = gas2_client.call_eat_gas(&mut alice, gas1_client.target_account(), None);
         assert_eq!(res.unwrap(), 100);
 
         let tracker = GasTracker::unlimited();
         let res = dynamic_invoke_msg_with_gas_tracker(
             &mut alice,
-            gas2_client.account_id(),
+            gas2_client.target_account(),
             GasEater2CallEatGas {
-                gas_eater: gas1_client.account_id(),
+                gas_eater: gas1_client.target_account(),
                 limit: None,
             },
             Some(&tracker),
@@ -140,9 +140,9 @@ mod tests {
         let tracker = GasTracker::limited(200);
         let res = dynamic_invoke_msg_with_gas_tracker(
             &mut alice,
-            gas2_client.account_id(),
+            gas2_client.target_account(),
             GasEater2CallEatGas {
-                gas_eater: gas1_client.account_id(),
+                gas_eater: gas1_client.target_account(),
                 limit: Some(50),
             },
             Some(&tracker),

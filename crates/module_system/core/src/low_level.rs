@@ -5,14 +5,18 @@ use crate::message::{Message, MessageBase, QueryMessage};
 use crate::result::ClientResult;
 use crate::Context;
 use allocator_api2::alloc::Allocator;
+use ixc_core_macros::message_selector;
 use ixc_message_api::code::{ErrorCode, HandlerCode};
 use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::InvokeParams;
-use ixc_message_api::message::{Request, Response};
+use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
+use ixc_schema::binary::NativeBinaryCodec;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
+use ixc_schema::structs::StructSchema;
 use ixc_schema::value::OptionalValue;
+use ixc_schema::SchemaValue;
 
 /// Dynamically invokes an account message.
 /// Static account client instances should be preferred wherever possible,
@@ -94,7 +98,7 @@ fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
     // create the message packet and fill in call details
     Ok(ixc_message_api::message::Message::new(
         account,
-        Request::new1(M::SELECTOR, msg_body.into()),
+        Request::new1(M::TYPE_SELECTOR, msg_body.into()),
     ))
 }
 
@@ -158,3 +162,22 @@ pub fn encode_handler_error<'b, E: HandlerCode>(
     let code: u16 = err.code.into();
     Err(code.into())
 }
+
+/// Emits an event.
+pub fn emit_event<'a, E: StructSchema + SchemaValue<'a>>(
+    ctx: &mut Context,
+    event: &E,
+) -> ClientResult<()> {
+    let cdc = NativeBinaryCodec;
+    let event_bytes = cdc.encode_value(event, ctx.memory_manager())?;
+    let req = Request::new2(
+        EMIT_EVENT_SELECTOR,
+        event_bytes.into(),
+        E::TYPE_SELECTOR.into(),
+    );
+    let params = InvokeParams::new(ctx.memory_manager(), None);
+    let _ = ctx.with_backend_mut(|backend| backend.update_state(&req, &params))?;
+    Ok(())
+}
+
+const EMIT_EVENT_SELECTOR: MessageSelector = message_selector!("ixc.events.1.emit");
