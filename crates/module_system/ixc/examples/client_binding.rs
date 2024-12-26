@@ -44,23 +44,18 @@ mod client_binding {
 fn main() {
     let test_app = TestApp::default();
     test_app.register_handler::<ClientBindingTest>().unwrap();
-    println!("Registered ClientBindingTest handler");
     let mut alice = test_app.new_client_context().unwrap();
-    println!("created alice");
     let binding_test_client =
         create_account::<ClientBindingTest>(&mut alice, ClientBindingTestCreate {}).unwrap();
-    println!("created test client");
     let foo = binding_test_client.who_is_foo(&alice).unwrap();
-    println!("foo is {:?}", foo);
     let bar = binding_test_client.who_is_bar(&alice).unwrap();
-    println!("bar is {:?}", bar);
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
         panic!("expected at least two arguments");
     }
-    // let expected_foo = u128::from_str_radix(&args[1], 16).unwrap();
-    // let expected_bar = u128::from_str_radix(&args[2], 16).unwrap();
-    // assert_eq!(foo, AccountID::new(expected_foo));
-    // assert_eq!(bar, AccountID::new(expected_bar));
-    // println!("Successfully matched expected account IDs");
+    let expected_foo = u128::from_str_radix(&args[1], 16).unwrap();
+    let expected_bar = u128::from_str_radix(&args[2], 16).unwrap();
+    assert_eq!(foo, AccountID::new(expected_foo));
+    assert_eq!(bar, AccountID::new(expected_bar));
+    println!("Successfully matched expected account IDs");
 }

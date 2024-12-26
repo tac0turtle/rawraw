@@ -14,12 +14,13 @@ include!(concat!(env!("OUT_DIR"), "/known_accounts.rs"));
 /// In the future, we can switch this to a binary search if we want to
 /// make it more performant at runtime.
 pub const fn lookup_known_account(name: &str) -> Option<AccountID> {
-    let idx = 0;
+    let mut idx = 0;
     while idx < KNOWN_ACCOUNTS.len() {
         let (k, v) = KNOWN_ACCOUNTS[idx];
         if const_eq(name, k) {
             return Some(AccountID::new(v));
         }
+        idx += 1;
     }
     None
 }
