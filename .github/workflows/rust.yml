@@ -44,3 +44,12 @@ jobs:
           cargo miri setup
       - name: Test with Miri
         run: cargo miri test
+  test-ixc-config:
+    name: "test-ixc-config"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Test client binding example
+        working-directory: crates/module_system/ixc
+        run: ./test_client_binding.sh
