@@ -3,7 +3,7 @@ use deluxe::ParseAttributes;
 use manyhow::bail;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
-use syn::{Attribute, DataEnum, Expr, ExprLit, Fields, Lit};
+use syn::{Attribute, DataEnum, Expr, ExprLit, Fields, Lit, PathSegment, Type};
 
 pub(crate) fn derive_enum_schema(
     input: &syn::DeriveInput,
