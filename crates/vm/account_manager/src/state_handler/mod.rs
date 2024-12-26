@@ -10,7 +10,7 @@ use ixc_core::known_accounts::ROOT_ACCOUNT;
 use ixc_message_api::code::ErrorCode;
 use ixc_message_api::code::SystemCode::EncodingError;
 use ixc_message_api::message::{Request, Response};
-use ixc_message_api::{AccountID};
+use ixc_message_api::AccountID;
 
 /// The state handler trait.
 pub trait StateHandler {

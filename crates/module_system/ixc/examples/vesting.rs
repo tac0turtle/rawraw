@@ -154,8 +154,8 @@ mod vesting {
 #[cfg(test)]
 mod tests {
     use super::vesting::*;
-    use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_core::handler::{Client, Service};
+    use ixc_core::known_accounts::ROOT_ACCOUNT;
     use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
     use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;

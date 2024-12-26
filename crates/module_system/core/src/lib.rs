@@ -9,13 +9,13 @@ mod context;
 pub mod error;
 mod events;
 pub mod handler;
+pub mod known_accounts;
 pub mod low_level;
 pub mod message;
 pub mod resource;
 pub mod result;
 pub mod routing;
 mod unique_id;
-pub mod known_accounts;
 
 pub use account_api::create_account;
 pub use context::Context;

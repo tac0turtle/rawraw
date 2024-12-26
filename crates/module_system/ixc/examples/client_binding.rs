@@ -2,10 +2,10 @@
 
 use crate::client_binding::{ClientBindingTest, ClientBindingTestCreate};
 use ixc_core::create_account;
+use ixc_core::known_accounts::ROOT_ACCOUNT;
 use ixc_message_api::AccountID;
 use ixc_testing::TestApp;
 use std::str::FromStr;
-use ixc_core::known_accounts::ROOT_ACCOUNT;
 
 #[ixc::handler(ClientBindingTest)]
 mod client_binding {
