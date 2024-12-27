@@ -272,10 +272,16 @@ impl APIBuilder {
                         let evt_type = args.args.first().cloned();
                         event_visit.push(quote! { visitor.visit::<< #evt_type as ::ixc::schema::value::SchemaValue>::Type>(); });
                     } else {
-                        bail!("expected event type as a generic argument to EventBus, got {:?}", event);
+                        bail!(
+                            "expected event type as a generic argument to EventBus, got {:?}",
+                            event
+                        );
                     }
                 } else {
-                    bail!("expected event type as a generic argument to EventBus, got {:?}", event);
+                    bail!(
+                        "expected event type as a generic argument to EventBus, got {:?}",
+                        event
+                    );
                 }
             }
 

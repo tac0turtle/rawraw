@@ -1,11 +1,13 @@
 //! Field kinds.
-use num_enum::{IntoPrimitive, TryFromPrimitive};
 use ixc_schema_macros::SchemaValue;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 /// The basic type of a field.
 #[non_exhaustive]
 #[repr(i32)]
-#[derive(TryFromPrimitive, IntoPrimitive, Debug, Clone, Copy, PartialEq, Eq, SchemaValue, Default)]
+#[derive(
+    TryFromPrimitive, IntoPrimitive, Debug, Clone, Copy, PartialEq, Eq, SchemaValue, Default,
+)]
 pub enum Kind {
     /// An unknown and invalid kind.
     #[default]

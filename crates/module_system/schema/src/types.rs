@@ -11,8 +11,8 @@ use crate::enums::EnumSchema;
 use crate::field::Field;
 use crate::kind::Kind;
 use crate::schema::SchemaType;
-use crate::SchemaValue;
 use crate::structs::StructSchema;
+use crate::SchemaValue;
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
 pub trait Type {
@@ -268,7 +268,12 @@ impl TypeVisitor for TypeCollector {
 #[cfg(feature = "std")]
 impl TypeCollector {
     /// Finish type collection and return the collected types or errors if there were any.
-    pub fn finish(self) -> Result<alloc::collections::BTreeMap<&'static str, SchemaType<'static>>, alloc::vec::Vec<&'static str>> {
+    pub fn finish(
+        self,
+    ) -> Result<
+        alloc::collections::BTreeMap<&'static str, SchemaType<'static>>,
+        alloc::vec::Vec<&'static str>,
+    > {
         if self.errors.is_empty() {
             Ok(self.types)
         } else {
@@ -279,7 +284,10 @@ impl TypeCollector {
 
 /// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]
-pub fn collect_types<'a, T: SchemaValue<'a>>() -> Result<alloc::collections::BTreeMap<&'static str, SchemaType<'static>>, alloc::vec::Vec<&'static str>> {
+pub fn collect_types<'a, T: SchemaValue<'a>>() -> Result<
+    alloc::collections::BTreeMap<&'static str, SchemaType<'static>>,
+    alloc::vec::Vec<&'static str>,
+> {
     let mut visitor = TypeCollector::default();
     visitor.visit::<T::Type>();
     <T::Type>::visit_referenced_types(&mut visitor);

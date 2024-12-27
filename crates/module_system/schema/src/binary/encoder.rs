@@ -57,7 +57,7 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
         let mut inner = InnerEncoder::<W> { outer: &mut sub };
         let size = visitor.size();
         for i in 0..size {
-            visitor.encode(size- i - 1, &mut inner)?;
+            visitor.encode(size - i - 1, &mut inner)?;
         }
         self.encode_u32(size as u32)?;
         Ok(())
@@ -134,7 +134,12 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
         }
     }
 
-    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+    fn encode_enum_variant(
+        &mut self,
+        discriminant: i32,
+        enum_type: &EnumType,
+        value: Option<&dyn ValueCodec>,
+    ) -> Result<(), EncodeError> {
         if let Some(value) = value {
             value.encode(self)?;
         }
@@ -253,7 +258,12 @@ impl crate::encoder::Encoder for EncodeSizer {
         }
     }
 
-    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+    fn encode_enum_variant(
+        &mut self,
+        discriminant: i32,
+        enum_type: &EnumType,
+        value: Option<&dyn ValueCodec>,
+    ) -> Result<(), EncodeError> {
         if let Some(value) = value {
             value.encode(self)?;
         }
@@ -362,8 +372,14 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         Ok(())
     }
 
-    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
-        self.outer.encode_enum_variant(discriminant, enum_type, value)
+    fn encode_enum_variant(
+        &mut self,
+        discriminant: i32,
+        enum_type: &EnumType,
+        value: Option<&dyn ValueCodec>,
+    ) -> Result<(), EncodeError> {
+        self.outer
+            .encode_enum_variant(discriminant, enum_type, value)
     }
 }
 
@@ -471,8 +487,14 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
         Ok(())
     }
 
-    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
-       self.outer.encode_enum_variant(discriminant, enum_type, value)
+    fn encode_enum_variant(
+        &mut self,
+        discriminant: i32,
+        enum_type: &EnumType,
+        value: Option<&dyn ValueCodec>,
+    ) -> Result<(), EncodeError> {
+        self.outer
+            .encode_enum_variant(discriminant, enum_type, value)
     }
 }
 

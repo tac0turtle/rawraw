@@ -2,11 +2,11 @@
 
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
+use crate::encoding::Encoding;
 use crate::mem::MemoryManager;
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
-use crate::encoding::Encoding;
 
 /// Trait implemented by encoding protocols.
 pub trait Codec {

@@ -50,7 +50,11 @@ unsafe impl<T: ObjectValue> StateObjectResource for Item<T> {
     }
 
     #[cfg(feature = "std")]
-    fn descriptor<'a>(collection_name: &'a str, key_names: &[&'a str], value_names: &[&'a str]) -> StateObjectDescriptor<'a> {
+    fn descriptor<'a>(
+        collection_name: &'a str,
+        key_names: &[&'a str],
+        value_names: &[&'a str],
+    ) -> StateObjectDescriptor<'a> {
         Map::<(), T>::descriptor(collection_name, key_names, &[collection_name])
     }
 }

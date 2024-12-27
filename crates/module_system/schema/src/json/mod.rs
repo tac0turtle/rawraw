@@ -7,11 +7,11 @@ pub use encoder::encode_value;
 
 #[cfg(test)]
 mod tests {
-    use proptest::proptest;
     use crate::json::decoder::decode_value;
     use crate::json::encoder::encode_value;
-    use crate::testdata::{ABitOfEverything, TestEnum};
     use crate::testdata::Prims;
+    use crate::testdata::{ABitOfEverything, TestEnum};
+    use proptest::proptest;
 
     extern crate std;
 

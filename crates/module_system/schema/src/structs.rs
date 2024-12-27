@@ -1,10 +1,10 @@
 //! Struct codec and schema traits.
 
-use ixc_schema_macros::SchemaValue;
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::field::Field;
 use crate::types::TypeVisitor;
+use ixc_schema_macros::SchemaValue;
 
 /// StructSchema describes the schema of a struct.
 /// # Safety
@@ -59,6 +59,10 @@ pub struct StructType<'a> {
 impl<'a> StructType<'a> {
     /// Create a new struct type.
     pub const fn new(name: &'a str, fields: &'a [Field<'a>], sealed: bool) -> Self {
-        Self { name, fields, sealed }
+        Self {
+            name,
+            fields,
+            sealed,
+        }
     }
 }

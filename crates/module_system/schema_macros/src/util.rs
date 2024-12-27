@@ -1,8 +1,8 @@
 use manyhow::bail;
+use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, ImplGenerics, Lifetime, TypeGenerics};
-use proc_macro2::TokenStream as TokenStream2;
 
 pub(crate) fn has_attribute<I>(attrs: &Vec<Attribute>, ident: &I) -> bool
 where

@@ -1,9 +1,9 @@
 //! Enum types.
-use ixc_schema_macros::SchemaValue;
-use crate::kind::Kind;
-use crate::types::{Type, TypeVisitor};
 use crate::decoder::{DecodeError, Decoder};
 use crate::field::Field;
+use crate::kind::Kind;
+use crate::types::{Type, TypeVisitor};
+use ixc_schema_macros::SchemaValue;
 
 /// An enum type.
 #[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
@@ -34,7 +34,11 @@ pub struct EnumVariantDefinition<'a> {
 impl<'a> EnumVariantDefinition<'a> {
     /// Create a new enum variant definition.
     pub const fn new(name: &'a str, discriminant: i32, value: Option<Field<'a>>) -> Self {
-        Self { name, discriminant, value }
+        Self {
+            name,
+            discriminant,
+            value,
+        }
     }
 }
 

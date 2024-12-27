@@ -1,8 +1,8 @@
 //! Client descriptors.
 
+use crate::message::MessageDescriptor;
 use alloc::vec;
 use alloc::vec::Vec;
-use crate::message::MessageDescriptor;
 use ixc_message_api::AccountID;
 use ixc_schema_macros::SchemaValue;
 
@@ -18,10 +18,13 @@ pub struct ClientDescriptor<'a> {
     pub messages: Vec<MessageDescriptor<'a>>,
 }
 
-
 impl<'a> ClientDescriptor<'a> {
     /// Create a new client descriptor with a name and account ID but no messages.
     pub const fn new(name: &'a str, account_id: AccountID) -> Self {
-        Self { name, account_id, messages: vec![] }
+        Self {
+            name,
+            account_id,
+            messages: vec![],
+        }
     }
 }

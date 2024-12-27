@@ -7,15 +7,15 @@ mod prefix;
 mod value;
 mod value_field;
 
+use crate::encoding::Encoding;
+use crate::field::Field;
 use alloc::vec::Vec;
 use ixc_schema_macros::SchemaValue;
-use crate::field::Field;
 pub use key::{decode_object_key, encode_object_key, ObjectKey};
 pub use key_field::KeyFieldValue;
 pub use prefix::PrefixKey;
 pub use value::{decode_object_value, encode_object_value, ObjectValue};
 pub use value_field::{Bytes, ObjectFieldValue, Str};
-use crate::encoding::Encoding;
 
 #[cfg(feature = "std")]
 /// A type representing objects stored in key-value store state.

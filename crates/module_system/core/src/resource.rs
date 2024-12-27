@@ -1,11 +1,11 @@
 //! Resource module.
 
+use crate::handler::Client;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
 use ixc_schema::client::ClientDescriptor;
 use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::TypeVisitor;
-use crate::handler::Client;
 
 /// An account or module handler's resources.
 /// This is usually derived by the state management framework.
@@ -60,7 +60,11 @@ pub unsafe trait StateObjectResource: Sized {
 
     #[cfg(feature = "std")]
     /// Gets the descriptor for the state object with the supplied names.
-    fn descriptor<'a>(collection_name: &'a str, key_names: &[&'a str], value_names: &[&'a str]) -> StateObjectDescriptor<'a>;
+    fn descriptor<'a>(
+        collection_name: &'a str,
+        key_names: &[&'a str],
+        value_names: &[&'a str],
+    ) -> StateObjectDescriptor<'a>;
 }
 
 /// An error that occurs during resource initialization.
@@ -101,7 +105,13 @@ pub trait ResourcesVisitor<'a>: TypeVisitor {
 
 /// Extract the state object descriptor for a state object.
 /// Used in macros to extract state object schemas.
-pub fn extract_state_object_descriptor<'a, R: StateObjectResource, V: ResourcesVisitor<'a>>(visitor: &mut V, prefix: u8, collection_name: &'a str, key_names: &'a [&'a str], value_names: &'a [&'a str]) {
+pub fn extract_state_object_descriptor<'a, R: StateObjectResource, V: ResourcesVisitor<'a>>(
+    visitor: &mut V,
+    prefix: u8,
+    collection_name: &'a str,
+    key_names: &'a [&'a str],
+    value_names: &'a [&'a str],
+) {
     let mut state_object = R::descriptor(collection_name, key_names, value_names);
     state_object.prefix = alloc::vec![prefix];
     visitor.visit_state_object(&state_object);

@@ -1,11 +1,11 @@
 //! Account handler schemas.
 
-use alloc::vec::Vec;
-use ixc_schema_macros::SchemaValue;
 use crate::client::ClientDescriptor;
 use crate::message::MessageDescriptor;
 use crate::schema::SchemaType;
 use crate::state_object::StateObjectDescriptor;
+use alloc::vec::Vec;
+use ixc_schema_macros::SchemaValue;
 
 /// An account handler schema.
 #[non_exhaustive]
@@ -20,8 +20,6 @@ pub struct HandlerSchema<'a> {
     /// The statically defined clients that the client uses to communicate with other accounts.
     pub clients: Vec<ClientDescriptor<'a>>,
 }
-
-
 
 #[cfg(test)]
 mod tests {

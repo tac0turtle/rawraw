@@ -1,7 +1,7 @@
 //! Field definition.
 
-use ixc_schema_macros::SchemaValue;
 use crate::kind::Kind;
+use ixc_schema_macros::SchemaValue;
 
 /// A field in a type.
 #[non_exhaustive]

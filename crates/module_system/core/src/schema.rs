@@ -1,5 +1,6 @@
 //! Schema extraction and printing utilities.
-use crate::handler::{Client, APISchemaVisitor, Handler};
+use crate::handler::{APISchemaVisitor, Client, Handler};
+use crate::resource::ResourcesVisitor;
 use alloc::string::{String, ToString};
 use ixc_schema::client::ClientDescriptor;
 use ixc_schema::handler::HandlerSchema;
@@ -7,7 +8,6 @@ use ixc_schema::json;
 use ixc_schema::message::MessageDescriptor;
 use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::{Type, TypeCollector, TypeVisitor};
-use crate::resource::ResourcesVisitor;
 
 extern crate std;
 
@@ -25,12 +25,12 @@ pub fn extract_handler_schema<'a, H: Handler>() -> Result<HandlerSchema<'a>, Str
             self.type_collector.visit::<T>();
         }
     }
-    impl <'b> APISchemaVisitor<'b> for Visitor<'b> {
+    impl<'b> APISchemaVisitor<'b> for Visitor<'b> {
         fn visit_message(&mut self, messages: &MessageDescriptor<'b>) {
             self.messages.push(messages.clone());
         }
     }
-    impl <'b> ResourcesVisitor<'b> for Visitor<'b> {
+    impl<'b> ResourcesVisitor<'b> for Visitor<'b> {
         fn visit_state_object(&mut self, state_object: &StateObjectDescriptor<'b>) {
             self.state_objects.push(state_object.clone());
         }
@@ -64,8 +64,7 @@ pub fn extract_handler_schema<'a, H: Handler>() -> Result<HandlerSchema<'a>, Str
     let type_map = visitor
         .type_collector
         .finish()
-        .map_err(|errors|
-            errors.iter().as_slice().join("\n").to_string())?;
+        .map_err(|errors| errors.iter().as_slice().join("\n").to_string())?;
     let mut res = HandlerSchema::default();
     res.types = type_map.values().cloned().collect();
     res.messages = visitor.messages;

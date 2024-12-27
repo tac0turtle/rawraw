@@ -5,10 +5,10 @@ use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::list::AllocatorVecBuilder;
 use crate::mem::MemoryManager;
+use crate::schema::SchemaType;
 use crate::types::*;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::message::Param;
-use crate::schema::SchemaType;
 
 /// A visitor for decoding values. Unlike SchemaValue, this trait is object safe.
 pub trait ValueCodec<'a> {

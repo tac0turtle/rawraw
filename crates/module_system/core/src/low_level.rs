@@ -175,7 +175,7 @@ pub fn emit_event<'a, E: StructSchema + SchemaValue<'a>>(
         event_bytes.into(),
         E::TYPE_SELECTOR.into(),
     );
-    let params = InvokeParams::new(ctx.memory_manager(), &None);
+    let params = InvokeParams::new(ctx.memory_manager(), None);
     let _ = ctx.with_backend_mut(|backend| backend.update_state(&req, &params))?;
     Ok(())
 }

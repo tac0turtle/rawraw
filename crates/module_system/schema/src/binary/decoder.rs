@@ -1,4 +1,5 @@
 use crate::decoder::DecodeError;
+use crate::enums::{EnumDecodeVisitor, EnumType};
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::structs::{StructDecodeVisitor, StructType};
@@ -7,7 +8,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use crate::enums::{EnumDecodeVisitor, EnumType};
 
 pub fn decode_value<'a>(
     input: &'a [u8],
@@ -175,7 +175,11 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         }
     }
 
-    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor<'a>, enum_type: &EnumType) -> Result<(), DecodeError> {
+    fn decode_enum_variant(
+        &mut self,
+        visitor: &mut dyn EnumDecodeVisitor<'a>,
+        enum_type: &EnumType,
+    ) -> Result<(), DecodeError> {
         let discriminant = self.decode_i32()?;
         visitor.decode_variant(discriminant, self)
     }
@@ -303,7 +307,11 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         }
     }
 
-    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor<'a>, enum_type: &EnumType) -> Result<(), DecodeError> {
+    fn decode_enum_variant(
+        &mut self,
+        visitor: &mut dyn EnumDecodeVisitor<'a>,
+        enum_type: &EnumType,
+    ) -> Result<(), DecodeError> {
         self.outer.decode_enum_variant(visitor, enum_type)
     }
 }

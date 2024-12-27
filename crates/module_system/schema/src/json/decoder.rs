@@ -1,4 +1,5 @@
 use crate::decoder::DecodeError;
+use crate::enums::{EnumDecodeVisitor, EnumType, EnumVariantDefinition};
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::structs::{StructDecodeVisitor, StructType};
@@ -13,7 +14,6 @@ use ixc_message_api::alloc_util::{copy_bytes, copy_str};
 use ixc_message_api::AccountID;
 use logos::{Lexer, Logos};
 use simple_time::{Duration, Time};
-use crate::enums::{EnumDecodeVisitor, EnumType, EnumVariantDefinition};
 
 /// Decode the value from the JSON input string.
 pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
@@ -95,15 +95,15 @@ impl<'a> Decoder<'a> {
         match self.next_token()? {
             Token::String(s) => {
                 let s = &s[1..s.len() - 1];
-              escape8259::unescape(s).map_err(|_| DecodeError::InvalidData)
-            },
+                escape8259::unescape(s).map_err(|_| DecodeError::InvalidData)
+            }
             _ => Err(DecodeError::InvalidData),
         }
     }
 
     fn expect(&mut self, token: Token) -> Result<(), DecodeError> {
         if self.next_token()? != token {
-            return Err(DecodeError::InvalidData)
+            return Err(DecodeError::InvalidData);
         }
         Ok(())
     }
@@ -197,7 +197,10 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         }
         loop {
             let field_name = self.expect_str()?;
-            let idx = struct_type.fields.iter().position(|f| f.name == field_name)
+            let idx = struct_type
+                .fields
+                .iter()
+                .position(|f| f.name == field_name)
                 .ok_or(DecodeError::InvalidData)?;
 
             if Token::Colon != self.next_token()? {
@@ -265,7 +268,11 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         todo!()
     }
 
-    fn decode_enum_variant(&mut self, visitor: &mut dyn EnumDecodeVisitor<'a>, enum_type: &EnumType) -> Result<(), DecodeError> {
+    fn decode_enum_variant(
+        &mut self,
+        visitor: &mut dyn EnumDecodeVisitor<'a>,
+        enum_type: &EnumType,
+    ) -> Result<(), DecodeError> {
         let peek = self.peek_token()?;
         if peek == Token::CurlyOpen {
             self.tokens.next();
@@ -286,7 +293,13 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     }
 }
 
-fn find_variant<'a>(enum_type: &EnumType<'a>, name: &str) -> Result<&'a EnumVariantDefinition<'a>, DecodeError> {
-    enum_type.variants.iter().find(|v| v.name == name)
+fn find_variant<'a>(
+    enum_type: &EnumType<'a>,
+    name: &str,
+) -> Result<&'a EnumVariantDefinition<'a>, DecodeError> {
+    enum_type
+        .variants
+        .iter()
+        .find(|v| v.name == name)
         .ok_or(DecodeError::InvalidData)
 }

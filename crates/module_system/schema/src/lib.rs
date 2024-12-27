@@ -1,5 +1,4 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
-
 // prop-test has problems with no_std, so we disable it during tests
 #![cfg_attr(not(test), no_std)]
 
@@ -12,9 +11,9 @@ extern crate self as ixc;
 #[cfg(not(feature = "use_ixc_macro_path"))]
 extern crate self as ixc_schema;
 
-mod bump;
 pub mod binary;
 pub mod buffer;
+mod bump;
 pub mod codec;
 pub mod decoder;
 pub mod encoder;
@@ -22,6 +21,7 @@ pub mod enums;
 pub mod field;
 pub mod fields;
 
+pub mod encoding;
 pub mod kind;
 pub mod list;
 pub mod mem;
@@ -31,15 +31,13 @@ pub mod state_object;
 pub mod structs;
 pub mod types;
 pub mod value;
-pub mod encoding;
 
-#[cfg(feature = "std")]
-pub mod handler;
 #[cfg(feature = "std")]
 pub mod client;
+#[cfg(feature = "std")]
+pub mod handler;
 #[cfg(feature = "json")]
 pub mod json;
-
 
 #[cfg(test)]
 mod testdata;

@@ -1,25 +1,26 @@
 #![allow(unused)]
 extern crate std;
 
-use alloc::string::String;
-use alloc::vec::Vec;
-use core::ops::Index;
 use crate::encoder::EncodeError;
+use crate::enums::EnumType;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::ValueCodec;
+use alloc::string::String;
+use alloc::vec::Vec;
 use base64::prelude::*;
+use core::ops::Index;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 use std::io::Write;
-use crate::enums::EnumType;
 
 /// Encode the value to a JSON string.
-pub fn encode_value<'a>(
-    value: &dyn ValueCodec,
-) -> Result<String, EncodeError> {
+pub fn encode_value<'a>(value: &dyn ValueCodec) -> Result<String, EncodeError> {
     let mut writer = Vec::new();
-    let mut encoder = Encoder { writer, num_nested_fields_written: 0 };
+    let mut encoder = Encoder {
+        writer,
+        num_nested_fields_written: 0,
+    };
     value.encode(&mut encoder)?;
     Ok(String::from_utf8(encoder.writer).map_err(|_| EncodeError::UnknownError)?)
 }
@@ -84,7 +85,10 @@ impl crate::encoder::Encoder for Encoder {
                 write!(self.writer, ",")?;
             }
             write!(self.writer, "\"{}\":", field.name)?;
-            let mut inner = FieldEncoder { outer: self, present: true };
+            let mut inner = FieldEncoder {
+                outer: self,
+                present: true,
+            };
             visitor.encode_field(i, &mut inner)?;
             if !inner.present {
                 self.writer.truncate(pos);
@@ -149,8 +153,16 @@ impl crate::encoder::Encoder for Encoder {
         }
     }
 
-    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
-        let variant = enum_type.variants.iter().find(|v| v.discriminant == discriminant)
+    fn encode_enum_variant(
+        &mut self,
+        discriminant: i32,
+        enum_type: &EnumType,
+        value: Option<&dyn ValueCodec>,
+    ) -> Result<(), EncodeError> {
+        let variant = enum_type
+            .variants
+            .iter()
+            .find(|v| v.discriminant == discriminant)
             .ok_or(EncodeError::UnknownError)?;
         if let Some(value) = value {
             write!(self.writer, "{{\"{}\":", variant.name)?;
@@ -273,7 +285,11 @@ impl crate::encoder::Encoder for FieldEncoder<'_> {
         self.outer.encode_list(visitor)
     }
 
-    fn encode_struct(&mut self, visitor: &dyn StructEncodeVisitor, struct_type: &StructType) -> Result<(), EncodeError> {
+    fn encode_struct(
+        &mut self,
+        visitor: &dyn StructEncodeVisitor,
+        struct_type: &StructType,
+    ) -> Result<(), EncodeError> {
         let cur_fields_written = self.outer.num_nested_fields_written;
         self.outer.encode_struct(visitor, struct_type)?;
         // if we've written no fields, then we need to tell the parent writer to truncate the field name
@@ -297,11 +313,17 @@ impl crate::encoder::Encoder for FieldEncoder<'_> {
         self.outer.encode_account_id(x)
     }
 
-    fn encode_enum_variant(&mut self, discriminant: i32, enum_type: &EnumType, value: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
+    fn encode_enum_variant(
+        &mut self,
+        discriminant: i32,
+        enum_type: &EnumType,
+        value: Option<&dyn ValueCodec>,
+    ) -> Result<(), EncodeError> {
         if discriminant == 0 && value.is_none() {
             return self.mark_not_present();
         }
-        self.outer.encode_enum_variant(discriminant, enum_type, value)
+        self.outer
+            .encode_enum_variant(discriminant, enum_type, value)
     }
 
     fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
