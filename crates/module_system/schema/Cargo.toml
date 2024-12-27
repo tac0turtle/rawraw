@@ -19,7 +19,6 @@ num_enum = "0.7.3"
 base64 = { version = "0.22.1", optional = true }
 logos = { version = "0.15.0", optional = true }
 serde_json = {version = "1.0.134", optional = true}
-escape8259 = { version = "0.5.3", optional = true }
 
 [dev-dependencies]
 proptest = "1.5.0"
@@ -27,9 +26,9 @@ proptest-derive = "0.5.0"
 rangemap = "1.5.1"
 
 [features]
-default = ["std", "json"]
+default = ["std", "json_decode"]
 std = []
-json = ["std", "dep:base64", "dep:logos", "dep:escape8259", "dep:serde_json"]
+json_decode = ["std", "dep:base64", "dep:logos", "dep:serde_json"]
 use_ixc_macro_path = []
 
 # TODO remove

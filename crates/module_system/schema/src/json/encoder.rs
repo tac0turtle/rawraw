@@ -1,25 +1,23 @@
-#![allow(unused)]
-extern crate std;
-
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
+use crate::json::escape::escape_json;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::ValueCodec;
-use alloc::string::String;
-use alloc::vec::Vec;
+use allocator_api2::alloc::Allocator;
 use base64::prelude::*;
-use core::ops::Index;
+use core::fmt::Write;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use std::io::Write;
-use allocator_api2::alloc::Allocator;
-use crate::json::escape::escape_json;
 
 /// Encode the value to a JSON string.
+/// This method is intended to be deterministic and performant, so that it is suitable
+/// for signature verification.
+/// It avoids any intermediate allocations and simply writes its output to the provided buffer
+/// which can be configured with a custom allocator.
 pub fn encode_value<A: Allocator>(value: &dyn ValueCodec, writer: &mut allocator_api2::vec::Vec<u8, A>) -> Result<(), EncodeError> {
     let mut encoder = Encoder {
-        writer,
+        writer: Writer(writer),
         num_nested_fields_written: 0,
     };
     value.encode(&mut encoder)?;
@@ -27,11 +25,21 @@ pub fn encode_value<A: Allocator>(value: &dyn ValueCodec, writer: &mut allocator
 }
 
 struct Encoder<'a, A: Allocator> {
-    writer: &'a mut allocator_api2::vec::Vec<u8, A>,
+    writer: Writer<'a, A>,
     // this is only used to avoid writing the field name if a nested object is empty
     num_nested_fields_written: usize,
 }
 
+pub(crate) struct Writer<'a, A: Allocator>(pub(crate) &'a mut allocator_api2::vec::Vec<u8, A>);
+
+impl <A: Allocator> Write for Writer<'_, A> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.0.extend_from_slice(s.as_bytes());
+        Ok(())
+    }
+}
+
+// we override the write! macro to return a custom error type
 macro_rules! write {
     ($writer:expr, $($arg:tt)*) => {
         $writer.write_fmt(format_args!($($arg)*)).map_err(|_| EncodeError::UnknownError)
@@ -111,9 +119,9 @@ impl <A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     ) -> Result<(), EncodeError> {
         write!(self.writer, "{{")?;
         let mut first = true;
-        let mut pos = self.writer.len();
+        let mut pos = self.writer.0.len();
         for (i, field) in struct_type.fields.iter().enumerate() {
-            pos = self.writer.len();
+            pos = self.writer.0.len();
             if !first {
                 write!(self.writer, ",")?;
             }
@@ -124,7 +132,7 @@ impl <A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
             };
             visitor.encode_field(i, &mut inner)?;
             if !inner.present {
-                self.writer.truncate(pos);
+                self.writer.0.truncate(pos);
             } else {
                 first = false;
                 self.num_nested_fields_written += 1;

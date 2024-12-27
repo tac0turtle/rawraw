@@ -36,7 +36,6 @@ pub mod value;
 pub mod client;
 #[cfg(feature = "std")]
 pub mod handler;
-#[cfg(feature = "json")]
 pub mod json;
 
 #[cfg(test)]

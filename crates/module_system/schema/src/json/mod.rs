@@ -1,10 +1,17 @@
 //! JSON encoding and decoding.
-mod decoder;
+//! Encoding is intended to be performant and without unnecessary intermediate allocations.
+//! Decoding is not performance-optimized and does a bunch of allocation internally.
+//! [`decode_value`] is only available if the `json_decode` feature is enabled
+//! and brings in a dependency on `serde_json`.
 mod encoder;
 mod escape;
+#[cfg(feature = "json_decode")]
+mod decoder;
 
-pub use decoder::decode_value;
 pub use encoder::encode_value;
+
+#[cfg(feature = "json_decode")]
+pub use decoder::decode_value;
 
 #[cfg(test)]
 mod tests {
