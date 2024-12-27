@@ -80,8 +80,6 @@ fn visit_message_base<'a, M: MessageBase<'a>, V: APISchemaVisitor<'a>>(
     M::visit_type(visitor);
     let mut desc: MessageDescriptor = MessageDescriptor::new(M::STRUCT_TYPE.name);
     desc.encoding = M::Codec::ENCODING;
-    if let Some(res) = M::Response::SCHEMA_TYPE {
-        desc.response_type = Some(res.name());
-    }
+    desc.response = M::Response::AS_FIELD;
     desc
 }

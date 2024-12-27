@@ -1,6 +1,7 @@
 //! Message descriptors.
 use crate::encoding::Encoding;
 use ixc_schema_macros::SchemaValue;
+use crate::field::Field;
 
 /// Describes a message that can be sent to an account.
 #[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
@@ -12,8 +13,8 @@ pub struct MessageDescriptor<'a> {
     pub encoding: Encoding,
     /// The name of the request type.
     pub request_type: &'a str,
-    /// The name of the response type, if any.
-    pub response_type: Option<&'a str>,
+    /// The response of the message represented as a (name-less) field, if any.
+    pub response: Option<Field<'a>>,
     /// The names of the events that can be emitted by the message.
     pub events: &'a [&'a str],
     /// The names of the custom error codes that can be returned by the message.
@@ -27,7 +28,7 @@ impl<'a> MessageDescriptor<'a> {
             encoding: Encoding::Unknown,
             kind: MessageKind::Volatile,
             request_type,
-            response_type: None,
+            response: None,
             events: &[],
             error_codes: &[],
         }
