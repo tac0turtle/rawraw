@@ -27,14 +27,12 @@ pub mod list;
 pub mod mem;
 pub mod message;
 pub mod schema;
-pub mod state_object;
 pub mod structs;
 pub mod types;
 pub mod value;
 
-#[cfg(feature = "std")]
+pub mod state_object;
 pub mod client;
-#[cfg(feature = "std")]
 pub mod handler;
 pub mod json;
 

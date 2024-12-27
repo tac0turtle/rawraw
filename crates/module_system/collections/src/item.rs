@@ -2,6 +2,7 @@
 
 use crate::prefix::Prefix;
 use crate::Map;
+use allocator_api2::alloc::Allocator;
 use core::borrow::Borrow;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
@@ -51,10 +52,16 @@ unsafe impl<T: ObjectValue> StateObjectResource for Item<T> {
 
     #[cfg(feature = "std")]
     fn descriptor<'a>(
+        allocator: &'a dyn Allocator,
         collection_name: &'a str,
         key_names: &[&'a str],
         value_names: &[&'a str],
     ) -> StateObjectDescriptor<'a> {
-        Map::<(), T>::descriptor(collection_name, key_names, &[collection_name])
+        if value_names.len() == 0 {
+            // we have a special default case where the item is named by the name of the collection
+            Map::<(), T>::descriptor(allocator, collection_name, key_names, &[collection_name])
+        } else {
+            Map::<(), T>::descriptor(allocator, collection_name, key_names, value_names)
+        }
     }
 }

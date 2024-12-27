@@ -1,24 +1,28 @@
 //! Schema extraction and printing utilities.
+extern crate std;
 use crate::handler::{APISchemaVisitor, Client, Handler};
 use crate::resource::ResourcesVisitor;
 use alloc::string::{String, ToString};
+use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
+use ixc_message_api::AccountID;
 use ixc_schema::client::ClientDescriptor;
 use ixc_schema::handler::HandlerSchema;
 use ixc_schema::json;
+use ixc_schema::list::List;
+use ixc_schema::mem::MemoryManager;
 use ixc_schema::message::MessageDescriptor;
 use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::{Type, TypeCollector, TypeVisitor};
 
-extern crate std;
-
 /// Extract the schema of the handler.
-pub fn extract_handler_schema<'a, H: Handler>() -> Result<HandlerSchema<'a>, String> {
-    #[derive(Default)]
+pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> Result<HandlerSchema<'a>, String> {
     struct Visitor<'b> {
-        type_collector: TypeCollector,
-        messages: alloc::vec::Vec<MessageDescriptor<'b>>,
-        state_objects: alloc::vec::Vec<StateObjectDescriptor<'b>>,
-        clients: alloc::vec::Vec<ClientDescriptor<'b>>,
+        allocator: &'b dyn Allocator,
+        type_collector: TypeCollector<'b>,
+        messages: Vec<MessageDescriptor<'b>, &'b dyn Allocator>,
+        state_objects: Vec<StateObjectDescriptor<'b>, &'b dyn Allocator>,
+        clients: Vec<ClientDescriptor<'b>, &'b dyn Allocator>,
     }
     impl TypeVisitor for Visitor<'_> {
         fn visit<T: Type>(&mut self) {
@@ -31,14 +35,19 @@ pub fn extract_handler_schema<'a, H: Handler>() -> Result<HandlerSchema<'a>, Str
         }
     }
     impl<'b> ResourcesVisitor<'b> for Visitor<'b> {
+        fn allocator(&self) -> &'b dyn Allocator {
+            self.allocator
+        }
+
         fn visit_state_object(&mut self, state_object: &StateObjectDescriptor<'b>) {
             self.state_objects.push(state_object.clone());
         }
 
-        fn visit_client<C: Client>(&mut self, desc: &ClientDescriptor<'b>) {
+        fn visit_client<C: Client>(&mut self, name: &'b str, account_id: AccountID) {
             struct ClientVisitor<'c, 'd> {
-                types: &'d mut TypeCollector,
-                desc: ClientDescriptor<'c>,
+                allocator: &'c dyn Allocator,
+                types: &'d mut TypeCollector<'c>,
+                messages: Vec<MessageDescriptor<'c>, &'c dyn Allocator>,
             }
             impl<'c, 'd> TypeVisitor for ClientVisitor<'c, 'd> {
                 fn visit<T: Type>(&mut self) {
@@ -47,36 +56,50 @@ pub fn extract_handler_schema<'a, H: Handler>() -> Result<HandlerSchema<'a>, Str
             }
             impl<'c, 'd> APISchemaVisitor<'c> for ClientVisitor<'c, 'd> {
                 fn visit_message(&mut self, messages: &MessageDescriptor<'c>) {
-                    self.desc.messages.push(messages.clone());
+                    self.messages.push(messages.clone());
                 }
             }
             let mut client_visitor = ClientVisitor {
+                allocator: self.allocator,
                 types: &mut self.type_collector,
-                desc: desc.clone(),
+                messages: Vec::new_in(self.allocator),
             };
             C::visit_schema(&mut client_visitor);
-            self.clients.push(client_visitor.desc);
+            let mut desc = ClientDescriptor::new(name, account_id);
+            desc.messages = List::Owned(client_visitor.messages);
+            self.clients.push(desc);
         }
     }
-    let mut visitor = Visitor::default();
+    let mut visitor = Visitor{
+        allocator,
+        type_collector: TypeCollector::new(allocator),
+        messages: Vec::new_in(allocator),
+        state_objects: Vec::new_in(allocator),
+        clients: Vec::new_in(allocator),
+    };
     H::visit_schema(&mut visitor);
     H::visit_resources(&mut visitor);
-    let type_map = visitor
-        .type_collector
-        .finish()
-        .map_err(|errors| errors.iter().as_slice().join("\n").to_string())?;
+    if !visitor.type_collector.errors.is_empty() {
+        return Err(visitor.type_collector.errors.iter().as_slice().join("\n").to_string());
+    }
+    let mut types = Vec::new_in(allocator);
+    for (_, ty) in visitor.type_collector.types.drain() {
+        types.push(ty);
+    }
     let mut res = HandlerSchema::default();
-    res.types = type_map.values().cloned().collect();
-    res.messages = visitor.messages;
-    res.state_objects = visitor.state_objects;
-    res.clients = visitor.clients;
+    res.types = List::Owned(types);
+    res.messages = List::Owned(visitor.messages);
+    res.state_objects = List::Owned(visitor.state_objects);
+    res.clients = List::Owned(visitor.clients);
     Ok(res)
 }
 
 /// Dump the schema of the handler to stdout as JSON.
 pub fn print_handler_schema<'a, H: Handler>() -> Result<(), String> {
-    let schema = extract_handler_schema::<H>()?;
-    let res = json::encode_value(&schema).map_err(|e| e.to_string())?;
-    std::println!("{}", res);
+    let mem = MemoryManager::new();
+    let schema = extract_handler_schema::<H>(&mem)?;
+    let mut out = Vec::new();
+    json::encode_value(&schema, &mut out).map_err(|e| e.to_string())?;
+    std::println!("{}", std::str::from_utf8(&out).map_err(|_| "invalid utf-8")?);
     Ok(())
 }

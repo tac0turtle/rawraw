@@ -1,12 +1,13 @@
 //! Resource module.
 
 use crate::handler::Client;
+use crate::{ClientFactory, Service};
 use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
 use ixc_message_api::AccountID;
-use ixc_schema::client::ClientDescriptor;
+use ixc_schema::list::List;
 use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::TypeVisitor;
-use crate::{ClientFactory, Service};
 
 /// An account or module handler's resources.
 /// This is usually derived by the state management framework.
@@ -62,6 +63,7 @@ pub unsafe trait StateObjectResource: Sized {
     #[cfg(feature = "std")]
     /// Gets the descriptor for the state object with the supplied names.
     fn descriptor<'a>(
+        allocator: &'a dyn Allocator,
         collection_name: &'a str,
         key_names: &[&'a str],
         value_names: &[&'a str],
@@ -94,14 +96,12 @@ impl ResourceScope<'_> {
 
 /// A visitor for discovering resources.
 pub trait ResourcesVisitor<'a>: TypeVisitor {
+    /// An allocator that can be used to allocate dynamicresources.
+    fn allocator(&self) -> &'a dyn Allocator;
     /// Visit a state object.
     fn visit_state_object(&mut self, state_object: &StateObjectDescriptor<'a>);
     /// Visit a client.
-    /// The client descriptor that is passed in will be cloned
-    /// augmented with any messages called by visiting the client.
-    /// Thus, this descriptor only needs to include basic information
-    /// like the name and account ID of the client.
-    fn visit_client<C: Client>(&mut self, client: &ClientDescriptor<'a>);
+    fn visit_client<C: Client>(&mut self, name: &'a str, account_id: AccountID);
 }
 
 /// Extract the state object descriptor for a state object.
@@ -113,8 +113,10 @@ pub fn extract_state_object_descriptor<'a, R: StateObjectResource, V: ResourcesV
     key_names: &'a [&'a str],
     value_names: &'a [&'a str],
 ) {
-    let mut state_object = R::descriptor(collection_name, key_names, value_names);
-    state_object.prefix = alloc::vec![prefix];
+    let mut state_object = R::descriptor(visitor.allocator(), collection_name, key_names, value_names);
+    let mut prefix_vec = Vec::new_in(visitor.allocator());
+    prefix_vec.push(prefix);
+    state_object.prefix = List::Owned(prefix_vec);
     visitor.visit_state_object(&state_object);
 }
 
@@ -125,5 +127,5 @@ pub fn visit_client_factory<'a, S: Service, V: ResourcesVisitor<'a>>(
     visitor: &mut V,
     name: &'a str,
 ) {
-    visitor.visit_client::<S::Client>(&ClientDescriptor::new(name, AccountID::EMPTY.into()));
+    visitor.visit_client::<S::Client>(name, AccountID::EMPTY);
 }

@@ -1,8 +1,7 @@
-//! Client descriptors.
+//! Client descriptors. T
 
+use crate::list::List;
 use crate::message::MessageDescriptor;
-use alloc::vec;
-use alloc::vec::Vec;
 use ixc_message_api::AccountID;
 use ixc_schema_macros::SchemaValue;
 
@@ -15,7 +14,7 @@ pub struct ClientDescriptor<'a> {
     /// The ID of the account that the client is associated with.
     pub account_id: AccountID,
     /// The messages that the client can send.
-    pub messages: Vec<MessageDescriptor<'a>>,
+    pub messages: List<'a, MessageDescriptor<'a>>,
 }
 
 impl<'a> ClientDescriptor<'a> {
@@ -24,7 +23,7 @@ impl<'a> ClientDescriptor<'a> {
         Self {
             name,
             account_id,
-            messages: vec![],
+            messages: List::Empty,
         }
     }
 }

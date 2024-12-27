@@ -5,7 +5,6 @@ use crate::resource::{Resources, ResourcesVisitor};
 use crate::routing::Router;
 use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
-use ixc_schema::client::ClientDescriptor;
 use ixc_schema::message::MessageDescriptor;
 use ixc_schema::types::TypeVisitor;
 
@@ -78,7 +77,7 @@ impl<S: Service + ?Sized> ClientFactory<S> {
 
     /// Visit the client's schema.
     pub fn visit_client_schema<'a, V: ResourcesVisitor<'a>>(&self, visitor: &mut V, name: &'a str) {
-        visitor.visit_client::<S::Client>(&ClientDescriptor::new(name, AccountID::EMPTY.into()));
+        visitor.visit_client::<S::Client>(name, AccountID::EMPTY);
     }
 }
 

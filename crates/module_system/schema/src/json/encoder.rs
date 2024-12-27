@@ -303,7 +303,7 @@ impl <A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
         self.outer.encode_struct(visitor, struct_type)?;
         // if we've written no fields, then we need to tell the parent writer to truncate the field name
         if self.outer.num_nested_fields_written == cur_fields_written {
-            self.mark_not_present();
+            self.mark_not_present()?;
         }
         Ok(())
     }

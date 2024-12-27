@@ -3,11 +3,14 @@ use crate::prefix::Prefix;
 use crate::store_client::KVStoreClient;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
+use allocator_api2::vec::Vec;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
+use ixc_message_api::handler::Allocator;
 use ixc_schema::encoding::Encoding;
 use ixc_schema::fields::FieldTypes;
+use ixc_schema::list::List;
 use ixc_schema::state_object::{
     decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
     StateObjectDescriptor,
@@ -84,6 +87,7 @@ unsafe impl<K: ObjectKey, V: ObjectValue> StateObjectResource for Map<K, V> {
 
     #[cfg(feature = "std")]
     fn descriptor<'a>(
+        allocator: &'a dyn Allocator,
         collection_name: &'a str,
         key_names: &[&'a str],
         value_names: &[&'a str],
@@ -99,14 +103,20 @@ unsafe impl<K: ObjectKey, V: ObjectValue> StateObjectResource for Map<K, V> {
             panic!("Expected {} value names for map \"{}\", but got {:?}. This generally means that you haven't specified name(...) correctly in #[state]. Ex. #[state(name(value1, value2)].",
                 V::FieldTypes::N, collection_name, value_names);
         }
-        desc.key_fields = K::FieldTypes::FIELDS.to_vec();
+        let mut key_fields = Vec::new_in(allocator);
         for i in 0..K::FieldTypes::N {
-            desc.key_fields[i].name = key_names[i];
+            let mut field = K::FieldTypes::FIELDS[i];
+            field.name = key_names[i];
+            key_fields.push(field);
         }
-        desc.value_fields = V::FieldTypes::FIELDS.to_vec();
+        desc.key_fields = List::Owned(key_fields);
+        let mut value_fields = Vec::new_in(allocator);
         for i in 0..V::FieldTypes::N {
-            desc.value_fields[i].name = value_names[i];
+            let mut field = V::FieldTypes::FIELDS[i];
+            field.name = value_names[i];
+            value_fields.push(field);
         }
+        desc.value_fields = List::Owned(value_fields);
         desc
     }
 }

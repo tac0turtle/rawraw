@@ -9,7 +9,7 @@ mod value_field;
 
 use crate::encoding::Encoding;
 use crate::field::Field;
-use alloc::vec::Vec;
+use crate::list::List;
 use ixc_schema_macros::SchemaValue;
 pub use key::{decode_object_key, encode_object_key, ObjectKey};
 pub use key_field::KeyFieldValue;
@@ -17,7 +17,6 @@ pub use prefix::PrefixKey;
 pub use value::{decode_object_value, encode_object_value, ObjectValue};
 pub use value_field::{Bytes, ObjectFieldValue, Str};
 
-#[cfg(feature = "std")]
 /// A type representing objects stored in key-value store state.
 #[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
 #[non_exhaustive]
@@ -25,13 +24,13 @@ pub struct StateObjectDescriptor<'a> {
     /// The name of the object.
     pub name: &'a str,
     /// The bytes prefix of the state object.
-    pub prefix: Vec<u8>,
+    pub prefix: List<'a, u8>,
     /// The encoding of the state object.
     pub encoding: Encoding,
     /// The fields that make up the primary key.
-    pub key_fields: Vec<Field<'a>>,
+    pub key_fields: List<'a, Field<'a>>,
     /// The fields that make up the value.
-    pub value_fields: Vec<Field<'a>>,
+    pub value_fields: List<'a, Field<'a>>,
     /// Whether to retain deletions in off-chain, indexed state.
     pub retain_deletions: bool,
     /// Indicates that the value of the state object behaves like an accumulator.

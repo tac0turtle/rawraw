@@ -7,6 +7,9 @@
 //! None of the types in this module are expected to be instantiated other than as type-level
 //! parameters.
 
+use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
+use hashbrown::{DefaultHashBuilder, HashMap};
 use crate::enums::EnumSchema;
 use crate::field::Field;
 use crate::kind::Kind;
@@ -240,17 +243,16 @@ impl<T: EnumSchema> ListElementType for EnumT<T> {}
 
 /// A type visitor that collects types.
 #[cfg(feature = "std")]
-#[derive(Default)]
 #[non_exhaustive]
-pub struct TypeCollector {
+pub struct TypeCollector<'a> {
     /// The collected types.
-    pub types: alloc::collections::BTreeMap<&'static str, SchemaType<'static>>,
+    pub types: HashMap<&'static str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>,
     /// The errors that occurred during type collection.
-    pub errors: alloc::vec::Vec<&'static str>,
+    pub errors: Vec<&'static str, &'a dyn Allocator>,
 }
 
 #[cfg(feature = "std")]
-impl TypeVisitor for TypeCollector {
+impl TypeVisitor for TypeCollector<'_> {
     fn visit<T: Type>(&mut self) {
         if let Some(t) = T::SCHEMA_TYPE {
             if let Some(existing) = self.types.get(t.name()) {
@@ -265,31 +267,28 @@ impl TypeVisitor for TypeCollector {
     }
 }
 
-#[cfg(feature = "std")]
-impl TypeCollector {
-    /// Finish type collection and return the collected types or errors if there were any.
-    pub fn finish(
-        self,
-    ) -> Result<
-        alloc::collections::BTreeMap<&'static str, SchemaType<'static>>,
-        alloc::vec::Vec<&'static str>,
-    > {
-        if self.errors.is_empty() {
-            Ok(self.types)
-        } else {
-            Err(self.errors)
+impl<'a> TypeCollector<'a> {
+    /// Create a new type collector.
+    pub fn new(allocator: &'a dyn Allocator) -> Self {
+        Self {
+            types: HashMap::new_in(allocator),
+            errors: Vec::new_in(allocator),
         }
     }
 }
 
 /// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]
-pub fn collect_types<'a, T: SchemaValue<'a>>() -> Result<
-    alloc::collections::BTreeMap<&'static str, SchemaType<'static>>,
-    alloc::vec::Vec<&'static str>,
+pub fn collect_types<'a, T: SchemaValue<'a>>(allocator: &'a dyn Allocator) -> Result<
+    HashMap<&'static str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>,
+    Vec<&'static str, &'a dyn Allocator>,
 > {
-    let mut visitor = TypeCollector::default();
+    let mut visitor = TypeCollector::new(allocator);
     visitor.visit::<T::Type>();
     <T::Type>::visit_referenced_types(&mut visitor);
-    visitor.finish()
+    if visitor.errors.is_empty() {
+        Ok(visitor.types)
+    } else {
+        Err(visitor.errors)
+    }
 }
