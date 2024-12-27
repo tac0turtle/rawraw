@@ -14,3 +14,11 @@ pub struct ClientDescriptor<'a> {
     /// The messages that the client can send.
     pub messages: &'a [MessageDescriptor<'a>],
 }
+
+
+impl<'a> ClientDescriptor<'a> {
+    /// Create a new client descriptor with a name and account ID but no messages.
+    pub const fn new(name: &'a str, account_id: AccountID) -> Self {
+        Self { name, account_id, messages: &[] }
+    }
+}

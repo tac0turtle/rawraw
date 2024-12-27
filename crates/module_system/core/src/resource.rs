@@ -1,16 +1,23 @@
 //! Resource module.
 
 use ixc_message_api::AccountID;
+use ixc_schema::client::ClientDescriptor;
+use ixc_schema::state_object::StateObjectDescriptor;
+use ixc_schema::types::TypeVisitor;
+use crate::handler::Client;
 
 /// An account or module handler's resources.
 /// This is usually derived by the state management framework.
 /// # Safety
-/// The trait is marked as unsafe to detour users from creating it
+/// The trait is marked as unsafe because only macros should implement it.
 pub unsafe trait Resources: Sized {
     /// Initializes the resources.
     /// # Safety
     /// The function is marked as unsafe to detour users from calling it directly
     unsafe fn new(scope: &ResourceScope) -> Result<Self, InitializationError>;
+
+    /// Visit the resources to discover their schema.
+    fn visit_resources<'a, V: ResourcesVisitor<'a>>(visitor: &mut V);
 }
 
 /// The resource scope.
@@ -73,4 +80,16 @@ impl ResourceScope<'_> {
             .map(|resolver| resolver.resolve(name))
             .unwrap_or_else(|| default.ok_or(InitializationError::AccountNotFound))
     }
+}
+
+/// A visitor for discovering resources.
+pub trait ResourcesVisitor<'a>: TypeVisitor {
+    /// Visit a state object.
+    fn visit_state_object(&mut self, state_object: &StateObjectDescriptor<'a>);
+    /// Visit a client.
+    /// The client descriptor that is passed in will be cloned
+    /// augmented with any messages called by visiting the client.
+    /// Thus, this descriptor only needs to include basic information
+    /// like the name and account ID of the client.
+    fn visit_client<C: Client>(&mut self, client: &ClientDescriptor<'a>);
 }

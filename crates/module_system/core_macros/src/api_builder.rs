@@ -44,7 +44,7 @@ impl APIBuilder {
                         self.0
                     }
 
-                    fn visit_schema<'a, V: ::ixc::core::handler::ClientSchemaVisitor<'a>>(visitor: &mut V) {
+                    fn visit_schema<'a, V: ::ixc::core::handler::APISchemaVisitor<'a>>(visitor: &mut V) {
                             #(#visit_messages)*
                     }
                 }
@@ -270,7 +270,7 @@ impl APIBuilder {
                 if let Some(path_seg) = event {
                     if let PathArguments::AngleBracketed(args) = &path_seg.arguments {
                         let evt_type = args.args.first().cloned();
-                        event_visit.push(quote! { visitor.visit::<#evt_type>(); });
+                        event_visit.push(quote! { visitor.visit::<< #evt_type as ::ixc::schema::value::SchemaValue>::Type>(); });
                     } else {
                         bail!("expected event type as a generic argument to EventBus, got {:?}", event);
                     }

@@ -19,7 +19,7 @@ pub trait Handler: RawHandler + Router + HandlerResources + Service {
     type Init<'a>: InitMessage<'a>;
 
     /// Visit the schema of the handler.
-    fn visit_schema<'a, V: HandlerSchemaVisitor<'a>>(visitor: &mut V);
+    fn visit_schema<'a, V: APISchemaVisitor<'a>>(visitor: &mut V);
 }
 
 /// The resources associated with a handler. This specifies the name of the handler.
@@ -56,7 +56,7 @@ pub trait Client {
     fn target_account(&self) -> AccountID;
 
     /// Visit the schema of the client.
-    fn visit_schema<'a, V: ClientSchemaVisitor<'a>>(visitor: &mut V);
+    fn visit_schema<'a, V: APISchemaVisitor<'a>>(visitor: &mut V);
 }
 
 /// The client of a handler.
@@ -65,16 +65,8 @@ pub trait HandlerClient: Client {
     type Handler: Handler;
 }
 
-/// A visitor for the schema of a handler.
-pub trait HandlerSchemaVisitor<'a>: ClientSchemaVisitor<'a> {
-    /// Visit the state objects of the handler.
-    fn visit_state_objects(&mut self, state_objects: &[StateObjectDescriptor<'a>]);
-    /// Visit a client of the handler.
-    fn visit_client<C: Client>(&mut self);
-}
-
 /// A visitor for the schema of a client.
-pub trait ClientSchemaVisitor<'a>: TypeVisitor {
+pub trait APISchemaVisitor<'a>: TypeVisitor {
     /// Visit the client's messages.
     fn visit_message(&mut self, messages: &MessageDescriptor<'a>);
 }

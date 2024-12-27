@@ -1,5 +1,5 @@
 //! Schema extraction and printing utilities.
-use crate::handler::{Client, ClientSchemaVisitor, Handler, HandlerSchemaVisitor};
+use crate::handler::{Client, APISchemaVisitor, Handler};
 use alloc::string::{String, ToString};
 use ixc_schema::client::ClientDescriptor;
 use ixc_schema::handler::HandlerSchema;
@@ -7,6 +7,7 @@ use ixc_schema::json;
 use ixc_schema::message::MessageDescriptor;
 use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::{Type, TypeCollector, TypeVisitor};
+use crate::resource::ResourcesVisitor;
 
 extern crate std;
 
@@ -24,20 +25,24 @@ pub fn extract_handler_schema<'a, H: Handler>() -> Result<HandlerSchema<'a>, Str
             self.type_collector.visit::<T>();
         }
     }
-    impl <'b> ClientSchemaVisitor<'b> for Visitor<'b> {
+    impl <'b> APISchemaVisitor<'b> for Visitor<'b> {
         fn visit_message(&mut self, messages: &MessageDescriptor<'b>) {
             self.messages.push(messages.clone());
         }
     }
-    impl <'b> HandlerSchemaVisitor<'b> for Visitor<'b> {
-        fn visit_state_objects(&mut self, state_objects: &[StateObjectDescriptor<'b>]) {
-            self.state_objects.extend_from_slice(state_objects);
+    impl <'b> ResourcesVisitor<'b> for Visitor<'b> {
+        fn visit_state_object(&mut self, state_object: &StateObjectDescriptor<'b>) {
+            self.state_objects.push(state_object.clone());
         }
 
-        fn visit_client<C: Client>(&mut self) {}
+        fn visit_client<C: Client>(&mut self, client: &ClientDescriptor<'b>) {
+            // TODO visit client messages and attach them to the client descriptor
+            self.clients.push(client.clone());
+        }
     }
     let mut visitor = Visitor::default();
     H::visit_schema(&mut visitor);
+    H::visit_resources(&mut visitor);
     let type_map = visitor
         .type_collector
         .finish()

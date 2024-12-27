@@ -6,9 +6,7 @@ use core::marker::PhantomData;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
-use ixc_schema::state_object::{
-    decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
-};
+use ixc_schema::state_object::{decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue, StateObjectDescriptor};
 
 pub(crate) const MAX_SIZE: usize = 7;
 

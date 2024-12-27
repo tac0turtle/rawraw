@@ -16,6 +16,8 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
     // this tracks automatically assigned prefixes for state fields
     // if no prefix is assigned, we use this
     let mut prefix = 0u8;
+    // let mut visit_state_objects = vec![];
+    let mut visit_clients = vec![];
     // we iterator over each field in the struct and extract the #[state] and #[client] attributes
     for field in str.fields.iter_mut() {
         let field_name = field.ident.as_ref().unwrap().clone();
@@ -41,6 +43,9 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             field_inits.push(quote! {
                 #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
             });
+            visit_clients.push(quote! {
+                visitor.visit_client::<#ty>(&::ixc::schema::client::ClientDescriptor::new(stringify!(#field_name), #account_id.into()));
+            });
         } else {
             bail!("only fields with #[state] or #[client] attributes are supported currently");
         }
@@ -52,6 +57,11 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
                 Ok(Self {
                     #(#field_inits),*
                 })
+            }
+
+            fn visit_resources<'c, V: ::ixc::core::resource::ResourcesVisitor<'c>>(visitor: &mut V) {
+                // #(#visit_state_objects)*
+                #(#visit_clients)*
             }
         }
     })
