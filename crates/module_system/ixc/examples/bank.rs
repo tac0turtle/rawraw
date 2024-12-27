@@ -23,6 +23,12 @@ pub mod bank {
         denom_send_hooks: Map<Str, AccountID>,
         #[state(prefix = 6, key(denom), value(hook))]
         _denom_burn_hooks: Map<Str, AccountID>,
+        #[client_factory]
+        receive_hook_client_factory: ClientFactory<dyn ReceiveHook>,
+        #[client_factory]
+        burn_hook_client_factory: ClientFactory<dyn BurnHook>,
+        #[client_factory]
+        send_hook_client_factory: ClientFactory<dyn SendHook>,
     }
 
     #[derive(SchemaValue, Clone, Default, Debug, Eq, PartialEq)]

@@ -6,6 +6,7 @@ use ixc_message_api::AccountID;
 use ixc_schema::client::ClientDescriptor;
 use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::TypeVisitor;
+use crate::{ClientFactory, Service};
 
 /// An account or module handler's resources.
 /// This is usually derived by the state management framework.
@@ -115,4 +116,14 @@ pub fn extract_state_object_descriptor<'a, R: StateObjectResource, V: ResourcesV
     let mut state_object = R::descriptor(collection_name, key_names, value_names);
     state_object.prefix = alloc::vec![prefix];
     visitor.visit_state_object(&state_object);
+}
+
+/// Visit a client factory to extract the schema.
+/// The signature of this function is a bit of a hack around a possible bug in the quote crate.
+pub fn visit_client_factory<'a, S: Service, V: ResourcesVisitor<'a>>(
+    _factory: ClientFactory<S>,
+    visitor: &mut V,
+    name: &'a str,
+) {
+    visitor.visit_client::<S::Client>(&ClientDescriptor::new(name, AccountID::EMPTY.into()));
 }

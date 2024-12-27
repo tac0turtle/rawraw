@@ -1,10 +1,11 @@
 //! Handler traits for account and module handlers.
 
 use crate::message::InitMessage;
-use crate::resource::Resources;
+use crate::resource::{Resources, ResourcesVisitor};
 use crate::routing::Router;
 use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
+use ixc_schema::client::ClientDescriptor;
 use ixc_schema::message::MessageDescriptor;
 use ixc_schema::types::TypeVisitor;
 
@@ -51,6 +52,34 @@ pub trait Client {
 pub trait HandlerClient: Client {
     /// The handler type.
     type Handler: Handler;
+}
+
+/// A factory for creating clients of a specific service type.
+/// This is primarily used as part of a Resources struct to make sure
+/// that the client types get reflected correctly in the schema.
+#[derive(Clone)]
+pub struct ClientFactory<S: Service + ?Sized> {
+    _marker: core::marker::PhantomData<S>,
+}
+
+impl<S: Service + ?Sized> Default for ClientFactory<S> {
+    fn default() -> Self {
+        Self {
+            _marker: core::marker::PhantomData,
+        }
+    }
+}
+
+impl<S: Service + ?Sized> ClientFactory<S> {
+    /// Create a new client instance.
+    pub fn new_client(&self, target_account: AccountID) -> S::Client {
+        S::new_client(target_account)
+    }
+
+    /// Visit the client's schema.
+    pub fn visit_client_schema<'a, V: ResourcesVisitor<'a>>(&self, visitor: &mut V, name: &'a str) {
+        visitor.visit_client::<S::Client>(&ClientDescriptor::new(name, AccountID::EMPTY.into()));
+    }
 }
 
 /// A visitor for the schema of a client.

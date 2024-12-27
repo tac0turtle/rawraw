@@ -59,8 +59,15 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             visit_clients.push(quote! {
                 visitor.visit_client::<#ty>(&::ixc::schema::client::ClientDescriptor::new(stringify!(#field_name), #account_id.into()));
             });
+        } else if let Some(client_factory) = maybe_extract_attribute::<_, ClientFactoryAttr>(field)? {
+            field_inits.push(quote! {
+                #field_name: ::core::default::Default::default()
+            });
+            visit_clients.push(quote! {
+                instance.#field_name.visit_client_schema(visitor, stringify!(#field_name));
+            });
         } else {
-            bail!("only fields with #[state] or #[client] attributes are supported currently");
+            bail!("only fields with #[state], #[client] or #[client_factory] attributes are supported currently");
         }
     }
     // return the Resources trait implementation
@@ -73,6 +80,8 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             }
 
             fn visit_resources<'c, V: ::ixc::core::resource::ResourcesVisitor<'c>>(visitor: &mut V) {
+                let scope = ::ixc::core::resource::ResourceScope::default();
+                let instance = unsafe { Self::new(&scope).unwrap() };
                 #(#visit_state_objects)*
                 #(#visit_clients)*
             }
@@ -95,3 +104,8 @@ struct StateAttr {
 #[derive(deluxe::ExtractAttributes, Debug)]
 #[deluxe(attributes(client))]
 struct ClientAttr(u128);
+
+/// The data in a #[client_factory] attribute.
+#[derive(deluxe::ExtractAttributes, Debug)]
+#[deluxe(attributes(client_factory))]
+struct ClientFactoryAttr;
