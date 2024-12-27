@@ -4,13 +4,10 @@ use crate::resource::Resources;
 use crate::routing::Router;
 use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
-use ixc_schema::client::ClientDescriptor;
 use ixc_schema::codec::Codec;
-use ixc_schema::handler::HandlerSchema;
 use ixc_schema::message::MessageDescriptor;
-use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::structs::StructSchema;
-use ixc_schema::types::{Type, TypeCollector, TypeVisitor};
+use ixc_schema::types::TypeVisitor;
 use ixc_schema::SchemaValue;
 
 /// Handler trait for account and module handlers.

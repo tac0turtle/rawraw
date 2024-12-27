@@ -35,9 +35,27 @@ pub fn extract_handler_schema<'a, H: Handler>() -> Result<HandlerSchema<'a>, Str
             self.state_objects.push(state_object.clone());
         }
 
-        fn visit_client<C: Client>(&mut self, client: &ClientDescriptor<'b>) {
-            // TODO visit client messages and attach them to the client descriptor
-            self.clients.push(client.clone());
+        fn visit_client<C: Client>(&mut self, desc: &ClientDescriptor<'b>) {
+            struct ClientVisitor<'c, 'd> {
+                types: &'d mut TypeCollector,
+                desc: ClientDescriptor<'c>,
+            }
+            impl<'c, 'd> TypeVisitor for ClientVisitor<'c, 'd> {
+                fn visit<T: Type>(&mut self) {
+                    self.types.visit::<T>();
+                }
+            }
+            impl<'c, 'd> APISchemaVisitor<'c> for ClientVisitor<'c, 'd> {
+                fn visit_message(&mut self, messages: &MessageDescriptor<'c>) {
+                    self.desc.messages.push(messages.clone());
+                }
+            }
+            let mut client_visitor = ClientVisitor {
+                types: &mut self.type_collector,
+                desc: desc.clone(),
+            };
+            C::visit_schema(&mut client_visitor);
+            self.clients.push(client_visitor.desc);
         }
     }
     let mut visitor = Visitor::default();

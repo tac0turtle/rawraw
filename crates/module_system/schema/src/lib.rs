@@ -31,10 +31,11 @@ pub mod state_object;
 pub mod structs;
 pub mod types;
 pub mod value;
-pub mod client;
 
 #[cfg(feature = "std")]
 pub mod handler;
+#[cfg(feature = "std")]
+pub mod client;
 #[cfg(feature = "json")]
 pub mod json;
 
