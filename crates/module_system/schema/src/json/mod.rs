@@ -1,6 +1,7 @@
 //! JSON encoding and decoding.
 mod decoder;
 mod encoder;
+mod escape;
 
 pub use decoder::decode_value;
 pub use encoder::encode_value;

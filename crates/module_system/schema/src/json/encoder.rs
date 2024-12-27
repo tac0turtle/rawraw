@@ -13,6 +13,7 @@ use core::ops::Index;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 use std::io::Write;
+use crate::json::escape::escape_json;
 
 /// Encode the value to a JSON string.
 pub fn encode_value<'a>(value: &dyn ValueCodec) -> Result<String, EncodeError> {
@@ -55,8 +56,8 @@ impl crate::encoder::Encoder for Encoder {
     }
 
     fn encode_str(&mut self, x: &str) -> Result<(), EncodeError> {
-        let escaped = escape8259::escape(x);
-        write!(self.writer, "\"{}\"", escaped)
+        escape_json(x, &mut self.writer)
+            .map_err(|_| EncodeError::UnknownError)
     }
 
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {
