@@ -17,8 +17,8 @@ pub struct MessageDescriptor<'a> {
     pub response: Option<Field<'a>>,
     /// The names of the events that can be emitted by the message.
     pub events: &'a [&'a str],
-    /// The names of the custom error codes that can be returned by the message.
-    pub error_codes: &'a [ErrorCodeDescriptor<'a>],
+    /// The error code of the message represented as a (name-less) field, if any.
+    pub error_code: Option<Field<'a>>,
 }
 
 impl<'a> MessageDescriptor<'a> {
@@ -30,7 +30,7 @@ impl<'a> MessageDescriptor<'a> {
             request_type,
             response: None,
             events: &[],
-            error_codes: &[],
+            error_code: None,
         }
     }
 }

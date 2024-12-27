@@ -6,6 +6,8 @@
 #[cfg(feature = "std")]
 extern crate alloc;
 
+extern crate ixc_schema as ixc;
+
 pub mod accumulator;
 mod item;
 mod map;

@@ -156,7 +156,7 @@ pub fn encode_default_response<'b>(res: crate::Result<()>) -> Result<Response<'b
 
 /// Encode a handler error to the out1 pointer of the message packet.
 /// Used for encoding the response of a message in macros.
-pub fn encode_handler_error<'b, E: HandlerCode>(
+pub fn encode_handler_error<'b, E: HandlerCode + SchemaValue<'static>>(
     err: HandlerError<E>,
 ) -> Result<Response<'b>, ErrorCode> {
     let code: u16 = err.code.into();

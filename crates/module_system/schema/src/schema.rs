@@ -4,7 +4,7 @@
 // either with ixc_schema or just ixc with the use_ixc_macro_path feature,
 // hopefully some day we find a better solution!
 #[cfg(feature = "use_ixc_macro_path")]
-pub(crate) use crate::*;
+pub use crate::*;
 
 use crate::enums::EnumType;
 use crate::structs::StructType;

@@ -8,17 +8,18 @@ use core::fmt::{Debug, Display, Formatter};
 use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_schema::decoder::DecodeError;
 use ixc_schema::encoder::EncodeError;
+use ixc_schema::SchemaValue;
 
 /// The standard error type returned by handlers.
 #[derive(Clone)]
-pub struct HandlerError<E: HandlerCode = u8> {
+pub struct HandlerError<E: HandlerCode + SchemaValue<'static> = u8> {
     pub(crate) code: ErrorCode<E>,
     #[cfg(feature = "std")]
     pub(crate) msg: String,
     // TODO no std version - fixed length 256 byte string probably
 }
 
-impl<E: HandlerCode> HandlerError<E> {
+impl<E: HandlerCode + SchemaValue<'static>> HandlerError<E> {
     /// Create a new error message.
     pub fn new(msg: String) -> Self {
         HandlerError {
@@ -67,19 +68,19 @@ impl<E: HandlerCode> HandlerError<E> {
     }
 }
 
-impl<E: HandlerCode> Debug for HandlerError<E> {
+impl<E: HandlerCode + SchemaValue<'static>> Debug for HandlerError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         self.fmt_str(f)
     }
 }
 
-impl<E: HandlerCode> Display for HandlerError<E> {
+impl<E: HandlerCode + SchemaValue<'static>> Display for HandlerError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         self.fmt_str(f)
     }
 }
 
-impl<E: HandlerCode, F: HandlerCode> From<ClientError<E>> for HandlerError<F> {
+impl<E: HandlerCode + SchemaValue<'static>, F: HandlerCode + SchemaValue<'static>> From<ClientError<E>> for HandlerError<F> {
     fn from(value: ClientError<E>) -> Self {
         let code: ErrorCode<F> = if value.code == ErrorCode::SystemCode(SystemCode::OutOfGas) {
             ErrorCode::SystemCode(SystemCode::OutOfGas)

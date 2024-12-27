@@ -10,6 +10,7 @@ use ixc_core::Context;
 use ixc_message_api::code::ErrorCode;
 use ixc_schema::state_object::{ObjectKey, StateObjectDescriptor};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use ixc_schema::schema::SchemaValue;
 
 /// A 128-bit unsigned integer accumulator.
 pub struct Accumulator {
@@ -22,10 +23,12 @@ pub struct AccumulatorMap<K> {
 }
 
 /// An error that can occur when performing a safe subtraction.
-#[derive(Debug, Clone, TryFromPrimitive, IntoPrimitive)]
+#[derive(Default, Debug, Clone, TryFromPrimitive, IntoPrimitive, SchemaValue)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum SafeSubError {
     /// The subtraction would result in a negative value.
+    #[default]
     Underflow,
 }
 

@@ -89,11 +89,11 @@ pub(crate) fn derive_enum_schema(
 
         // generate the variant definition
         let variant_def = quote! {
-            #ixc_schema_path::enums::EnumVariantDefinition {
-                name: stringify!(#variant_name),
-                discriminant: #discriminant,
-                value: #field_def,
-            }
+            #ixc_schema_path::enums::EnumVariantDefinition::new(
+                stringify!(#variant_name),
+                #discriminant,
+                #field_def,
+            )
         };
         variants.push(variant_def);
 

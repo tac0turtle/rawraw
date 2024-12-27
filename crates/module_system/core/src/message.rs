@@ -5,7 +5,7 @@ use ixc_message_api::code::HandlerCode;
 use ixc_schema::codec::{Codec, WellKnownCodec};
 use ixc_schema::message::{MessageDescriptor, MessageKind};
 use ixc_schema::structs::StructSchema;
-use ixc_schema::types::TypeVisitor;
+use ixc_schema::types::{to_field, TypeVisitor};
 use ixc_schema::value::{OptionalValue, SchemaValue};
 
 /// The MessageBase trait for invoking messages dynamically.
@@ -13,7 +13,7 @@ pub trait MessageBase<'a>: SchemaValue<'a> + StructSchema {
     /// The optional response type.
     type Response<'b>: OptionalValue<'b>;
     /// The optional error type.
-    type Error: HandlerCode;
+    type Error: HandlerCode + SchemaValue<'static>;
     /// The codec to use for encoding and decoding the message.
     type Codec: WellKnownCodec + Default;
 }
@@ -38,7 +38,7 @@ pub trait ExtractResponseTypes {
     type ClientResult;
 }
 
-impl<R, E: HandlerCode> ExtractResponseTypes for crate::Result<R, E> {
+impl<R, E: HandlerCode + SchemaValue<'static>> ExtractResponseTypes for crate::Result<R, E> {
     type Response = R;
     type Error = E;
     type ClientResult = crate::result::ClientResult<R, E>;
@@ -81,5 +81,6 @@ fn visit_message_base<'a, M: MessageBase<'a>, V: APISchemaVisitor<'a>>(
     let mut desc: MessageDescriptor = MessageDescriptor::new(M::STRUCT_TYPE.name);
     desc.encoding = M::Codec::ENCODING;
     desc.response = M::Response::AS_FIELD;
+    desc.error_code = Some(to_field::<<M::Error as SchemaValue>::Type>());
     desc
 }
