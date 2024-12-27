@@ -1,5 +1,6 @@
 //! Resource module.
 
+use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
 use ixc_schema::client::ClientDescriptor;
 use ixc_schema::state_object::StateObjectDescriptor;
@@ -56,6 +57,10 @@ pub unsafe trait StateObjectResource: Sized {
     /// # Safety
     /// the function is marked as unsafe to detour users from calling it directly
     unsafe fn new(scope: &[u8], prefix: u8) -> Result<Self, InitializationError>;
+
+    #[cfg(feature = "std")]
+    /// Gets the descriptor for the state object with the supplied names.
+    fn descriptor<'a>(collection_name: &'a str, key_names: &[&'a str], value_names: &[&'a str]) -> StateObjectDescriptor<'a>;
 }
 
 /// An error that occurs during resource initialization.
@@ -92,4 +97,12 @@ pub trait ResourcesVisitor<'a>: TypeVisitor {
     /// Thus, this descriptor only needs to include basic information
     /// like the name and account ID of the client.
     fn visit_client<C: Client>(&mut self, client: &ClientDescriptor<'a>);
+}
+
+/// Extract the state object descriptor for a state object.
+/// Used in macros to extract state object schemas.
+pub fn extract_state_object_descriptor<'a, R: StateObjectResource, V: ResourcesVisitor<'a>>(visitor: &mut V, prefix: u8, collection_name: &'a str, key_names: &'a [&'a str], value_names: &'a [&'a str]) {
+    let mut state_object = R::descriptor(collection_name, key_names, value_names);
+    state_object.prefix = alloc::vec![prefix];
+    visitor.visit_state_object(&state_object);
 }

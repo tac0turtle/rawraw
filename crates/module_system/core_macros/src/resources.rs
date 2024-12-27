@@ -16,7 +16,7 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
     // this tracks automatically assigned prefixes for state fields
     // if no prefix is assigned, we use this
     let mut prefix = 0u8;
-    // let mut visit_state_objects = vec![];
+    let mut visit_state_objects = vec![];
     let mut visit_clients = vec![];
     // we iterator over each field in the struct and extract the #[state] and #[client] attributes
     for field in str.fields.iter_mut() {
@@ -31,6 +31,19 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             // add the state field to the initializers
             field_inits.push(quote! {
                 #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #prefix)?
+            });
+            let key_names = state.key.iter().map(|s| {
+                quote! { stringify!(#s) }
+            });
+            let value_names = state.value.iter().map(|s| {
+                quote! { stringify!(#s) }
+            });
+            visit_state_objects.push(quote! {
+               ::ixc::core::resource::extract_state_object_descriptor::<#ty, V>(visitor, #prefix,
+                    stringify!(#field_name),
+                    &[#(#key_names),*],
+                    &[#(#value_names),*]
+                );
             });
             // increment the automatic prefix
             prefix += 1;
@@ -60,7 +73,7 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             }
 
             fn visit_resources<'c, V: ::ixc::core::resource::ResourcesVisitor<'c>>(visitor: &mut V) {
-                // #(#visit_state_objects)*
+                #(#visit_state_objects)*
                 #(#visit_clients)*
             }
         }

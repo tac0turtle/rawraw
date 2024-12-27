@@ -6,6 +6,7 @@ use crate::mem::MemoryManager;
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
+use crate::encoding::Encoding;
 
 /// Trait implemented by encoding protocols.
 pub trait Codec {
@@ -23,6 +24,12 @@ pub trait Codec {
         memory_manager: &'a MemoryManager,
         visitor: &mut dyn ValueCodec<'a>,
     ) -> Result<(), DecodeError>;
+}
+
+/// A codec with a well-known encoding.
+pub trait WellKnownCodec: Codec {
+    /// Get the well-known encoding of the codec.
+    const ENCODING: Encoding;
 }
 
 /// Decode a value.

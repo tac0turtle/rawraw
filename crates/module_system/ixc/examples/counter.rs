@@ -6,7 +6,7 @@ pub mod counter {
 
     #[derive(Resources)]
     pub struct Counter {
-        #[state]
+        #[state(value(value))]
         value: Accumulator,
     }
 

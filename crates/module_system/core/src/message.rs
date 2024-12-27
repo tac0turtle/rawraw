@@ -2,7 +2,7 @@
 
 use crate::handler::{APISchemaVisitor};
 use ixc_message_api::code::HandlerCode;
-use ixc_schema::codec::Codec;
+use ixc_schema::codec::{Codec, WellKnownCodec};
 use ixc_schema::message::{MessageDescriptor, MessageKind};
 use ixc_schema::structs::StructSchema;
 use ixc_schema::types::TypeVisitor;
@@ -15,7 +15,7 @@ pub trait MessageBase<'a>: SchemaValue<'a> + StructSchema {
     /// The optional error type.
     type Error: HandlerCode;
     /// The codec to use for encoding and decoding the message.
-    type Codec: Codec + Default;
+    type Codec: WellKnownCodec + Default;
 }
 
 /// The Message trait for invoking messages dynamically.
@@ -48,12 +48,13 @@ impl<R, E: HandlerCode> ExtractResponseTypes for crate::Result<R, E> {
 // TODO we might want to do something more generic here because this could be a common base trait of Message
 pub trait InitMessage<'a>: SchemaValue<'a> + StructSchema {
     /// The codec used for initializing the handler.
-    type Codec: Codec + Default;
+    type Codec: WellKnownCodec + Default;
 }
 
 /// Extract the message descriptor for an init message.
 pub fn visit_init_descriptor<'a, M: InitMessage<'a>, V: APISchemaVisitor<'a>>(visitor: &mut V)  {
     let mut desc = MessageDescriptor::new(M::STRUCT_TYPE.name);
+    desc.encoding = M::Codec::ENCODING;
     desc.kind = MessageKind::Constructor;
     visitor.visit_message(&desc);
     visitor.visit::<M::Type>();
@@ -76,6 +77,7 @@ pub fn visit_query_descriptor<'a, M: QueryMessage<'a>, V: APISchemaVisitor<'a>>(
 fn visit_message_base<'a, M: MessageBase<'a>, V: APISchemaVisitor<'a>>(visitor: &mut V) -> MessageDescriptor<'static> {
     M::visit_type(visitor);
     let mut desc: MessageDescriptor = MessageDescriptor::new(M::STRUCT_TYPE.name);
+    desc.encoding = M::Codec::ENCODING;
     if let Some(res) = M::Response::SCHEMA_TYPE {
         desc.response_type = Some(res.name());
     }

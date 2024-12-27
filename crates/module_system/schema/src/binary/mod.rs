@@ -2,12 +2,13 @@
 
 use crate::binary::decoder::decode_value;
 use crate::binary::encoder::encode_value;
-use crate::codec::Codec;
+use crate::codec::{Codec, WellKnownCodec};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
 use crate::mem::MemoryManager;
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
+use crate::encoding::Encoding;
 
 pub(crate) mod decoder;
 pub(crate) mod encoder;
@@ -33,6 +34,10 @@ impl Codec for NativeBinaryCodec {
     ) -> Result<(), DecodeError> {
         decode_value(input, memory_manager, visitor)
     }
+}
+
+impl WellKnownCodec for NativeBinaryCodec {
+    const ENCODING: Encoding = Encoding::NativeBinary;
 }
 
 #[cfg(test)]

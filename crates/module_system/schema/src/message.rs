@@ -1,5 +1,6 @@
 //! Message descriptors.
 use ixc_schema_macros::SchemaValue;
+use crate::encoding::Encoding;
 
 /// Describes a message that can be sent to an account.
 #[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
@@ -7,6 +8,8 @@ use ixc_schema_macros::SchemaValue;
 pub struct MessageDescriptor<'a> {
     /// The kind of message, e.g. volatile, query, constructor, pure.
     pub kind: MessageKind,
+    /// The encoding of the message.
+    pub encoding: Encoding,
     /// The name of the request type.
     pub request_type: &'a str,
     /// The name of the response type, if any.
@@ -21,6 +24,7 @@ impl<'a> MessageDescriptor<'a> {
     /// Create a new message descriptor.
     pub const fn new(request_type: &'a str) -> Self {
         Self {
+            encoding: Encoding::Unknown,
             kind: MessageKind::Volatile,
             request_type,
             response_type: None,

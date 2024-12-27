@@ -12,15 +12,15 @@ extern crate self as ixc;
 #[cfg(not(feature = "use_ixc_macro_path"))]
 extern crate self as ixc_schema;
 
+mod bump;
 pub mod binary;
 pub mod buffer;
-mod bump;
 pub mod codec;
 pub mod decoder;
 pub mod encoder;
-mod enums;
+pub mod enums;
 pub mod field;
-mod fields;
+pub mod fields;
 
 pub mod kind;
 pub mod list;
@@ -31,6 +31,7 @@ pub mod state_object;
 pub mod structs;
 pub mod types;
 pub mod value;
+pub mod encoding;
 
 #[cfg(feature = "std")]
 pub mod handler;

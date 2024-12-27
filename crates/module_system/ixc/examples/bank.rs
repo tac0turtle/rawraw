@@ -17,11 +17,11 @@ pub mod bank {
         super_admin: Item<AccountID>,
         #[state(prefix = 4)]
         global_send_hook: Item<AccountID>,
-        #[state(prefix = 5)]
+        #[state(prefix = 5, key(denom), value(admin))]
         denom_admins: Map<Str, AccountID>,
-        #[state(prefix = 6)]
+        #[state(prefix = 6, key(denom), value(hook))]
         denom_send_hooks: Map<Str, AccountID>,
-        #[state(prefix = 6)]
+        #[state(prefix = 6, key(denom), value(hook))]
         _denom_burn_hooks: Map<Str, AccountID>,
     }
 
@@ -322,4 +322,6 @@ mod tests {
     }
 }
 
-fn main() {}
+fn main() {
+    ixc_core::schema::print_handler_schema::<bank::Bank>().unwrap();
+}

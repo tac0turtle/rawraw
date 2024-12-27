@@ -63,7 +63,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     for publish_trait in publish_traits.iter() {
         let trait_ident = &publish_trait.ident;
         visit_trait_schemas.push(quote! {
-            <dyn #trait_ident as ::ixc::core::handler::Service>::Client::visit_schema(visitor);
+            <<dyn #trait_ident as ::ixc::core::handler::Service>::Client as ::ixc::core::handler::Client>::visit_schema(visitor);
         });
     }
     push_item(
