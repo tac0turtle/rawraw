@@ -8,6 +8,7 @@ pub use encoder::encode_value;
 
 #[cfg(test)]
 mod tests {
+    use allocator_api2::vec;
     use crate::json::decoder::decode_value;
     use crate::json::encoder::encode_value;
     use crate::testdata::Prims;
@@ -19,7 +20,9 @@ mod tests {
     proptest! {
         #[test]
         fn test_roundtrip(value: ABitOfEverything) {
-            let res = encode_value(&value).unwrap();
+            let mut writer = vec![];
+            encode_value(&value, &mut writer).unwrap();
+            let res = std::str::from_utf8(&writer).unwrap();
             let decoded = decode_value::<ABitOfEverything>(&res, &Default::default()).unwrap();
             assert_eq!(value, decoded);
         }

@@ -13,21 +13,21 @@ use core::ops::Index;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 use std::io::Write;
+use allocator_api2::alloc::Allocator;
 use crate::json::escape::escape_json;
 
 /// Encode the value to a JSON string.
-pub fn encode_value<'a>(value: &dyn ValueCodec) -> Result<String, EncodeError> {
-    let mut writer = Vec::new();
+pub fn encode_value<A: Allocator>(value: &dyn ValueCodec, writer: &mut allocator_api2::vec::Vec<u8, A>) -> Result<(), EncodeError> {
     let mut encoder = Encoder {
         writer,
         num_nested_fields_written: 0,
     };
     value.encode(&mut encoder)?;
-    Ok(String::from_utf8(encoder.writer).map_err(|_| EncodeError::UnknownError)?)
+    Ok(())
 }
 
-struct Encoder {
-    writer: Vec<u8>,
+struct Encoder<'a, A: Allocator> {
+    writer: &'a mut allocator_api2::vec::Vec<u8, A>,
     // this is only used to avoid writing the field name if a nested object is empty
     num_nested_fields_written: usize,
 }
@@ -38,12 +38,20 @@ macro_rules! write {
     };
 }
 
-impl crate::encoder::Encoder for Encoder {
-    fn encode_u32(&mut self, x: u32) -> Result<(), EncodeError> {
+impl <A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
+    fn encode_bool(&mut self, x: bool) -> Result<(), EncodeError> {
         write!(self.writer, "{}", x)
     }
 
-    fn encode_i32(&mut self, x: i32) -> Result<(), EncodeError> {
+    fn encode_u8(&mut self, x: u8) -> Result<(), EncodeError> {
+        write!(self.writer, "{}", x)
+    }
+
+    fn encode_u16(&mut self, x: u16) -> Result<(), EncodeError> {
+        write!(self.writer, "{}", x)
+    }
+
+    fn encode_u32(&mut self, x: u32) -> Result<(), EncodeError> {
         write!(self.writer, "{}", x)
     }
 
@@ -55,9 +63,33 @@ impl crate::encoder::Encoder for Encoder {
         write!(self.writer, "\"{}\"", x)
     }
 
+    fn encode_i8(&mut self, x: i8) -> Result<(), EncodeError> {
+        write!(self.writer, "{}", x)
+    }
+
+    fn encode_i16(&mut self, x: i16) -> Result<(), EncodeError> {
+        write!(self.writer, "{}", x)
+    }
+
+    fn encode_i32(&mut self, x: i32) -> Result<(), EncodeError> {
+        write!(self.writer, "{}", x)
+    }
+
+    fn encode_i64(&mut self, x: i64) -> Result<(), EncodeError> {
+        write!(self.writer, "\"{}\"", x)
+    }
+
+    fn encode_i128(&mut self, x: i128) -> Result<(), EncodeError> {
+        write!(self.writer, "\"{}\"", x)
+    }
+
     fn encode_str(&mut self, x: &str) -> Result<(), EncodeError> {
         escape_json(x, &mut self.writer)
             .map_err(|_| EncodeError::UnknownError)
+    }
+
+    fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
+        write!(self.writer, "\"{}\"", BASE64_STANDARD.encode(x))
     }
 
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {
@@ -101,57 +133,17 @@ impl crate::encoder::Encoder for Encoder {
         write!(self.writer, "}}")
     }
 
-    fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError> {
-        let id: u128 = x.into();
-        self.encode_u128(id)
-    }
-
-    fn encode_bool(&mut self, x: bool) -> Result<(), EncodeError> {
-        write!(self.writer, "{}", x)
-    }
-
-    fn encode_u8(&mut self, x: u8) -> Result<(), EncodeError> {
-        write!(self.writer, "{}", x)
-    }
-
-    fn encode_u16(&mut self, x: u16) -> Result<(), EncodeError> {
-        write!(self.writer, "{}", x)
-    }
-
-    fn encode_i8(&mut self, x: i8) -> Result<(), EncodeError> {
-        write!(self.writer, "{}", x)
-    }
-
-    fn encode_i16(&mut self, x: i16) -> Result<(), EncodeError> {
-        write!(self.writer, "{}", x)
-    }
-
-    fn encode_i64(&mut self, x: i64) -> Result<(), EncodeError> {
-        write!(self.writer, "\"{}\"", x)
-    }
-
-    fn encode_i128(&mut self, x: i128) -> Result<(), EncodeError> {
-        write!(self.writer, "\"{}\"", x)
-    }
-
-    fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
-        write!(self.writer, "\"{}\"", BASE64_STANDARD.encode(x))
-    }
-
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        todo!()
-    }
-
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        todo!()
-    }
-
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
         } else {
             write!(self.writer, "null")
         }
+    }
+
+    fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError> {
+        let id: u128 = x.into();
+        self.encode_u128(id)
     }
 
     fn encode_enum_variant(
@@ -173,21 +165,29 @@ impl crate::encoder::Encoder for Encoder {
             write!(self.writer, "\"{}\"", variant.name)
         }
     }
+
+    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
+        todo!()
+    }
+
+    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
+        todo!()
+    }
 }
 
-struct FieldEncoder<'a> {
-    outer: &'a mut Encoder,
+struct FieldEncoder<'a, 'b, A: Allocator> {
+    outer: &'b mut Encoder<'a, A>,
     present: bool,
 }
 
-impl FieldEncoder<'_> {
+impl <A: Allocator> FieldEncoder<'_, '_, A> {
     fn mark_not_present(&mut self) -> Result<(), EncodeError> {
         self.present = false;
         Ok(())
     }
 }
 
-impl crate::encoder::Encoder for FieldEncoder<'_> {
+impl <A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
     fn encode_bool(&mut self, x: bool) -> Result<(), EncodeError> {
         if !x {
             return self.mark_not_present();
