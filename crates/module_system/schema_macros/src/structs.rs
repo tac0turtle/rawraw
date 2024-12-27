@@ -79,7 +79,7 @@ pub(crate) fn derive_struct_schema(
             fn decode_field(&mut self, index: usize, decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
                 match index {
                     #(#decode_matchers)*
-                    _ => Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
+                    _ => Err(#ixc_schema_path::decoder::DecodeError::UnknownField),
                 }
             }
         }

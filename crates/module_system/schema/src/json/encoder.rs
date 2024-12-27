@@ -165,7 +165,7 @@ impl crate::encoder::Encoder for Encoder {
             .find(|v| v.discriminant == discriminant)
             .ok_or(EncodeError::UnknownError)?;
         if let Some(value) = value {
-            write!(self.writer, "{{\"{}\":", variant.name)?;
+            write!(self.writer, "{{\"type\":\"{}\",\"value\":", variant.name)?;
             value.encode(self)?;
             write!(self.writer, "}}")
         } else {

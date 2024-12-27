@@ -82,7 +82,7 @@ pub enum DecodeError {
     /// The input data is invalid.
     InvalidData,
     /// An unknown and unhandled field number was encountered.
-    UnknownFieldNumber,
+    UnknownField,
     /// The input data contains an invalid UTF-8 string.
     InvalidUtf8,
 }
@@ -92,7 +92,7 @@ impl Display for DecodeError {
         match self {
             DecodeError::OutOfData => write!(f, "out of data"),
             DecodeError::InvalidData => write!(f, "invalid data"),
-            DecodeError::UnknownFieldNumber => write!(f, "unknown field number"),
+            DecodeError::UnknownField => write!(f, "unknown field number"),
             DecodeError::InvalidUtf8 => write!(f, "invalid UTF-8"),
         }
     }

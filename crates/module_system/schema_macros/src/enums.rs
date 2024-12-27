@@ -159,7 +159,7 @@ pub(crate) fn derive_enum_schema(
             ) -> Result<(), #ixc_schema_path::decoder::DecodeError> {
                 *self = match discriminant {
                     #(#variant_decoders)*
-                    _ => return Err(#ixc_schema_path::decoder::DecodeError::UnknownFieldNumber),
+                    _ => return Err(#ixc_schema_path::decoder::DecodeError::UnknownField),
                 };
                 Ok(())
             }
