@@ -30,6 +30,10 @@ pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> R
         }
     }
     impl<'b> APISchemaVisitor<'b> for Visitor<'b> {
+        fn allocator(&self) -> &'b dyn Allocator {
+            self.allocator
+        }
+
         fn visit_message(&mut self, messages: &MessageDescriptor<'b>) {
             self.messages.push(messages.clone());
         }
@@ -55,6 +59,10 @@ pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> R
                 }
             }
             impl<'c, 'd> APISchemaVisitor<'c> for ClientVisitor<'c, 'd> {
+                fn allocator(&self) -> &'c dyn Allocator {
+                    self.allocator
+                }
+
                 fn visit_message(&mut self, messages: &MessageDescriptor<'c>) {
                     self.messages.push(messages.clone());
                 }

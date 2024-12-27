@@ -266,11 +266,13 @@ impl APIBuilder {
             )?;
 
             let mut event_visit = vec![];
+            let mut event_names = vec![];
             for event in &events {
                 if let Some(path_seg) = event {
                     if let PathArguments::AngleBracketed(args) = &path_seg.arguments {
                         let evt_type = args.args.first().cloned();
                         event_visit.push(quote! { visitor.visit::<< #evt_type as ::ixc::schema::value::SchemaValue>::Type>(); });
+                        event_names.push(quote! { stringify!(#evt_type) });
                     } else {
                         bail!(
                             "expected event type as a generic argument to EventBus, got {:?}",
@@ -295,6 +297,8 @@ impl APIBuilder {
                             fn visit_events<V: ::ixc::schema::types::TypeVisitor>(visitor: &mut V) {
                                 #(#event_visit)*
                             }
+
+                            const EVENTS: &'static [&'static str] = &[#(#event_names),*];
                         }
                     }
                 },

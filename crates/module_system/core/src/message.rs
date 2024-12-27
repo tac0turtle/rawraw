@@ -1,11 +1,14 @@
 //! The Message trait for invoking messages dynamically.
 
 use crate::handler::APISchemaVisitor;
+use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
 use ixc_message_api::code::HandlerCode;
 use ixc_schema::codec::WellKnownCodec;
+use ixc_schema::list::List;
 use ixc_schema::message::{MessageDescriptor, MessageKind};
 use ixc_schema::structs::StructSchema;
-use ixc_schema::types::{to_field, TypeVisitor};
+use ixc_schema::types::{to_field, Type, TypeVisitor};
 use ixc_schema::value::{OptionalValue, SchemaValue};
 
 /// The MessageBase trait for invoking messages dynamically.
@@ -22,6 +25,9 @@ pub trait MessageBase<'a>: SchemaValue<'a> + StructSchema {
 pub trait Message<'a>: MessageBase<'a> {
     /// Visit the events that can be emitted by the message.
     fn visit_events<V: TypeVisitor>(visitor: &mut V);
+
+    /// The names of the events that can be emitted by the message.
+    const EVENTS: &'static [&'static str];
 }
 
 /// The QueryMessage trait for invoking query messages dynamically.
@@ -64,8 +70,9 @@ pub fn visit_init_descriptor<'a, M: InitMessage<'a>, V: APISchemaVisitor<'a>>(vi
 pub fn visit_message_descriptor<'a, M: Message<'a>, V: APISchemaVisitor<'a>>(visitor: &mut V) {
     let mut desc = visit_message_base::<M, V>(visitor);
     desc.kind = MessageKind::Volatile;
-    visitor.visit_message(&desc);
     M::visit_events(visitor);
+    desc.events = M::EVENTS;
+    visitor.visit_message(&desc);
 }
 
 /// Extract the message descriptor for a query message.

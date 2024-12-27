@@ -1,5 +1,6 @@
 //! Handler traits for account and module handlers.
 
+use allocator_api2::alloc::Allocator;
 use crate::message::InitMessage;
 use crate::resource::{Resources, ResourcesVisitor};
 use crate::routing::Router;
@@ -83,6 +84,8 @@ impl<S: Service + ?Sized> ClientFactory<S> {
 
 /// A visitor for the schema of a client.
 pub trait APISchemaVisitor<'a>: TypeVisitor {
+    /// An allocator that can be used to allocate dynamic resources.
+    fn allocator(&self) -> &'a dyn Allocator;
     /// Visit the client's messages.
     fn visit_message(&mut self, messages: &MessageDescriptor<'a>);
 }
