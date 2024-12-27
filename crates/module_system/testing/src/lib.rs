@@ -18,9 +18,8 @@ use ixc_core::handler::{Client, Handler, HandlerClient};
 use ixc_core::resource::{InitializationError, ResourceScope, Resources};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
-use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
-use ixc_message_api::code::{ErrorCode, StdCode};
+use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
@@ -29,7 +28,6 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Mutex;
-use ixc_message_api::error::HandlerError;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -176,7 +174,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         backend
             .state
             .commit(tx)
-            .map_err(|_| ErrorCode::System(FatalExecutionError))?;
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
         Ok(res)
     }
 
@@ -210,7 +208,7 @@ impl<V: ixc_vm_api::VM> HostBackend for BackendWrapper<V> {
         backend
             .state
             .commit(tx)
-            .map_err(|_| ErrorCode::System(FatalExecutionError))?;
+            .map_err(|_| ErrorCode::SystemCode(FatalExecutionError))?;
         Ok(res)
     }
 

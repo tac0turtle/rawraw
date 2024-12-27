@@ -7,7 +7,7 @@ use crate::id_generator::IDGenerator;
 use alloc::format;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::StdCode::EncodingError;
+use ixc_message_api::code::SystemCode::EncodingError;
 use ixc_message_api::message::{Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
 
@@ -87,7 +87,7 @@ pub(crate) fn get_account_handler_id<'a, ST: StateHandler>(
     let value = state_handler.kv_get(ROOT_ACCOUNT, key.as_bytes(), gas, allocator)?;
     if let Some(value) = value {
         let handler_id =
-            core::str::from_utf8(value).map_err(|_| ErrorCode::Std(EncodingError.into()))?;
+            core::str::from_utf8(value).map_err(|_| ErrorCode::SystemCode(EncodingError))?;
         Ok(Some(handler_id))
     } else {
         Ok(None)

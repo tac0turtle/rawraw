@@ -52,7 +52,7 @@ impl VM for NativeVMImpl {
         if let Some(handler) = self.handlers.get(handler_id) {
             Ok(handler.borrow())
         } else {
-            Err(ErrorCode::System(SystemCode::HandlerNotFound))
+            Err(ErrorCode::SystemCode(SystemCode::HandlerNotFound))
         }
     }
 }

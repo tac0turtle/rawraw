@@ -119,7 +119,7 @@ impl<'a> Context<'a> {
         match self.backend {
             BackendHandle::Mut(ref mut backend) => Ok(f(*backend)),
             BackendHandle::Boxed(ref mut backend) => Ok(f(&mut **backend)),
-            BackendHandle::Immutable(_) => Err(ErrorCode::System(SystemCode::VolatileAccessError)),
+            BackendHandle::Immutable(_) => Err(ErrorCode::SystemCode(SystemCode::VolatileAccessError)),
         }
     }
 }

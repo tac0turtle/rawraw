@@ -19,7 +19,7 @@ pub unsafe fn copy_bytes<'a>(
 ) -> Result<&'a [u8], ErrorCode> {
     let copy = allocator
         .allocate(Layout::from_size_align_unchecked(s.len(), 1))
-        .map_err(|_| ErrorCode::System(SystemCode::FatalExecutionError))?;
+        .map_err(|_| ErrorCode::SystemCode(SystemCode::FatalExecutionError))?;
     let ptr = copy.as_ptr();
     (*ptr).copy_from_slice(s);
     Ok(&*ptr)

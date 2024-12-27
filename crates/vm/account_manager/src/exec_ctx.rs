@@ -11,8 +11,6 @@ use allocator_api2::alloc::Allocator;
 use core::cell::RefCell;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::System;
-use ixc_message_api::code::StdCode::MessageNotHandled;
 use ixc_message_api::code::SystemCode::{
     AccountNotFound, FatalExecutionError, HandlerNotFound, InvalidHandler,
 };
@@ -20,6 +18,7 @@ use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::{AccountID, ROOT_ACCOUNT};
+use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_vm_api::VM;
 
 pub(crate) struct ExecContext<
@@ -73,7 +72,7 @@ impl<CM: VM, ST: StateHandler, IDG: IDGenerator, const CALL_STACK_LIMIT: usize>
         self.state_handler
             .borrow_mut()
             .begin_tx(self.gas_stack.meter())
-            .map_err(|_| System(InvalidHandler))?;
+            .map_err(|_| SystemCode(InvalidHandler))?;
 
         let res = if target_account == ROOT_ACCOUNT {
             // if the target account is the root account, we can just run the system message

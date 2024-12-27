@@ -5,7 +5,7 @@ use crate::message::{Message, MessageBase, QueryMessage};
 use crate::result::ClientResult;
 use crate::Context;
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::code::{ErrorCode, HandlerCode, StdCode};
+use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{Request, Response};
@@ -130,7 +130,7 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
             if let Some(out1) =
                 <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
                     cdc, &value, allocator,
-                ).map_err(|_| ixc_message_api::error::HandlerError::new(ErrorCode::Std(StdCode::EncodingError)))?
+                ).map_err(|_| ixc_message_api::error::HandlerError::new(ErrorCode::SystemCode(SystemCode::EncodingError)))?
             {
                 Ok(Response::new1(out1.into()))
             } else {

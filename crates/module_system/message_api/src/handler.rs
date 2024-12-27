@@ -1,6 +1,5 @@
 //! The raw handler and host backend interfaces.
-use crate::code::ErrorCode;
-use crate::code::StdCode::MessageNotHandled;
+use crate::code::{ErrorCode, SystemCode};
 use crate::gas::GasTracker;
 use crate::message::{Message, Request, Response};
 use crate::AccountID;
@@ -17,7 +16,7 @@ pub trait RawHandler {
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, HandlerError> {
-        Err(HandlerError::new(MessageNotHandled.into()))
+        Err(SystemCode::MessageNotHandled.into())
     }
 
     /// Handle a query message.
@@ -27,7 +26,7 @@ pub trait RawHandler {
         _callbacks: &dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, HandlerError> {
-        Err(HandlerError::new(MessageNotHandled.into()))
+        Err(SystemCode::MessageNotHandled.into())
     }
 
     /// Handle a system message.
@@ -38,7 +37,7 @@ pub trait RawHandler {
         _callbacks: &mut dyn HostBackend,
         _allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, HandlerError> {
-        Err(HandlerError::new(MessageNotHandled.into()))
+        Err(SystemCode::MessageNotHandled.into())
     }
 }
 

@@ -3,8 +3,8 @@
 use crate::result::ClientResult;
 use core::error::Error;
 use core::fmt::{Debug, Display, Formatter};
-use ixc_message_api::code::StdCode::EncodingError;
-use ixc_message_api::code::{ErrorCode, HandlerCode, StdCode};
+use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
+use ixc_message_api::code::SystemCode::EncodingError;
 use ixc_schema::decoder::DecodeError;
 use ixc_schema::encoder::EncodeError;
 
@@ -24,7 +24,7 @@ impl<E: HandlerCode> HandlerError<E> {
         #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
         Self {
-            code: ErrorCode::Std(StdCode::Other),
+            code: ErrorCode::SystemCode(SystemCode::Other),
             #[cfg(feature = "std")]
             msg: Some(message),
         }
@@ -37,7 +37,7 @@ impl<E: HandlerCode> HandlerError<E> {
         #[cfg(feature = "std")]
         core::fmt::write(&mut message, args).unwrap();
         Self {
-            code: ErrorCode::Custom(code),
+            code: ErrorCode::HandlerCode(code),
             #[cfg(feature = "std")]
             msg: Some(message),
         }
@@ -46,7 +46,7 @@ impl<E: HandlerCode> HandlerError<E> {
     /// Format a new error message with a code.
     pub fn new_from_code(code: E) -> Self {
         Self {
-            code: ErrorCode::Custom(code),
+            code: ErrorCode::HandlerCode(code),
             #[cfg(feature = "std")]
             msg: None,
         }
@@ -55,13 +55,13 @@ impl<E: HandlerCode> HandlerError<E> {
     #[cfg(feature = "std")]
     fn fmt_error(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         if let Some(msg) = &self.msg {
-            if ErrorCode::Std(StdCode::Other) != self.code {
+            if ErrorCode::SystemCode(SystemCode::Other) != self.code {
                 write!(f, "code: {:?}: {}", self.code, msg)
             } else {
                 write!(f, "{}", msg)
             }
         } else {
-            if ErrorCode::Std(StdCode::Other) != self.code {
+            if ErrorCode::SystemCode(SystemCode::Other) != self.code {
                 write!(f, "code: {:?}: ", self.code)
             } else {
                 write!(f, "unknown error")
@@ -93,10 +93,10 @@ impl<E: HandlerCode> Display for HandlerError<E> {
 
 impl<E: HandlerCode, F: HandlerCode> From<ClientError<E>> for HandlerError<F> {
     fn from(value: ClientError<E>) -> Self {
-        let code: ErrorCode<F> = if value.code == ErrorCode::Std(StdCode::OutOfGas) {
-            ErrorCode::Std(StdCode::OutOfGas)
+        let code: ErrorCode<F> = if value.code == ErrorCode::SystemCode(SystemCode::OutOfGas) {
+            ErrorCode::SystemCode(SystemCode::OutOfGas)
         } else {
-            ErrorCode::Std(StdCode::Other)
+            ErrorCode::SystemCode(SystemCode::Other)
         };
         HandlerError {
             code,
@@ -184,7 +184,7 @@ pub fn unimplemented_ok<R: Default, E: HandlerCode>(res: ClientResult<R, E>) -> 
     match res {
         Ok(r) => Ok(r),
         Err(e) => match e.code {
-            ErrorCode::Std(StdCode::MessageNotHandled) => Ok(Default::default()),
+            ErrorCode::SystemCode(SystemCode::MessageNotHandled) => Ok(Default::default()),
             _ => Err(e),
         },
     }

@@ -1,6 +1,5 @@
 //! Message request and response types.
 
-use crate::code::StdCode::EncodingError;
 use crate::code::{ErrorCode, SystemCode};
 use crate::AccountID;
 
@@ -211,7 +210,7 @@ impl<'a> Param<'a> {
     pub fn expect_bytes(&self) -> Result<&'a [u8], ErrorCode> {
         match self.typ {
             ParamType::Slice => unsafe { Ok(self.value.slice) },
-            _ => Err(EncodingError.into()),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 
@@ -219,7 +218,7 @@ impl<'a> Param<'a> {
     pub fn expect_string(&self) -> Result<&'a str, ErrorCode> {
         match self.typ {
             ParamType::String => unsafe { Ok(self.value.string) },
-            _ => Err(EncodingError.into()),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 
@@ -227,7 +226,7 @@ impl<'a> Param<'a> {
     pub fn expect_u128(&self) -> Result<u128, ErrorCode> {
         match self.typ {
             ParamType::U128 => unsafe { Ok(self.value.u128) },
-            _ => Err(EncodingError.into()),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 
@@ -235,7 +234,7 @@ impl<'a> Param<'a> {
     pub fn expect_account_id(&self) -> Result<AccountID, ErrorCode> {
         match self.typ {
             ParamType::AccountID => unsafe { Ok(self.value.account_id) },
-            _ => Err(EncodingError.into()),
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 

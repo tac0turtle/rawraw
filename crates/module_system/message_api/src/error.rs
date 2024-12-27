@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use core::fmt::{Debug, Display, Formatter};
-use crate::code::ErrorCode;
+use crate::code::{ErrorCode, SystemCode};
 
 /// An error type that can be returned by a handler that includes an optional message.
 #[derive(Clone, Debug)]
@@ -21,6 +21,12 @@ impl HandlerError {
     /// Create a new handler error with the given error code.
     pub fn new(code: ErrorCode) -> Self {
         Self { code, message: None }
+    }
+}
+
+impl From<SystemCode> for HandlerError {
+    fn from(code: SystemCode) -> Self {
+        Self { code: code.into(), message: None }
     }
 }
 

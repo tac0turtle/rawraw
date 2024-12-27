@@ -31,7 +31,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
             active_account: account_id,
         };
         self.call_stack.borrow_mut().try_push(frame).map_err(|_| {
-            ErrorCode::System(ixc_message_api::code::SystemCode::CallStackOverflow)
+            ErrorCode::SystemCode(ixc_message_api::code::SystemCode::CallStackOverflow)
         })?;
         Ok(ScopeGuard::new(self))
     }
@@ -42,7 +42,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
         call_stack
             .get(len - 2)
             .map(|f| f.active_account)
-            .ok_or(ErrorCode::System(
+            .ok_or(ErrorCode::SystemCode(
                 ixc_message_api::code::SystemCode::FatalExecutionError,
             ))
     }
@@ -52,7 +52,7 @@ impl<const CALL_STACK_LIMIT: usize> CallStack<CALL_STACK_LIMIT> {
             .borrow()
             .last()
             .map(|f| f.active_account)
-            .ok_or(ErrorCode::System(
+            .ok_or(ErrorCode::SystemCode(
                 ixc_message_api::code::SystemCode::FatalExecutionError,
             ))
     }

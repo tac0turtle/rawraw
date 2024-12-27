@@ -1,5 +1,5 @@
-//! Gas metering utility.
-use crate::code::{ErrorCode, StdCode};
+//! Simple gas tracking utility.
+
 use core::cell::Cell;
 
 /// A simple type which can be used to track gas usage for a single message execution.

@@ -5,9 +5,8 @@ use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::System;
-use ixc_message_api::code::StdCode::MessageNotHandled;
-use ixc_message_api::code::SystemCode::AccountNotFound;
+use ixc_message_api::code::ErrorCode::SystemCode;
+use ixc_message_api::code::SystemCode::{AccountNotFound, MessageNotHandled};
 use ixc_message_api::handler::{HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::ROOT_ACCOUNT;
@@ -47,7 +46,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         _message: &Message,
         _invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
-        Err(System(
+        Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
         ))
     }
@@ -72,7 +71,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
             self.gas_stack.meter(),
             allocator,
         )?
-        .ok_or(System(AccountNotFound))?;
+        .ok_or(SystemCode(AccountNotFound))?;
 
         // create a nested execution frame for the target account
         let call_scope = self.call_stack.push(target_account)?;
@@ -97,7 +96,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
         _req: &Request,
         _invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
-        Err(System(
+        Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
         ))
     }
@@ -139,7 +138,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
         unsafe {
             match req.message_selector() {
                 GET_HANDLER_ID_SELECTOR => self.handle_get_handler_id(req, allocator),
-                _ => Err(MessageNotHandled.into()),
+                _ => Err(SystemCode(MessageNotHandled)),
             }
         }
     }
@@ -159,7 +158,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
             self.gas_stack.meter(),
             allocator,
         )?
-        .ok_or(System(AccountNotFound))?;
+        .ok_or(SystemCode(AccountNotFound))?;
 
         // copy the handler ID to the out pointer
 
