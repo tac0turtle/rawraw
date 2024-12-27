@@ -1,14 +1,12 @@
 //! Handler traits for account and module handlers.
 
+use crate::message::InitMessage;
 use crate::resource::Resources;
 use crate::routing::Router;
 use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
-use ixc_schema::codec::Codec;
 use ixc_schema::message::MessageDescriptor;
-use ixc_schema::structs::StructSchema;
 use ixc_schema::types::TypeVisitor;
-use ixc_schema::SchemaValue;
 
 /// Handler trait for account and module handlers.
 pub trait Handler: RawHandler + Router + HandlerResources + Service {
@@ -23,13 +21,6 @@ pub trait Handler: RawHandler + Router + HandlerResources + Service {
 pub trait HandlerResources: Resources {
     /// The name of the handler.
     const NAME: &'static str;
-}
-
-/// A message which initializes a new account for a handler.
-// TODO we might want to do something more generic here because this could be a common base trait of Message
-pub trait InitMessage<'a>: SchemaValue<'a> + StructSchema {
-    /// The codec used for initializing the handler.
-    type Codec: Codec + Default;
 }
 
 /// A type that represents some sort of handler service and thus has an associated client type.

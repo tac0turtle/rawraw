@@ -1,6 +1,6 @@
 //! The Message trait for invoking messages dynamically.
 
-use crate::handler::{APISchemaVisitor, InitMessage};
+use crate::handler::{APISchemaVisitor};
 use ixc_message_api::code::HandlerCode;
 use ixc_schema::codec::Codec;
 use ixc_schema::message::{MessageDescriptor, MessageKind};
@@ -42,6 +42,13 @@ impl<R, E: HandlerCode> ExtractResponseTypes for crate::Result<R, E> {
     type Response = R;
     type Error = E;
     type ClientResult = crate::result::ClientResult<R, E>;
+}
+
+/// A message which initializes a new account for a handler.
+// TODO we might want to do something more generic here because this could be a common base trait of Message
+pub trait InitMessage<'a>: SchemaValue<'a> + StructSchema {
+    /// The codec used for initializing the handler.
+    type Codec: Codec + Default;
 }
 
 /// Extract the message descriptor for an init message.

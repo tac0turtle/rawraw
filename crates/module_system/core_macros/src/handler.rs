@@ -58,6 +58,14 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
             }
         },
     )?;
+
+    let mut visit_trait_schemas = vec![];
+    for publish_trait in publish_traits.iter() {
+        let trait_ident = &publish_trait.ident;
+        visit_trait_schemas.push(quote! {
+            <dyn #trait_ident as ::ixc::core::handler::Service>::Client::visit_schema(visitor);
+        });
+    }
     push_item(
         items,
         quote! {
@@ -65,7 +73,9 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
                 type Init<'a> = #on_create_msg #create_msg_lifetime;
 
                 fn visit_schema<'a, V: ::ixc::core::handler::APISchemaVisitor<'a>>(visitor: &mut V) {
+                    ::ixc::core::message::visit_init_descriptor::<#on_create_msg #create_msg_lifetime, V>(visitor);
                     <#client_ident as ::ixc::core::handler::Client>::visit_schema(visitor);
+                    #(#visit_trait_schemas)*
                 }
             }
         },
@@ -74,7 +84,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     push_item(
         items,
         quote! {
-            impl <'a> ::ixc::core::handler::InitMessage<'a> for #on_create_msg #create_msg_lifetime {
+            impl <'a> ::ixc::core::message::InitMessage<'a> for #on_create_msg #create_msg_lifetime {
                 type Codec = ::ixc::schema::binary::NativeBinaryCodec;
             }
         },

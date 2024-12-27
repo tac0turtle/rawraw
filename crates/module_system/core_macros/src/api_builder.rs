@@ -348,7 +348,7 @@ impl APIBuilder {
             self.system_routes.push(quote ! {
                 (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, caller, packet, cb, a | {
                     unsafe {
-                        let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::handler::InitMessage < '_ > >::Codec::default();
+                        let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::InitMessage < '_ > >::Codec::default();
                         let in1 = packet.request().in1().expect_bytes()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
                         let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;

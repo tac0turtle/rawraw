@@ -1,13 +1,14 @@
 //! Basic functionality for creating and managing account lifecycle.
 
 use crate::context::Context;
-use crate::handler::{Handler, HandlerResources, InitMessage, Service};
+use crate::handler::{Handler, HandlerResources, Service};
 use crate::low_level::{dynamic_invoke_msg_packet, dynamic_invoke_query_packet};
 use crate::result::ClientResult;
 use ixc_core_macros::message_selector;
 use ixc_message_api::message::{Message, Request};
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
+use crate::message::InitMessage;
 
 /// Creates a new account for the specified handler.
 pub fn create_account<H: Handler>(
