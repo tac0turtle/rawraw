@@ -101,7 +101,7 @@ pub trait ResourcesVisitor<'a>: TypeVisitor {
     /// Visit a state object.
     fn visit_state_object(&mut self, state_object: &StateObjectDescriptor<'a>);
     /// Visit a client.
-    fn visit_client<C: Client>(&mut self, name: &'a str, account_id: AccountID);
+    fn visit_client<C: Client>(&mut self, name: &'a str, account_id: &AccountID);
 }
 
 /// Extract the state object descriptor for a state object.
@@ -127,5 +127,5 @@ pub fn visit_client_factory<'a, S: Service, V: ResourcesVisitor<'a>>(
     visitor: &mut V,
     name: &'a str,
 ) {
-    visitor.visit_client::<S::Client>(name, AccountID::EMPTY);
+    visitor.visit_client::<S::Client>(name, &AccountID::EMPTY);
 }

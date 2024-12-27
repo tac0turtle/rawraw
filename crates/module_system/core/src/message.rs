@@ -2,7 +2,7 @@
 
 use crate::handler::APISchemaVisitor;
 use ixc_message_api::code::HandlerCode;
-use ixc_schema::codec::{Codec, WellKnownCodec};
+use ixc_schema::codec::WellKnownCodec;
 use ixc_schema::message::{MessageDescriptor, MessageKind};
 use ixc_schema::structs::StructSchema;
 use ixc_schema::types::{to_field, TypeVisitor};
@@ -65,6 +65,7 @@ pub fn visit_message_descriptor<'a, M: Message<'a>, V: APISchemaVisitor<'a>>(vis
     let mut desc = visit_message_base::<M, V>(visitor);
     desc.kind = MessageKind::Volatile;
     visitor.visit_message(&desc);
+    M::visit_events(visitor);
 }
 
 /// Extract the message descriptor for a query message.
@@ -77,7 +78,8 @@ pub fn visit_query_descriptor<'a, M: QueryMessage<'a>, V: APISchemaVisitor<'a>>(
 fn visit_message_base<'a, M: MessageBase<'a>, V: APISchemaVisitor<'a>>(
     visitor: &mut V,
 ) -> MessageDescriptor<'static> {
-    M::visit_type(visitor);
+    visitor.visit::<M::Type>();
+    visitor.visit::<<M::Error as SchemaValue>::Type>();
     let mut desc: MessageDescriptor = MessageDescriptor::new(M::STRUCT_TYPE.name);
     desc.encoding = M::Codec::ENCODING;
     desc.response = M::Response::AS_FIELD;

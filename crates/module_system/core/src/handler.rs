@@ -77,7 +77,7 @@ impl<S: Service + ?Sized> ClientFactory<S> {
 
     /// Visit the client's schema.
     pub fn visit_client_schema<'a, V: ResourcesVisitor<'a>>(&self, visitor: &mut V, name: &'a str) {
-        visitor.visit_client::<S::Client>(name, AccountID::EMPTY);
+        visitor.visit_client::<S::Client>(name, &AccountID::EMPTY);
     }
 }
 

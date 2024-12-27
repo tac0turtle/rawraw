@@ -46,13 +46,17 @@ pub trait TypeVisitor {
 
 /// Converts a type to a field.
 pub const fn to_field<T: Type>() -> Field<'static> {
-    Field {
+    let mut f = Field {
         name: "",
         kind: T::KIND,
         nullable: T::NULLABLE,
         element_kind: None,
-        referenced_type: "", // TODO
+        referenced_type: None,
+    };
+    if let Some(t) = T::SCHEMA_TYPE {
+        f.referenced_type = Some(t.name());
     }
+    f
 }
 
 #[allow(unused)]
@@ -64,11 +68,11 @@ impl Type for () {
 
 /// Get the name of the type that is referenced by the given type.
 /// Used in macros to generate code for enums and structs.
-pub const fn reference_type_name<'a, V: SchemaValue<'a>>() -> &'static str {
+pub const fn reference_type_name<'a, V: SchemaValue<'a>>() -> Option<&'static str> {
     if let Some(t) = <V::Type as Type>::SCHEMA_TYPE {
-        t.name()
+        Some(t.name())
     } else {
-        ""
+        None
     }
 }
 

@@ -57,7 +57,7 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
                 #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
             });
             visit_clients.push(quote! {
-                visitor.visit_client::<#ty>(&::ixc::schema::client::ClientDescriptor::new(stringify!(#field_name), #account_id.into()));
+                visitor.visit_client::<#ty>(stringify!(#field_name), &#account_id.into());
             });
         } else if let Some(client_factory) = maybe_extract_attribute::<_, ClientFactoryAttr>(field)? {
             field_inits.push(quote! {

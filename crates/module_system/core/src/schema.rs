@@ -43,7 +43,7 @@ pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> R
             self.state_objects.push(state_object.clone());
         }
 
-        fn visit_client<C: Client>(&mut self, name: &'b str, account_id: AccountID) {
+        fn visit_client<C: Client>(&mut self, name: &'b str, account_id: &AccountID) {
             struct ClientVisitor<'c, 'd> {
                 allocator: &'c dyn Allocator,
                 types: &'d mut TypeCollector<'c>,
@@ -65,7 +65,7 @@ pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> R
                 messages: Vec::new_in(self.allocator),
             };
             C::visit_schema(&mut client_visitor);
-            let mut desc = ClientDescriptor::new(name, account_id);
+            let mut desc = ClientDescriptor::new(name, *account_id);
             desc.messages = List::Owned(client_visitor.messages);
             self.clients.push(desc);
         }
