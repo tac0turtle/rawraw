@@ -41,11 +41,11 @@ fn dynamic_update_state<'a>(
     ctx: &mut Context<'a>,
     req: &Request,
 ) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.memory_manager(), &None);
+    let invoke_params = InvokeParams::new(ctx.memory_manager(), None);
     ctx.with_backend_mut(|backend| backend.update_state(req, &invoke_params))?
 }
 
 fn dynamic_query_state<'a>(ctx: &Context<'a>, req: &Request) -> Result<Response<'a>, ErrorCode> {
-    let invoke_params = InvokeParams::new(ctx.memory_manager(), &None);
+    let invoke_params = InvokeParams::new(ctx.memory_manager(), None);
     ctx.with_backend(|backend| backend.query_state(req, &invoke_params))
 }

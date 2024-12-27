@@ -4,18 +4,23 @@ extern crate alloc;
 
 mod call_stack;
 mod exec_ctx;
+pub mod gas;
+mod gas_stack;
 pub mod id_generator;
 pub mod native_vm;
 mod query_ctx;
+mod scope_guard;
 pub mod state_handler;
+mod wrapper;
 
 use crate::call_stack::CallStack;
 use crate::exec_ctx::ExecContext;
+use crate::gas::GasMeter;
+use crate::gas_stack::GasStack;
 use crate::id_generator::IDGenerator;
 use crate::query_ctx::QueryContext;
 use crate::state_handler::StateHandler;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::gas::Gas;
 use ixc_message_api::handler::{Allocator, HostBackend, InvokeParams};
 use ixc_message_api::message::{Message, Response};
 use ixc_message_api::AccountID;
@@ -44,10 +49,16 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         id_generator: &IDG,
         caller: AccountID,
         message: &Message,
-        allocator: &InvokeParams<'b>,
+        invoke_params: &InvokeParams<'b, '_>,
     ) -> Result<Response<'b>, ErrorCode> {
-        let mut exec_context = ExecContext::new(self, state_handler, id_generator, caller);
-        exec_context.invoke_msg(message, allocator)
+        let exec_context = ExecContext::new(
+            self,
+            state_handler,
+            id_generator,
+            caller,
+            invoke_params.gas_tracker,
+        );
+        exec_context.do_invoke_msg(message, invoke_params)
     }
 
     /// Invokes the query in the context of the provided state handler.
@@ -55,22 +66,23 @@ impl<CM: VM, const CALL_STACK_LIMIT: usize> AccountManager<'_, CM, CALL_STACK_LI
         &self,
         state_handler: &ST,
         message_packet: &Message,
-        allocator: &InvokeParams<'b>,
+        invoke_params: &InvokeParams<'b, '_>,
     ) -> Result<Response<'b>, ErrorCode> {
-        let call_stack = CallStack::new(AccountID::EMPTY, None);
-        let query_ctx = QueryContext::new(self, state_handler, &call_stack);
-        query_ctx.invoke_query(message_packet, allocator)
+        let call_stack = CallStack::new(AccountID::EMPTY);
+        let gas_stack = GasStack::new(invoke_params.gas_tracker.and_then(|g| g.limit));
+        let query_ctx = QueryContext::new(self, state_handler, &call_stack, &gas_stack);
+        query_ctx.invoke_query(message_packet, invoke_params)
     }
 }
 
 struct ReadOnlyStoreWrapper<'a, S: StateHandler> {
     state_handler: &'a S,
     allocator: &'a dyn Allocator,
-    gas: &'a Gas,
+    gas: &'a GasMeter,
 }
 
 impl<'a, S: StateHandler> ReadOnlyStoreWrapper<'a, S> {
-    fn wrap(state_handler: &'a S, gas: &'a Gas, allocator: &'a dyn Allocator) -> Self {
+    fn wrap(state_handler: &'a S, gas: &'a GasMeter, allocator: &'a dyn Allocator) -> Self {
         Self {
             state_handler,
             gas,
