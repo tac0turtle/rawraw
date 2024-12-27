@@ -164,15 +164,15 @@ pub mod bank {
             let global_send = self.global_send_hook.get(ctx)?;
             for coin in amount {
                 if !global_send.is_empty() {
-                    let hook_client = <dyn SendHook>::new_client(global_send);
+                    let hook_client = self.send_hook_client_factory.new_client(global_send);
                     hook_client.on_send(ctx, ctx.caller(), to, coin.denom, coin.amount)?;
                 }
                 if let Some(hook) = self.denom_send_hooks.get(ctx, coin.denom)? {
-                    let hook_client = <dyn SendHook>::new_client(hook);
+                    let hook_client = self.send_hook_client_factory.new_client(hook);
                     hook_client.on_send(ctx, ctx.caller(), to, coin.denom, coin.amount)?;
                 }
                 let from = ctx.caller();
-                let receive_hook = <dyn ReceiveHook>::new_client(to);
+                let receive_hook = self.receive_hook_client_factory.new_client(to);
                 unimplemented_ok(receive_hook.on_receive(ctx, from, coin.denom, coin.amount))?;
                 self.balances
                     .safe_sub(ctx, (from, coin.denom), coin.amount)?;
