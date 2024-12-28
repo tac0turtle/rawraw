@@ -10,6 +10,7 @@ use core::error::Error;
 use core::fmt::{Display, Formatter};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
+use crate::any::AnyMessage;
 
 /// The trait that decoders must implement.
 pub trait Decoder<'a> {
@@ -68,6 +69,8 @@ pub trait Decoder<'a> {
     fn decode_time(&mut self) -> Result<simple_time::Time, DecodeError>;
     /// Decode duration.
     fn decode_duration(&mut self) -> Result<simple_time::Duration, DecodeError>;
+    /// Decode an any message.
+    fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError>;
 
     /// Get the memory manager.
     fn mem_manager(&self) -> &'a MemoryManager;

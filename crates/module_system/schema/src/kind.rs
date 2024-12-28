@@ -58,4 +58,6 @@ pub enum Kind {
     Struct,
     /// A list value.
     List,
+    /// Any message.
+    AnyMessage
 }

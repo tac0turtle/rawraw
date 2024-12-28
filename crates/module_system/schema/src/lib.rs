@@ -38,6 +38,7 @@ pub mod json;
 
 #[cfg(test)]
 mod testdata;
+mod any;
 
 pub use state_object::{Bytes, Str};
 pub use value::SchemaValue;

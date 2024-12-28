@@ -8,6 +8,7 @@ use core::error::Error;
 use core::fmt::Display;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
+use crate::any::AnyMessage;
 
 /// The trait that encoders must implement.
 pub trait Encoder {
@@ -60,6 +61,8 @@ pub trait Encoder {
     fn encode_time(&mut self, x: simple_time::Time) -> Result<(), EncodeError>;
     /// Encode duration.
     fn encode_duration(&mut self, x: simple_time::Duration) -> Result<(), EncodeError>;
+    /// Encode an any message.
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError>;
 }
 
 /// An encoding error.
