@@ -165,6 +165,14 @@ pub fn encode_handler_error<E: HandlerCode + SchemaValue<'static>>(
     res
 }
 
+#[cfg(feature = "std")]
+fn set_error_message<E: HandlerCode + SchemaValue<'static>>(err: HandlerError<E>, res: &mut ixc_message_api::error::HandlerError) {
+    res.message = err.msg;
+}
+
+#[cfg(not(feature = "std"))]
+fn set_error_message<E: HandlerCode + SchemaValue<'static>>(_err: HandlerError<E>, _res: &mut ixc_message_api::error::HandlerError) {}
+
 /// Emits an event.
 pub fn emit_event<'a, E: StructSchema + SchemaValue<'a>>(
     ctx: &mut Context,
@@ -183,11 +191,3 @@ pub fn emit_event<'a, E: StructSchema + SchemaValue<'a>>(
 }
 
 const EMIT_EVENT_SELECTOR: MessageSelector = message_selector!("ixc.events.1.emit");
-
-#[cfg(feature = "std")]
-fn set_error_message<E: HandlerCode>(err: HandlerError<E>, res: &mut ixc_message_api::error::HandlerError) {
-    res.message = err.msg;
-}
-
-#[cfg(not(feature = "std"))]
-fn set_error_message<E: HandlerCode>(_err: HandlerError<E>, _res: &mut ixc_message_api::error::HandlerError) {}

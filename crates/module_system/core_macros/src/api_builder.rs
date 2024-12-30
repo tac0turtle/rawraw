@@ -327,7 +327,7 @@ impl APIBuilder {
                     let in1 = packet.request().in1().expect_bytes()?;
                     let mem = ::ixc::schema::mem::MemoryManager::new();
                     let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem)?
-                        .map_err(|e| ::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::StdCode::EncodingError.into()))?;
+                        .map_err(|e| ::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::SystemCode::EncodingError.into()))?;
                     let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(&packet.target_account(), #maybe_caller cb, &mem);
                     let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
                     ::ixc::core::low_level::encode_response::< #msg_struct_name > ( &cdc, res, allocator )
@@ -363,7 +363,7 @@ impl APIBuilder {
                         let in1 = packet.request().in1().expect_bytes()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
                         let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem)
-                            .map_err(|e| ::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::StdCode::EncodingError.into()))?;
+                            .map_err(|e| ::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::SystemCode::EncodingError.into()))?;
                         let mut ctx =::ixc::core::Context::new_mut(&packet.target_account(), caller, cb, &mem);
                         let res = h.# fn_name( & mut ctx, # (# fn_call_args) * );
                         ::ixc::core::low_level::encode_default_response(res)

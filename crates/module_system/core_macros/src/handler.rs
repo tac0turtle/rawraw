@@ -108,7 +108,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     }
 
     let not_handled = quote! {
-        Err(::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::StdCode::MessageNotHandled.into()))
+        Err(::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::SystemCode::MessageNotHandled.into()))
     };
 
     push_item(

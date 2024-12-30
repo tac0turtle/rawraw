@@ -33,6 +33,7 @@ use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::sync::Mutex;
+use ixc_message_api::error::HandlerError;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -285,11 +286,11 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
-                Err(HandlerError { code: ErrorCode::Std(MessageNotHandled), .. }) => continue,
+                Err(HandlerError { code: ErrorCode::SystemCode(SystemCode::MessageNotHandled), .. }) => continue,
                 _ => return res,
             }
         }
-        Err(HandlerError::new(MessageNotHandled.into()))
+        Err(SystemCode::MessageNotHandled.into())
     }
 
     fn handle_query<'a>(
@@ -301,11 +302,11 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_query(message, callbacks, allocator);
             match res {
-                Err(HandlerError { code: ErrorCode::Std(StdCode::MessageNotHandled), .. }) => continue,
+                Err(HandlerError { code: ErrorCode::SystemCode(SystemCode::MessageNotHandled), .. }) => continue,
                 _ => return res,
             }
         }
-        Err(HandlerError::new(MessageNotHandled.into()))
+        Err(SystemCode::MessageNotHandled.into())
     }
 }
 
@@ -316,7 +317,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
         message_packet: &Message,
         callbacks: &dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, HandlerError> {
+    ) -> Result<Response<'a>, ixc_message_api::error::HandlerError> {
         self.0.handle_query(message_packet, callbacks, allocator)
     }
 

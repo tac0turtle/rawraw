@@ -4,11 +4,9 @@ use crate::state_handler::StateHandler;
 use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::ErrorCode::SystemCode;
 use ixc_message_api::code::SystemCode::MessageNotHandled;
 use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
-use ixc_message_api::code::ErrorCode::SystemCode;
 
 /// The standard state handler.
 pub struct StdStateHandler<'a, S: StdStateManager> {
