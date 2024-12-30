@@ -22,7 +22,8 @@ tower-lsp = "0.20.0"
 tracing = "0.1.41"
 dashmap = "6.1.0"
 clap = { version = "4.5.23", features = ["derive"] }
-tracing-subscriber = "0.3.19"
+tracing-appender = "0.2.3" # this is just needed for debugging currently, can maybe remove later
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
 [build-dependencies]
 ungrammar = "1.16.1"

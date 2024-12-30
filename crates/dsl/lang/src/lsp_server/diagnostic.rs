@@ -26,7 +26,8 @@ impl From<Severity> for lsp_types::DiagnosticSeverity {
 
 pub fn run_diagnostics(db: &dyn Database, src: FileSource) -> Vec<lsp_types::Diagnostic> {
     let mut lsp_diags = vec![];
-    let _ = frontend::compile(&*db, src);
+    let ast = frontend::compile(&*db, src);
+    tracing::debug!("Parsed AST: {:?}", ast);
     let line_index = build_line_index(&*db, src);
     let diags = frontend::compile::accumulated::<Diagnostic>(&*db, src);
     for diag in diags {
