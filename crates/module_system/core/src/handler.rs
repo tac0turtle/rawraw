@@ -1,9 +1,9 @@
 //! Handler traits for account and module handlers.
 
-use allocator_api2::alloc::Allocator;
 use crate::message::InitMessage;
 use crate::resource::{Resources, ResourcesVisitor};
 use crate::routing::Router;
+use allocator_api2::alloc::Allocator;
 use ixc_message_api::handler::RawHandler;
 use ixc_message_api::AccountID;
 use ixc_schema::message::MessageDescriptor;

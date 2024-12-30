@@ -1,9 +1,9 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
 use crate::prefix::Prefix;
 use crate::store_client::KVStoreClient;
+use allocator_api2::vec::Vec;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
-use allocator_api2::vec::Vec;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
@@ -104,15 +104,15 @@ unsafe impl<K: ObjectKey, V: ObjectValue> StateObjectResource for Map<K, V> {
                 V::FieldTypes::N, collection_name, value_names);
         }
         let mut key_fields = Vec::new_in(allocator);
-        for i in 0..K::FieldTypes::N {
-            let mut field = K::FieldTypes::FIELDS[i];
+        for (i, field) in K::FieldTypes::FIELDS.iter().enumerate() {
+            let mut field = *field;
             field.name = key_names[i];
             key_fields.push(field);
         }
         desc.key_fields = List::Owned(key_fields);
         let mut value_fields = Vec::new_in(allocator);
-        for i in 0..V::FieldTypes::N {
-            let mut field = V::FieldTypes::FIELDS[i];
+        for (i, field) in V::FieldTypes::FIELDS.iter().enumerate() {
+            let mut field = *field;
             field.name = value_names[i];
             value_fields.push(field);
         }

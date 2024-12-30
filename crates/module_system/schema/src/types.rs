@@ -7,15 +7,15 @@
 //! None of the types in this module are expected to be instantiated other than as type-level
 //! parameters.
 
-use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
-use hashbrown::{DefaultHashBuilder, HashMap};
 use crate::enums::EnumSchema;
 use crate::field::Field;
 use crate::kind::Kind;
 use crate::schema::SchemaType;
 use crate::structs::StructSchema;
 use crate::SchemaValue;
+use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
+use hashbrown::{DefaultHashBuilder, HashMap};
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
 pub trait Type {
@@ -250,7 +250,7 @@ impl<T: EnumSchema> ListElementType for EnumT<T> {}
 #[non_exhaustive]
 pub struct TypeCollector<'a> {
     /// The collected types.
-    pub types: HashMap<&'static str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>,
+    pub types: TypeMap<'a>,
     /// The errors that occurred during type collection.
     pub errors: Vec<&'static str, &'a dyn Allocator>,
 }
@@ -281,12 +281,14 @@ impl<'a> TypeCollector<'a> {
     }
 }
 
+/// A map of type names to types.
+pub type TypeMap<'a> = HashMap<&'a str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>;
+
 /// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]
-pub fn collect_types<'a, T: SchemaValue<'a>>(allocator: &'a dyn Allocator) -> Result<
-    HashMap<&'static str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>,
-    Vec<&'static str, &'a dyn Allocator>,
-> {
+pub fn collect_types<'a, T: SchemaValue<'a>>(
+    allocator: &'a dyn Allocator,
+) -> Result<TypeMap<'a>, Vec<&'static str, &'a dyn Allocator>> {
     let mut visitor = TypeCollector::new(allocator);
     visitor.visit::<T::Type>();
     <T::Type>::visit_referenced_types(&mut visitor);

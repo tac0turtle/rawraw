@@ -63,6 +63,8 @@ pub unsafe trait EnumSchema: Sized {
 }
 
 /// A visitor for decoding enums.
+/// # Safety
+/// This trait is marked as unsafe because it is meant to only be implemented by macros.
 pub unsafe trait EnumDecodeVisitor<'a> {
     /// Decode a field from the input data.
     fn decode_variant(

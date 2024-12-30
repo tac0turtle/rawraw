@@ -98,7 +98,7 @@ pub(crate) fn derive_enum_schema(
         variants.push(variant_def);
 
         // generate the variant encoder
-        let encode_matcher = if let Some(_) = field {
+        let encode_matcher = if field.is_some() {
             quote! {
                 #enum_name::#variant_name(value) =>
                     encoder.encode_enum_variant(#discriminant, _schema, Some(value as &dyn #ixc_schema_path::value::ValueCodec)),

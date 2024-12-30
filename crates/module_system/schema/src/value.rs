@@ -3,6 +3,7 @@
 use crate::codec::{decode_value, Codec};
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
+use crate::field::Field;
 use crate::list::AllocatorVecBuilder;
 use crate::mem::MemoryManager;
 use crate::types::*;

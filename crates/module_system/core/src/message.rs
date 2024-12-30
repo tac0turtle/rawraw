@@ -1,14 +1,11 @@
 //! The Message trait for invoking messages dynamically.
 
 use crate::handler::APISchemaVisitor;
-use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
 use ixc_message_api::code::HandlerCode;
 use ixc_schema::codec::WellKnownCodec;
-use ixc_schema::list::List;
 use ixc_schema::message::{MessageDescriptor, MessageKind};
 use ixc_schema::structs::StructSchema;
-use ixc_schema::types::{to_field, Type, TypeVisitor};
+use ixc_schema::types::{to_field, TypeVisitor};
 use ixc_schema::value::{OptionalValue, SchemaValue};
 
 /// The MessageBase trait for invoking messages dynamically.

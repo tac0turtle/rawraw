@@ -15,7 +15,10 @@ use simple_time::{Duration, Time};
 /// for signature verification.
 /// It avoids any intermediate allocations and simply writes its output to the provided buffer
 /// which can be configured with a custom allocator.
-pub fn encode_value<A: Allocator>(value: &dyn ValueCodec, writer: &mut allocator_api2::vec::Vec<u8, A>) -> Result<(), EncodeError> {
+pub fn encode_value<A: Allocator>(
+    value: &dyn ValueCodec,
+    writer: &mut allocator_api2::vec::Vec<u8, A>,
+) -> Result<(), EncodeError> {
     let mut encoder = Encoder {
         writer: Writer(writer),
         num_nested_fields_written: 0,
@@ -32,7 +35,7 @@ struct Encoder<'a, A: Allocator> {
 
 pub(crate) struct Writer<'a, A: Allocator>(pub(crate) &'a mut allocator_api2::vec::Vec<u8, A>);
 
-impl <A: Allocator> Write for Writer<'_, A> {
+impl<A: Allocator> Write for Writer<'_, A> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.0.extend_from_slice(s.as_bytes());
         Ok(())
@@ -46,7 +49,7 @@ macro_rules! write {
     };
 }
 
-impl <A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
+impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     fn encode_bool(&mut self, x: bool) -> Result<(), EncodeError> {
         write!(self.writer, "{}", x)
     }
@@ -92,8 +95,7 @@ impl <A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_str(&mut self, x: &str) -> Result<(), EncodeError> {
-        escape_json(x, &mut self.writer)
-            .map_err(|_| EncodeError::UnknownError)
+        escape_json(x, &mut self.writer).map_err(|_| EncodeError::UnknownError)
     }
 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
@@ -119,7 +121,7 @@ impl <A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     ) -> Result<(), EncodeError> {
         write!(self.writer, "{{")?;
         let mut first = true;
-        let mut pos = self.writer.0.len();
+        let mut pos;
         for (i, field) in struct_type.fields.iter().enumerate() {
             pos = self.writer.0.len();
             if !first {
@@ -174,11 +176,11 @@ impl <A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
         }
     }
 
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
+    fn encode_time(&mut self, _x: Time) -> Result<(), EncodeError> {
         todo!()
     }
 
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
+    fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
         todo!()
     }
 }
@@ -188,14 +190,14 @@ struct FieldEncoder<'a, 'b, A: Allocator> {
     present: bool,
 }
 
-impl <A: Allocator> FieldEncoder<'_, '_, A> {
+impl<A: Allocator> FieldEncoder<'_, '_, A> {
     fn mark_not_present(&mut self) -> Result<(), EncodeError> {
         self.present = false;
         Ok(())
     }
 }
 
-impl <A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
+impl<A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
     fn encode_bool(&mut self, x: bool) -> Result<(), EncodeError> {
         if !x {
             return self.mark_not_present();
@@ -335,11 +337,11 @@ impl <A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
             .encode_enum_variant(discriminant, enum_type, value)
     }
 
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
+    fn encode_time(&mut self, _x: Time) -> Result<(), EncodeError> {
         todo!()
     }
 
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
+    fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
         todo!()
     }
 }

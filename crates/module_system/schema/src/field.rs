@@ -21,7 +21,13 @@ pub struct Field<'a> {
 
 impl<'a> Field<'a> {
     /// Create a new field.
-    pub const fn new(name: &'a str, kind: Kind, nullable: bool, element_kind: Option<Kind>, referenced_type: Option<&'a str>) -> Self {
+    pub const fn new(
+        name: &'a str,
+        kind: Kind,
+        nullable: bool,
+        element_kind: Option<Kind>,
+        referenced_type: Option<&'a str>,
+    ) -> Self {
         Self {
             name,
             kind,

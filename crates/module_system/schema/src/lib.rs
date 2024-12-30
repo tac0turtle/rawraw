@@ -31,15 +31,13 @@ pub mod structs;
 pub mod types;
 pub mod value;
 
-pub mod state_object;
 pub mod client;
 pub mod handler;
 pub mod json;
+pub mod state_object;
 
 #[cfg(test)]
 mod testdata;
-mod any;
-mod dynamic;
 
 pub use state_object::{Bytes, Str};
 pub use value::SchemaValue;

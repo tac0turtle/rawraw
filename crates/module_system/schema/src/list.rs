@@ -2,10 +2,10 @@
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::mem::MemoryManager;
+use crate::types::{BytesT, ListElementType, ListT};
 use crate::value::{ListElementValue, SchemaValue, ValueCodec};
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
-use crate::types::{BytesT, ListElementType, ListT};
 
 /// A visitor for encoding list types.
 pub trait ListEncodeVisitor {
@@ -74,7 +74,7 @@ impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for alloc::vec::Vec<T> {
     }
 }
 
-impl<'a, 'b, T: SchemaValue<'a>> ListEncodeVisitor for &'b [T] {
+impl<'a, T: SchemaValue<'a>> ListEncodeVisitor for &[T] {
     fn size(&self) -> usize {
         self.len()
     }
@@ -130,11 +130,12 @@ impl<'a> SchemaValue<'a> for List<'a, u8> {
     type Type = BytesT;
 }
 
-impl <'a> ListElementValue<'a> for List<'a, u8> {}
+impl<'a> ListElementValue<'a> for List<'a, u8> {}
 
 impl<'a, V: ListElementValue<'a>> ValueCodec<'a> for List<'a, V>
 where
-    V::Type: ListElementType {
+    V::Type: ListElementType,
+{
     fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
         let mut builder = AllocatorVecBuilder::<'a, V>::default();
         decoder.decode_list(&mut builder)?;
@@ -161,7 +162,7 @@ where
     type Type = ListT<V::Type>;
 }
 
-impl <'a, V: Clone> List<'a, V> {
+impl<V: Clone> List<'_, V> {
     /// Return the length of the list.
     pub fn len(&self) -> usize {
         match self {

@@ -178,7 +178,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     fn decode_enum_variant(
         &mut self,
         visitor: &mut dyn EnumDecodeVisitor<'a>,
-        enum_type: &EnumType,
+        _enum_type: &EnumType,
     ) -> Result<(), DecodeError> {
         let discriminant = self.decode_i32()?;
         visitor.decode_variant(discriminant, self)
