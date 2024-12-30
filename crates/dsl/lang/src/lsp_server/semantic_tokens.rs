@@ -1,4 +1,4 @@
-use crate::db::FileSource;
+use crate::db::{DatabaseExt, FileSource};
 use crate::frontend::parser;
 use crate::frontend::syntax::{SyntaxKind, SyntaxNode};
 use crate::lsp_server::line_col::{build_line_index, to_lsp_position, to_lsp_range};
@@ -17,9 +17,9 @@ impl LSPServer {
         &self,
         params: SemanticTokensParams,
     ) -> Result<Option<SemanticTokensResult>> {
-        if let Some(src) = self.document_map.get(&params.text_document.uri) {
-            let db = self.db.lock().unwrap();
-            let data = semantic_tokens_from_ast(&*db, *src);
+        let db = self.db.lock().unwrap();
+        if let Some(src) = db.file_source(params.text_document.uri.as_str()) {
+            let data = semantic_tokens_from_ast(&*db, src);
             Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
                 result_id: None,
                 data,

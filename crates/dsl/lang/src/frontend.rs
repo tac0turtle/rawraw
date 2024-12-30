@@ -10,7 +10,7 @@ pub mod parser;
 pub mod syntax;
 pub mod lexer;
 pub mod diagnostic;
-pub mod resolve;
+pub mod resolver;
 // mod type_checker;
 // mod checker;
 

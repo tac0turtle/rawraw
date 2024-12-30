@@ -1,8 +1,5 @@
-use std::io::Read;
 use clap::{Parser, Subcommand};
-use ixc_lang::frontend;
 use ixc_lang::frontend::compile_cli;
-use ixc_lang::frontend::diagnostic::Diagnostic;
 
 #[derive(Parser)]
 struct Cli {

@@ -5,7 +5,6 @@ use crate::db::FileSource;
 use crate::frontend;
 use crate::frontend::diagnostic::{Diagnostic, Severity};
 use crate::lsp_server::line_col::{build_line_index, to_lsp_range};
-use crate::frontend::{parser};
 
 pub fn to_lsp_diagnostic(line_index: &LineIndex, diag: Diagnostic) -> lsp_types::Diagnostic {
     let range = to_lsp_range(line_index, &diag.range);

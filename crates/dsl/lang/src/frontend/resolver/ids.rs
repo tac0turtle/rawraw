@@ -34,7 +34,6 @@ impl<'db, N: AstNode<Language = IXCLanguage>> AstPtr<'db, N> {
 pub struct NodeId<'db> {
     #[return_ref]
     pub path: NodePath,
-    // TODO:
     // #[return_ref]
     // pub file_id: FileId<'db>,
 }
@@ -42,7 +41,7 @@ pub struct NodeId<'db> {
 impl<'db> NodeId<'db> {
     pub fn parent_path(&self, db: &'db dyn Database) -> Option<NodeId<'db>> {
         if let Some(parent) = self.path(db).parent_path() {
-            return NodeId::new(db, parent)
+            return Some(Self::new(db, parent))
         }
         None
     }
@@ -73,5 +72,12 @@ impl NodePath {
 
     pub fn is_root(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn parent_path(&self) -> Option<NodePath> {
+        if self.0.len() < 1 {
+            return None;
+        }
+        Some(NodePath(self.0[1..].to_vec()))
     }
 }

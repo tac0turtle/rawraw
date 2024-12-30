@@ -1,24 +1,24 @@
+use crate::db::DatabaseExt;
 use crate::frontend::ast::*;
 use crate::frontend::parser;
-use crate::frontend::syntax::{SyntaxNode, SyntaxToken};
+use crate::frontend::syntax::SyntaxNode;
 use crate::lsp_server::line_col::{build_line_index, to_lsp_range};
 use crate::lsp_server::server::LSPServer;
 use line_index::LineIndex;
 use rowan::ast::AstNode;
 use tower_lsp::lsp_types::{
-    DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, MessageType, SymbolKind,
+    DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse, SymbolKind,
 };
-use tracing::info;
 
 impl LSPServer {
     pub async fn on_document_symbol(
         &self,
         params: DocumentSymbolParams,
     ) -> tower_lsp::jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        if let Some(src) = self.document_map.get(&params.text_document.uri) {
-            let db = self.db.lock().unwrap();
-            let ast = parser::parse(&*db, *src).syntax(&*db);
-            let line_index = build_line_index(&*db, *src);
+        let db = self.db.lock().unwrap();
+        if let Some(src) = db.file_source(params.text_document.uri.as_str()) {
+            let ast = parser::parse(&*db, src).syntax(&*db);
+            let line_index = build_line_index(&*db, src);
             let builder = SymbolBuilder {
                 line_index: &line_index,
             };
@@ -132,12 +132,7 @@ impl<'a> SymbolBuilder<'a> {
     }
 
     fn fn_signature(&self, node: &FnSignature) -> DocumentSymbol {
-        self.symbol(
-            SymbolKind::METHOD,
-            node.syntax(),
-            node.name(),
-            None,
-        )
+        self.symbol(SymbolKind::METHOD, node.syntax(), node.name(), None)
     }
 
     fn event(&self, node: &Event) -> DocumentSymbol {

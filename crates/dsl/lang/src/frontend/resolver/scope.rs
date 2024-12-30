@@ -1,14 +1,13 @@
 use crate::frontend::ast::{ConcreteNode, File, Interface, InterfaceItem, Item, ParsedAST};
 use crate::frontend::diagnostic::Diagnostic;
-use crate::frontend::resolve::definer::ItemDefiner;
-use crate::frontend::resolve::ids::{AstPtr, NodeId, NodePath};
-use crate::frontend::resolve::item_ref::ItemPtr;
+use crate::frontend::resolver::definer::ItemDefiner;
+use crate::frontend::resolver::ids::{AstPtr, NodeId};
+use crate::frontend::resolver::item_ref::ItemPtr;
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
+use dashmap::DashMap;
 use rowan::ast::AstNode;
 use salsa::{Accumulator, Database};
-use std::collections::HashMap;
-use std::sync::LazyLock;
-use dashmap::DashMap;
+use std::collections::BTreeMap;
 
 #[salsa::tracked]
 pub fn resolve_scope<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_path: NodeId<'db>) -> Option<Scope<'db>> {
@@ -41,10 +40,13 @@ pub fn resolve_name_ref<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_id
     None
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct ScopeProviderRegistry {
     providers: DashMap<SyntaxKind, Box<dyn Fn(SyntaxNode, &mut ScopeBuilder)>>,
 }
+
+unsafe impl Sync for ScopeProviderRegistry {}
+unsafe impl Send for ScopeProviderRegistry {}
 
 impl ScopeProviderRegistry {
     fn register_provider<N: ConcreteNode + AstNode<Language=IXCLanguage> + 'static>(&mut self, provider: fn(N, &mut ScopeBuilder)) {
@@ -57,7 +59,7 @@ impl ScopeProviderRegistry {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Scope<'db> {
     parent: Option<NodeId<'db>>,
-    names: DashMap<String, ItemPtr<'db>>,
+    names: BTreeMap<String, ItemPtr<'db>>,
 }
 
 pub struct ScopeBuilder<'db> {

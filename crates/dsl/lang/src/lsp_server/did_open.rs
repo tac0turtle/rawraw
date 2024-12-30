@@ -1,6 +1,6 @@
 use tower_lsp::lsp_types::{Diagnostic, DidOpenTextDocumentParams, Position, Range};
 use std::borrow::Borrow;
-use crate::db::{Db, FileSource};
+use crate::db::{Db, FileSource, DatabaseExt};
 use crate::lsp_server::server::LSPServer;
 use crate::frontend::diagnostic;
 use crate::frontend::parser;
@@ -9,16 +9,16 @@ use crate::lsp_server::line_col;
 
 impl LSPServer {
     pub async fn on_did_open(&self, params: DidOpenTextDocumentParams) {
-        if self.document_map.contains_key(&params.text_document.uri) {
-            tracing::debug!("file already opened");
-            return;
-        }
-
 
         let lsp_diags = {
             let db = self.db.lock().unwrap();
+            if db.file_source(params.text_document.uri.as_str()).is_some() {
+                tracing::debug!("file already opened");
+                return;
+            }
+
             let src = FileSource::new(&*db, params.text_document.text);
-            self.document_map.insert(params.text_document.uri.clone(), src);
+            db.add_file_source(params.text_document.uri.clone().into(), src);
             run_diagnostics(&*db, src)
         };
 

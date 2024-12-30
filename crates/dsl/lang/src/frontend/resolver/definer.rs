@@ -1,7 +1,7 @@
 use rowan::ast::AstNode;
 use crate::frontend::ast::*;
-use crate::frontend::resolve::ids::AstPtr;
-use crate::frontend::resolve::item_ref::ItemPtr;
+use crate::frontend::resolver::ids::AstPtr;
+use crate::frontend::resolver::item_ref::ItemPtr;
 use crate::frontend::syntax::IXCLanguage;
 
 pub trait ItemDefiner: AstNode<Language = IXCLanguage> {
