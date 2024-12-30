@@ -11,12 +11,11 @@ use crate::enums::EnumSchema;
 use crate::field::Field;
 use crate::kind::Kind;
 use crate::schema::SchemaType;
-use crate::structs::StructSchema;
+use crate::structs::{StructSchema, StructType};
 use crate::SchemaValue;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
 use hashbrown::{DefaultHashBuilder, HashMap};
-use ixc::structs::StructType;
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
 pub trait Type {

@@ -180,4 +180,13 @@ impl<V: Clone> List<'_, V> {
             List::Owned(v) => v.is_empty(),
         }
     }
+
+    /// Return the list value as a slice.
+    pub fn as_slice(&self) -> &[V] {
+        match self {
+            List::Empty => &[],
+            List::Borrowed(v) => v,
+            List::Owned(v) => v.as_slice(),
+        }
+    }
 }

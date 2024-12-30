@@ -1,11 +1,13 @@
 //! The AnyMessage type which packs a struct within the scope of an account into a message.
-use ixc::structs::StructSchema;
+
 use ixc_message_api::AccountID;
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::kind::Kind;
 use crate::list::List;
-use crate::SchemaValue;
+use crate::mem::MemoryManager;
+use crate::{binary, SchemaValue};
+use crate::structs::StructSchema;
 use crate::types::{ListElementType, Type};
 use crate::value::{ListElementValue, ValueCodec};
 
@@ -31,11 +33,13 @@ impl <'a> AnyMessage<'a> {
     }
 
     /// Decode the message if it matches the given struct type.
-    pub fn decode_message<M: StructSchema + ValueCodec<'a>>(&self) -> Result<Option<M>, DecodeError> {
+    pub fn decode_message<M: StructSchema + SchemaValue<'a>>(&'a self, mem: &'a MemoryManager) -> Result<Option<M>, DecodeError> {
         if self.selector != M::TYPE_SELECTOR {
             return Ok(None);
         }
-        todo!()
+        let mut res = M::default();
+        binary::decoder::decode_value(self.bytes.as_slice(), mem, &mut res).map_err(|_| DecodeError::InvalidData)?;
+        Ok(Some(res))
     }
 }
 
