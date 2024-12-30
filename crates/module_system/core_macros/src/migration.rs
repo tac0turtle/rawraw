@@ -100,20 +100,17 @@ pub(crate) fn build_on_migrate_handler(
     }
     if !cases.is_empty() {
         builder.system_routes.push(quote! {
-                (::ixc::core::account_api::ON_MIGRATE_SELECTOR, | h: & Self, packet, cb, a | {
+                (::ixc::core::account_api::ON_MIGRATE_SELECTOR, | h: & Self, caller, packet, cb, a | {
                     unsafe {
-                       let old_handler_id = packet.header().in_pointer1.get(packet);
-                        let old_handler_id = ::core::str::from_utf8(old_handler_id)
-                            .map_err(|_| ::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::EncodingError))?;
-                        let header = packet.header();
+                       let old_handler_id = packet.request().in1().expect_string()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
-                        let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, &mem);
+                        let mut ctx =::ixc::core::Context::new_mut(&packet.target_account(), caller, cb, &mem);
                         let scope: ::ixc::core::resource::ResourceScope<'_> = ::core::default::Default::default();
                         let res = match old_handler_id {
                             #(#cases)*
                             _ => return Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled)),
                         };
-                        ::ixc::core::low_level::encode_default_response(res, a, packet)
+                        ::ixc::core::low_level::encode_default_response(res)
                     }
                 })
             });

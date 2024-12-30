@@ -2,14 +2,13 @@
 
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
-use crate::mem::MemoryManager;
 use allocator_api2::alloc::Allocator;
 use core::alloc::Layout;
 
 /// A factory for creating writers.
-pub trait WriterFactory {
+pub trait WriterFactory<'a> {
     /// Create a new reverse writer.
-    fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter, EncodeError>;
+    fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter<'a>, EncodeError>;
 }
 
 /// A writer that writes bytes slices in the order specified when it was created.
@@ -20,22 +19,8 @@ pub trait Writer {
     fn pos(&self) -> usize;
 }
 
-impl WriterFactory for MemoryManager {
-    fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter, EncodeError> {
-        unsafe {
-            let ptr = self
-                .allocate_zeroed(Layout::from_size_align_unchecked(size, 1))
-                .map_err(|_| EncodeError::OutOfSpace)?;
-            Ok(ReverseSliceWriter {
-                buf: &mut *ptr.as_ptr(),
-                pos: size,
-            })
-        }
-    }
-}
-
-impl WriterFactory for &dyn Allocator {
-    fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter, EncodeError> {
+impl<'a> WriterFactory<'a> for &'a dyn Allocator {
+    fn new_reverse(&self, size: usize) -> Result<ReverseSliceWriter<'a>, EncodeError> {
         unsafe {
             let ptr = self
                 .allocate_zeroed(Layout::from_size_align_unchecked(size, 1))

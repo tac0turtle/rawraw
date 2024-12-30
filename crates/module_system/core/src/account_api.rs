@@ -1,14 +1,11 @@
 //! Basic functionality for creating and managing account lifecycle.
 
 use crate::context::Context;
-use crate::error::ClientError;
 use crate::handler::{Handler, HandlerResources, InitMessage, Service};
-use crate::low_level::create_packet;
+use crate::low_level::{dynamic_invoke_msg_packet, dynamic_invoke_query_packet};
 use crate::result::ClientResult;
-use core::str::from_utf8;
 use ixc_core_macros::message_selector;
-use ixc_message_api::code::ErrorCode;
-use ixc_message_api::code::SystemCode::EncodingError;
+use ixc_message_api::message::{Message, Request};
 use ixc_message_api::AccountID;
 use ixc_schema::codec::Codec;
 
@@ -31,68 +28,33 @@ pub fn create_account_raw(ctx: &mut Context, name: &str, init: &[u8]) -> ClientR
 
 /// Creates a new account for the named handler with opaque initialization data.
 fn do_create_account(ctx: &mut Context, name: &str, init: &[u8]) -> ClientResult<AccountID> {
-    let mut packet = create_packet(
-        ctx.account,
-        ctx.memory_manager(),
+    let message = Message::new(
         ROOT_ACCOUNT,
-        CREATE_SELECTOR,
-    )?;
-
-    unsafe {
-        packet.header_mut().in_pointer1.set_slice(name.as_bytes());
-        packet.header_mut().in_pointer2.set_slice(init);
-
-        ctx.dynamic_invoke_msg(&mut packet)?;
-
-        let res = packet.header().in_pointer1.get(&packet);
-        if res.len() != size_of::<u128>() {
-            return Err(ClientError::new(
-                ErrorCode::SystemCode(EncodingError),
-                "invalid account ID".into(),
-            ));
-        }
-
-        Ok(AccountID::new(u128::from_le_bytes(res.try_into().unwrap())))
-    }
+        Request::new2(CREATE_SELECTOR, name.into(), init.into()),
+    );
+    let res = dynamic_invoke_msg_packet(ctx, &message, None)?;
+    let id = res.out1().expect_account_id()?;
+    Ok(id)
 }
 
 /// Gets the handler ID of the account.
 pub fn get_handler_id<'a>(ctx: &Context<'a>, account_id: AccountID) -> ClientResult<&'a str> {
-    let mut packet = create_packet(
-        ctx.self_account_id(),
-        ctx.memory_manager(),
+    let message = Message::new(
         ROOT_ACCOUNT,
-        GET_HANDLER_ID_SELECTOR,
-    )?;
-    unsafe {
-        let id: u128 = account_id.into();
-        packet.header_mut().in_pointer1.set_slice(&id.to_le_bytes());
-        ctx.dynamic_invoke_query(&mut packet)?;
-        let res = packet.header().out_pointer1.get(&packet);
-        from_utf8(res).map_err(|_| {
-            ClientError::new(
-                ErrorCode::SystemCode(EncodingError),
-                "invalid handler ID".into(),
-            )
-        })
-    }
+        Request::new1(GET_HANDLER_ID_SELECTOR, account_id.into()),
+    );
+    let res = dynamic_invoke_query_packet(ctx, &message, None)?;
+    let handler_id = res.out1().expect_string()?;
+    Ok(handler_id)
 }
 
 /// Migrates the account to the new handler with the specified ID.
 pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
-    let mut packet = create_packet(
-        ctx.self_account_id(),
-        ctx.memory_manager(),
+    let msg = Message::new(
         ROOT_ACCOUNT,
-        MIGRATE_SELECTOR,
-    )?;
-    unsafe {
-        packet
-            .header_mut()
-            .in_pointer1
-            .set_slice(new_handler_id.as_bytes());
-        ctx.dynamic_invoke_msg(&mut packet)?;
-    }
+        Request::new1(MIGRATE_SELECTOR, new_handler_id.into()),
+    );
+    dynamic_invoke_msg_packet(ctx, &msg, None)?;
     Ok(())
 }
 
@@ -101,13 +63,8 @@ pub fn migrate(ctx: &mut Context, new_handler_id: &str) -> ClientResult<()> {
 /// # Safety
 /// This function is unsafe because it can be used to destroy the account and all its state.
 pub unsafe fn self_destruct(ctx: &mut Context) -> ClientResult<()> {
-    let mut packet = create_packet(
-        ctx.self_account_id(),
-        ctx.memory_manager(),
-        ROOT_ACCOUNT,
-        SELF_DESTRUCT_SELECTOR,
-    )?;
-    ctx.dynamic_invoke_msg(&mut packet)?;
+    let msg = Message::new(ROOT_ACCOUNT, Request::new(SELF_DESTRUCT_SELECTOR));
+    dynamic_invoke_msg_packet(ctx, &msg, None)?;
     Ok(())
 }
 

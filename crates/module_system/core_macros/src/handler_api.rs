@@ -52,11 +52,11 @@ pub(crate) fn handler_api(
         #(#items)*
 
         impl ::ixc::message_api::handler::RawHandler for dyn #trait_ident {
-            fn handle_msg(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &mut dyn ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
-                ::ixc::core::routing::exec_route(self, message_packet, callbacks, allocator)
+            fn handle_msg<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
+                ::ixc::core::routing::exec_route(self, caller, message_packet, callbacks, allocator)
             }
 
-            fn handle_query(&self, message_packet: &mut ::ixc::message_api::packet::MessagePacket, callbacks: &dyn ixc::message_api::handler::HostBackend, allocator: &dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<(), ::ixc::message_api::code::ErrorCode> {
+            fn handle_query<'a>(&self, message_packet: &::ixc::message_api::message::Message, callbacks: &dyn ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
                 ::ixc::core::routing::exec_query_route(self, message_packet, callbacks, allocator)
             }
         }

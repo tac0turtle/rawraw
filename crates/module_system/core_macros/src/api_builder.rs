@@ -43,7 +43,7 @@ impl APIBuilder {
                         Self(account_id)
                     }
 
-                    fn account_id(&self) -> ::ixc::message_api::AccountID {
+                    fn target_account(&self) -> ::ixc::message_api::AccountID {
                         self.0
                     }
                 }
@@ -250,7 +250,6 @@ impl APIBuilder {
         )?;
 
         // calculate the message selector
-        let selector = message_selector_from_str(msg_struct_name.to_string().as_str());
         let return_type = match &signature.output {
             ReturnType::Type(_, ty) => ty,
             ReturnType::Default => {
@@ -262,7 +261,6 @@ impl APIBuilder {
                 &mut self.items,
                 quote! {
                     impl < 'a >::ixc::core::message::MessageBase < 'a > for # msg_struct_name # opt_lifetime {
-                        const SELECTOR: ::ixc::message_api::header::MessageSelector = # selector;
                         type Response < 'b > = < # return_type as::ixc::core::message::ExtractResponseTypes >::Response;
                         type Error = < # return_type as::ixc::core::message::ExtractResponseTypes >::Error;
                         type Codec =::ixc::schema::binary::NativeBinaryCodec;
@@ -284,17 +282,21 @@ impl APIBuilder {
             } else {
                 (quote! { mut }, quote! { new_mut })
             };
+            let maybe_caller = if is_query {
+                quote! {}
+            } else {
+                quote! { caller, }
+            };
             let route = quote! {
-            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, a| {
+            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::schema::structs::StructSchema>::TYPE_SELECTOR, |h: & Self, #maybe_caller packet, cb, allocator| {
                 unsafe {
                     let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
-                    let header = packet.header();
-                    let in1 = header.in_pointer1.get(packet);
+                    let in1 = packet.request().in1().expect_bytes()?;
                     let mem = ::ixc::schema::mem::MemoryManager::new();
                     let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(header.account, header.caller, header.gas_left, cb, & mem);
+                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(&packet.target_account(), #maybe_caller cb, &mem);
                     let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
-                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( & cdc, res, a, packet)
+                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( &cdc, res, allocator )
                 }
             }),
             };
@@ -315,22 +317,21 @@ impl APIBuilder {
             self.client_methods.push(quote! {
                 # signature {
                     let _msg = # msg_struct_name { # ( # msg_fields_init) * };
-                    let _acct_id =::ixc::core::handler::Client::account_id( self );
+                    let _acct_id =::ixc::core::handler::Client::target_account( self );
                     unsafe { # dynamic_invoke }
                 }
             });
         } else if let PublishedFnType::OnCreate { .. } = &publish_target.ty {
             self.system_routes.push(quote ! {
-                (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, packet, cb, a | {
+                (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, caller, packet, cb, a | {
                     unsafe {
                         let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::handler::InitMessage < '_ > >::Codec::default();
-                        let header = packet.header();
-                        let in1 = header.in_pointer1.get(packet);
+                        let in1 = packet.request().in1().expect_bytes()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
                         let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                        let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, & mem);
+                        let mut ctx =::ixc::core::Context::new_mut(&packet.target_account(), caller, cb, &mem);
                         let res = h.# fn_name( & mut ctx, # (# fn_call_args) * );
-                        ::ixc::core::low_level::encode_default_response(res, a, packet)
+                        ::ixc::core::low_level::encode_default_response(res)
                     }
                     }),}
                 );

@@ -6,15 +6,19 @@ use crate::types::ReferenceableType;
 
 /// StructSchema describes the schema of a struct.
 /// # Safety
-/// the trait is marked as unsafe to detour users from using it
+/// The trait is marked as unsafe because it is meant to be implemented by macros.
 pub unsafe trait StructSchema: ReferenceableType {
     /// The schema of the struct.
     const STRUCT_TYPE: StructType<'static>;
+
+    /// A hash of the struct's name which should be unique within a reasonable schema.
+    /// Can be used to decode a struct from a message by matching on its type selector.
+    const TYPE_SELECTOR: u64;
 }
 
 /// StructDecodeVisitor is the trait that should be derived to decode a struct.
 /// # Safety
-/// the trait is marked as unsafe to detour users from using it
+/// The trait is marked as unsafe because it is meant to be implemented by macros.
 pub unsafe trait StructDecodeVisitor<'a> {
     /// Decode a field from the input data.
     fn decode_field(

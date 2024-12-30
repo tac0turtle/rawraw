@@ -347,12 +347,6 @@ mod tests {
         amount: u128,
     }
 
-    impl Drop for Coin<'_> {
-        fn drop(&mut self) {
-            std::println!("drop Coin");
-        }
-    }
-
     #[test]
     fn test_coin() {
         let coin = Coin {
