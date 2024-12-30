@@ -107,11 +107,15 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
         });
     }
 
+    let not_handled = quote! {
+        Err(::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::SystemCode::MessageNotHandled.into()))
+    };
+
     push_item(
         items,
         quote! {
             impl ::ixc::message_api::handler::RawHandler for #handler {
-                fn handle_msg<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
+                fn handle_msg<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::error::HandlerError> {
                     let sel = message_packet.request().message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_MSG_ROUTES, sel) {
                         return rt(self, caller, message_packet, callbacks, allocator)
@@ -119,10 +123,10 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
 
                     #(#trait_msg_routers)*
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    #not_handled
                 }
 
-                fn handle_query<'a>(&self, message_packet: &::ixc::message_api::message::Message, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
+                fn handle_query<'a>(&self, message_packet: &::ixc::message_api::message::Message, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::error::HandlerError> {
                     let sel = message_packet.request().message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_QUERY_ROUTES, sel) {
                         return rt(self, message_packet, callbacks, allocator)
@@ -130,16 +134,16 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
 
                     #(#trait_query_routers)*
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    #not_handled
                 }
 
-                fn handle_system<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
+                fn handle_system<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::error::HandlerError> {
                     let sel = message_packet.request().message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_SYSTEM_ROUTES, sel) {
                         return rt(self, caller, message_packet, callbacks, allocator)
                     }
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    #not_handled
                 }
             }
         },

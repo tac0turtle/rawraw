@@ -130,7 +130,7 @@ mod vesting {
         pub amount: Coin,
     }
 
-    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, SchemaValue, Default)]
+    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, SchemaValue, Default, Copy)]
     #[repr(u8)]
     #[non_exhaustive]
     pub enum UnlockError {
@@ -142,7 +142,7 @@ mod vesting {
         FundsNotReceivedYet,
     }
 
-    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, SchemaValue, Default)]
+    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, SchemaValue, Default, Copy)]
     #[repr(u8)]
     #[non_exhaustive]
     pub enum SendError {

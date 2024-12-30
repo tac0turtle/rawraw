@@ -1,7 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_schema_macros::SchemaValue;
-use proptest::prelude::*;
 use proptest_derive::Arbitrary;
 
 #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
