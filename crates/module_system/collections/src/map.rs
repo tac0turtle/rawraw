@@ -1,13 +1,19 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
 use crate::prefix::Prefix;
 use crate::store_client::KVStoreClient;
+use allocator_api2::vec::Vec;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
+use ixc_message_api::handler::Allocator;
+use ixc_schema::encoding::Encoding;
+use ixc_schema::fields::FieldTypes;
+use ixc_schema::list::List;
 use ixc_schema::state_object::{
     decode_object_value, encode_object_key, encode_object_value, ObjectKey, ObjectValue,
+    StateObjectDescriptor,
 };
 
 pub(crate) const MAX_SIZE: usize = 7;
@@ -70,12 +76,47 @@ impl<K: ObjectKey, V: ObjectValue> Map<K, V> {
     }
 }
 
-unsafe impl<K, V> StateObjectResource for Map<K, V> {
+unsafe impl<K: ObjectKey, V: ObjectValue> StateObjectResource for Map<K, V> {
     unsafe fn new(scope: &[u8], prefix: u8) -> core::result::Result<Self, InitializationError> {
         let prefix = Prefix::new(scope, prefix)?;
         Ok(Self {
             _phantom: (PhantomData, PhantomData),
             prefix,
         })
+    }
+
+    #[cfg(feature = "std")]
+    fn descriptor<'a>(
+        allocator: &'a dyn Allocator,
+        collection_name: &'a str,
+        key_names: &[&'a str],
+        value_names: &[&'a str],
+    ) -> StateObjectDescriptor<'a> {
+        let mut desc = StateObjectDescriptor::default();
+        desc.name = collection_name;
+        desc.encoding = Encoding::NativeBinary;
+        if key_names.len() != K::FieldTypes::N {
+            panic!("Expected {} key names for map \"{}\", but got {:?}. This generally means that you haven't specified name(...) correctly in #[state]. Ex. #[state(name(key1, key2)].",
+                K::FieldTypes::N, collection_name, key_names);
+        }
+        if value_names.len() != V::FieldTypes::N {
+            panic!("Expected {} value names for map \"{}\", but got {:?}. This generally means that you haven't specified name(...) correctly in #[state]. Ex. #[state(name(value1, value2)].",
+                V::FieldTypes::N, collection_name, value_names);
+        }
+        let mut key_fields = Vec::new_in(allocator);
+        for (i, field) in K::FieldTypes::FIELDS.iter().enumerate() {
+            let mut field = *field;
+            field.name = key_names[i];
+            key_fields.push(field);
+        }
+        desc.key_fields = List::Owned(key_fields);
+        let mut value_fields = Vec::new_in(allocator);
+        for (i, field) in V::FieldTypes::FIELDS.iter().enumerate() {
+            let mut field = *field;
+            field.name = value_names[i];
+            value_fields.push(field);
+        }
+        desc.value_fields = List::Owned(value_fields);
+        desc
     }
 }

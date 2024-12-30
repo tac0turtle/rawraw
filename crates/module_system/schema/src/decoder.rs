@@ -1,6 +1,6 @@
 //! The decoder trait and error type.
 
-use crate::enums::EnumType;
+use crate::enums::{EnumDecodeVisitor, EnumType};
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::structs::{StructDecodeVisitor, StructType};
@@ -59,9 +59,11 @@ pub trait Decoder<'a> {
     /// Decode an account ID.
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError>;
     /// Encode an enum value.
-    fn decode_enum(&mut self, _enum_type: &EnumType) -> Result<i32, DecodeError> {
-        self.decode_i32()
-    }
+    fn decode_enum_variant(
+        &mut self,
+        visitor: &mut dyn EnumDecodeVisitor<'a>,
+        enum_type: &EnumType,
+    ) -> Result<(), DecodeError>;
     /// Decode time.
     fn decode_time(&mut self) -> Result<simple_time::Time, DecodeError>;
     /// Decode duration.
@@ -80,7 +82,7 @@ pub enum DecodeError {
     /// The input data is invalid.
     InvalidData,
     /// An unknown and unhandled field number was encountered.
-    UnknownFieldNumber,
+    UnknownField,
     /// The input data contains an invalid UTF-8 string.
     InvalidUtf8,
 }
@@ -90,7 +92,7 @@ impl Display for DecodeError {
         match self {
             DecodeError::OutOfData => write!(f, "out of data"),
             DecodeError::InvalidData => write!(f, "invalid data"),
-            DecodeError::UnknownFieldNumber => write!(f, "unknown field number"),
+            DecodeError::UnknownField => write!(f, "unknown field number"),
             DecodeError::InvalidUtf8 => write!(f, "invalid UTF-8"),
         }
     }

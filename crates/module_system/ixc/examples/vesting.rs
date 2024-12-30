@@ -107,7 +107,7 @@ mod vesting {
     #[publish]
     impl ReceiveHook for FixedVesting {
         fn on_receive(&self, ctx: &mut Context, _from: AccountID, amount: &[Coin]) -> Result<()> {
-            if ctx.caller() != self.bank_client.account_id() {
+            if ctx.caller() != self.bank_client.target_account() {
                 bail!("only the bank can send funds to this account");
             }
             if (self.amount.get(ctx)?).is_some() {
@@ -130,9 +130,11 @@ mod vesting {
         pub amount: Coin,
     }
 
-    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, Copy)]
+    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, SchemaValue, Default, Copy)]
     #[repr(u8)]
+    #[non_exhaustive]
     pub enum UnlockError {
+        #[default]
         #[error("the unlock time has not arrived yet")]
         NotTimeYet,
 
@@ -140,9 +142,11 @@ mod vesting {
         FundsNotReceivedYet,
     }
 
-    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, Copy)]
+    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, SchemaValue, Default, Copy)]
     #[repr(u8)]
+    #[non_exhaustive]
     pub enum SendError {
+        #[default]
         #[error("insufficient funds")]
         InsufficientFunds,
 
@@ -228,7 +232,7 @@ mod tests {
         );
 
         // pretend to be bank and deposit the initial funds
-        let receive_hook_client = <dyn ReceiveHook>::new_client(vesting_acct.account_id());
+        let receive_hook_client = <dyn ReceiveHook>::new_client(vesting_acct.target_account());
         let funder_id = app.new_client_account().unwrap();
         receive_hook_client
             .on_receive(&mut bank_ctx, funder_id, &coins)
@@ -270,4 +274,6 @@ mod tests {
     }
 }
 
-fn main() {}
+fn main() {
+    ixc_core::schema::print_handler_schema::<vesting::FixedVesting>().unwrap();
+}

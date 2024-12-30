@@ -1,8 +1,9 @@
 //! Basic functionality for creating and managing account lifecycle.
 
 use crate::context::Context;
-use crate::handler::{Handler, HandlerResources, InitMessage, Service};
+use crate::handler::{Handler, HandlerResources, Service};
 use crate::low_level::{dynamic_invoke_msg_packet, dynamic_invoke_query_packet};
+use crate::message::InitMessage;
 use crate::result::ClientResult;
 use ixc_core_macros::message_selector;
 use ixc_message_api::message::{Message, Request};

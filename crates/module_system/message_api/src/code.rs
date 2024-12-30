@@ -110,3 +110,9 @@ impl SystemCode {
         code >= 128
     }
 }
+
+impl<E: HandlerCode> From<SystemCode> for ErrorCode<E> {
+    fn from(code: SystemCode) -> Self {
+        ErrorCode::SystemCode(code)
+    }
+}
