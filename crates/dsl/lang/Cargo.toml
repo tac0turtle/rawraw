@@ -19,11 +19,8 @@ salsa = { git = "https://github.com/salsa-rs/salsa.git", rev = "88a1d7774d78f048
 line-index = "0.1.2"
 tokio = { version = "1.0", features = ["full"] }
 tower-lsp = "0.20.0"
-tracing = "0.1.41"
 dashmap = "6.1.0"
 clap = { version = "4.5.23", features = ["derive"] }
-tracing-appender = "0.2.3" # this is just needed for debugging currently, can maybe remove later
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
 [build-dependencies]
 ungrammar = "1.16.1"

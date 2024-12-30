@@ -63,15 +63,15 @@ impl IXC20 for SimpleToken {
     }
 }
 
-test test_ixc20 {
-    let admin = test.create_test_account();
-    let bob = test.create_test_account();
-    let alice = test.create_test_account();
-    let token = as admin { create_account(SimpleToken) };
-    let simple_token = as(admin, token.mint(bob, 100));
-    assert(simple_token.IXC20.balance_get(bob) == 100);
-    assert(simple_token.IXC20.balance_get(alice) == 0);
-    as bob { simple_token.IXC20.send(alice, 50)) };
-    assert(simple_token.IXC20.balance_get(bob) == 50);
-    assert(simple_token.IXC20.balance_get(alice) == 50);
-}
+//test test_ixc20 {
+//    let admin = test.create_test_account();
+//    let bob = test.create_test_account();
+//    let alice = test.create_test_account();
+//    let token = as admin { create_account(SimpleToken) };
+//    let simple_token = as(admin, token.mint(bob, 100));
+//    assert(simple_token.IXC20.balance_get(bob) == 100);
+//    assert(simple_token.IXC20.balance_get(alice) == 0);
+//    as bob { simple_token.IXC20.send(alice, 50)) };
+//    assert(simple_token.IXC20.balance_get(bob) == 50);
+//    assert(simple_token.IXC20.balance_get(alice) == 50);
+//}

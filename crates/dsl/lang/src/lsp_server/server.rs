@@ -4,7 +4,6 @@ use std::pin::Pin;
 use std::sync::Mutex;
 use dashmap::DashMap;
 use rowan::GreenNode;
-use tracing::{debug, info};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::*;
@@ -66,9 +65,7 @@ impl LanguageServer for LSPServer {
         })
     }
 
-    async fn initialized(&self, _: InitializedParams) {
-        info!("LSP server initialized!");
-    }
+    async fn initialized(&self, _: InitializedParams) { }
 
     async fn shutdown(&self) -> Result<()> {
         Ok(())

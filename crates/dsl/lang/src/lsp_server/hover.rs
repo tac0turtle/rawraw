@@ -22,15 +22,12 @@ impl LSPServer {
             let pos = from_lsp_position(&line_index, params.position);
             if let Single(token) = root.token_at_offset(pos.into()) {
                 if let Some(node) = find_name_or_ref(&token) {
-                    tracing::debug!("node: {:?}", node);
-                    let node_id = NodeId::new(&*db, NodePath::new(&node));
-                    tracing::debug!("node_id: {:?}", node_id);
-                    let name_ref = node.text().to_string();
-                    tracing::debug!("name_ref: {:?}", name_ref);
-                    let resolved = resolve_name_ref(&*db, ast, node_id, &name_ref);
-                    tracing::debug!("resolved: {:?}", resolved);
+                    // let node_path = NodePath::new(&node);
+                    // let node_id = NodeId::new(&*db, NodePath::new(&node));
+                    // let name_ref = node.text().to_string();
+                    // // let resolved = resolve_name_ref(&*db, ast, node_id, &name_ref);
                     return Ok(Some(Hover {
-                        contents: Scalar(MarkedString::String(format!("{:?}", resolved))),
+                        contents: Scalar(MarkedString::String(format!("{:?}", node))),
                         range: None,
                     }));
                 }

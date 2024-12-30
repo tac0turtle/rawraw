@@ -1,6 +1,5 @@
 interface BankAPI {
    struct Coin {
-
        denom: Str,
        amount: u128,
    }
