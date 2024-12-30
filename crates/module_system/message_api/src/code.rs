@@ -94,8 +94,8 @@ impl<E: HandlerCode> From<SystemCode> for ErrorCode<E> {
 
 impl<E: HandlerCode> PartialEq<Self> for ErrorCode<E> {
     fn eq(&self, other: &Self) -> bool {
-        let a: u16 = self.clone().into();
-        let b: u16 = other.clone().into();
+        let a: u16 = (*self).into();
+        let b: u16 = (*other).into();
         a == b
     }
 }

@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use crate::code::{ErrorCode, SystemCode};
-use core::fmt::{Debug, Display, Formatter};
+use core::fmt::Debug;
 
 /// An error type that can be returned by a handler that includes an optional message.
 #[derive(Clone, Debug)]

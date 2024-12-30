@@ -61,12 +61,10 @@ impl<E: HandlerCode + SchemaValue<'static>> HandlerError<E> {
             } else {
                 write!(f, "{}", msg)
             }
+        } else if ErrorCode::SystemCode(SystemCode::Other) != self.code {
+            write!(f, "code: {:?}: ", self.code)
         } else {
-            if ErrorCode::SystemCode(SystemCode::Other) != self.code {
-                write!(f, "code: {:?}: ", self.code)
-            } else {
-                write!(f, "unknown error")
-            }
+            write!(f, "unknown error")
         }
     }
 
