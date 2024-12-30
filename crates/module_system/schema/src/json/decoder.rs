@@ -181,7 +181,8 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
             serde_json::Value::Object(ref obj) => {
                 let obj = self.value.as_object().ok_or(DecodeError::InvalidData)?;
                 let typ = obj.get("type").ok_or(DecodeError::InvalidData)?;
-                let variant = find_variant(enum_type, typ.as_str().ok_or(DecodeError::InvalidData)?)?;
+                let variant =
+                    find_variant(enum_type, typ.as_str().ok_or(DecodeError::InvalidData)?)?;
                 let value = obj.get("value").ok_or(DecodeError::InvalidData)?;
                 let mut inner = Decoder {
                     value: value.clone(),

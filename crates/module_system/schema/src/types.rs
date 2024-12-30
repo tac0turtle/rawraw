@@ -7,15 +7,15 @@
 //! None of the types in this module are expected to be instantiated other than as type-level
 //! parameters.
 
-use allocator_api2::alloc::Allocator;
-use allocator_api2::vec::Vec;
-use hashbrown::{DefaultHashBuilder, HashMap};
 use crate::enums::EnumSchema;
 use crate::field::Field;
 use crate::kind::Kind;
 use crate::schema::SchemaType;
 use crate::structs::StructSchema;
 use crate::SchemaValue;
+use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
+use hashbrown::{DefaultHashBuilder, HashMap};
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
 pub trait Type {
@@ -283,7 +283,9 @@ impl<'a> TypeCollector<'a> {
 
 /// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]
-pub fn collect_types<'a, T: SchemaValue<'a>>(allocator: &'a dyn Allocator) -> Result<
+pub fn collect_types<'a, T: SchemaValue<'a>>(
+    allocator: &'a dyn Allocator,
+) -> Result<
     HashMap<&'static str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>,
     Vec<&'static str, &'a dyn Allocator>,
 > {

@@ -3,10 +3,10 @@
 //! Decoding is not performance-optimized and does a bunch of allocation internally.
 //! [`decode_value`] is only available if the `json_decode` feature is enabled
 //! and brings in a dependency on `serde_json`.
-mod encoder;
-mod escape;
 #[cfg(feature = "json_decode")]
 mod decoder;
+mod encoder;
+mod escape;
 
 pub use encoder::encode_value;
 
@@ -15,11 +15,11 @@ pub use decoder::decode_value;
 
 #[cfg(test)]
 mod tests {
-    use allocator_api2::vec;
     use crate::json::decoder::decode_value;
     use crate::json::encoder::encode_value;
     use crate::testdata::Prims;
     use crate::testdata::{ABitOfEverything, TestEnum};
+    use allocator_api2::vec;
     use proptest::proptest;
 
     extern crate std;

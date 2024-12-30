@@ -1,9 +1,8 @@
 use crate::mesage_selector::type_selector_from_str;
 use crate::util::{extract_generics, is_sealed, mk_ixc_schema_path, GenericInfo};
-use manyhow::bail;
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{DataStruct, Lifetime};
+use syn::DataStruct;
 
 pub(crate) fn derive_struct_schema(
     input: &syn::DeriveInput,

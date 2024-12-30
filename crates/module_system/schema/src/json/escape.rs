@@ -28,25 +28,30 @@ fn escape_json_inner<W: Write>(input: &str, writer: &mut W) -> core::fmt::Result
             // Required Escapes
             '"' => {
                 writer.write_str("\\\"")?;
-            },
+            }
             '\\' => {
                 writer.write_str("\\\\")?;
-            },
-            '\u{0008}' => { // Backspace
+            }
+            '\u{0008}' => {
+                // Backspace
                 writer.write_str("\\b")?;
-            },
-            '\u{000C}' => { // Form feed
+            }
+            '\u{000C}' => {
+                // Form feed
                 writer.write_str("\\f")?;
-            },
-            '\n' => { // Newline
+            }
+            '\n' => {
+                // Newline
                 writer.write_str("\\n")?;
-            },
-            '\r' => { // Carriage return
+            }
+            '\r' => {
+                // Carriage return
                 writer.write_str("\\r")?;
-            },
-            '\t' => { // Tab
+            }
+            '\t' => {
+                // Tab
                 writer.write_str("\\t")?;
-            },
+            }
             // Control Characters (U+0000 to U+001F) not covered above
             c if c <= '\u{001F}' => {
                 let code = c as u32;
@@ -61,13 +66,13 @@ fn escape_json_inner<W: Write>(input: &str, writer: &mut W) -> core::fmt::Result
                 // Convert each nibble to its hexadecimal representation
                 writer.write_char(to_hex(high_nibble))?;
                 writer.write_char(to_hex(low_nibble))?;
-            },
+            }
             // All other characters are written as-is (UTF-8 encoded)
             _ => {
                 // Since `c` is a `char`, it may consist of multiple bytes in UTF-8.
                 // We convert it to its UTF-8 byte representation and write directly.
                 writer.write_char(c)?
-            },
+            }
         }
     }
 
@@ -84,11 +89,7 @@ mod tests {
     #[test]
     fn test_escape_json_str_to_writer() {
         let test_cases = vec![
-            (
-                "Simple string",
-                "Hello, World!",
-                "Hello, World!",
-            ),
+            ("Simple string", "Hello, World!", "Hello, World!"),
             (
                 "String with quotes",
                 "She said, \"Hello!\"",
@@ -114,11 +115,7 @@ mod tests {
                 "Quote: \", Backslash: \\, Tab:\t, Unicode:\u{001F}",
                 "Quote: \\\", Backslash: \\\\, Tab:\\t, Unicode:\\u001F",
             ),
-            (
-                "Non-escaped Unicode",
-                "Emoji: 😃",
-                "Emoji: 😃",
-            ),
+            ("Non-escaped Unicode", "Emoji: 😃", "Emoji: 😃"),
         ];
 
         for (description, input, expected) in test_cases {

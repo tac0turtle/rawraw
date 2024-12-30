@@ -1,7 +1,7 @@
 //! Message descriptors.
 use crate::encoding::Encoding;
-use ixc_schema_macros::SchemaValue;
 use crate::field::Field;
+use ixc_schema_macros::SchemaValue;
 
 /// Describes a message that can be sent to an account.
 #[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
