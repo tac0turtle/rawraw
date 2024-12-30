@@ -151,7 +151,7 @@ sequenceDiagram
 
 #### Burn Operation
 
-The burn operation destroys tokens, reducing both the holder's balance and the total supply. Can be initiated by either the token holder or the denom admin.
+The burn operation destroys tokens, reducing both the holder's balance and the total supply. Can be initiated by the token holder only.
 
   ```rust
    burn(from: AccountID, denom: &str, amount: u128)
@@ -172,7 +172,7 @@ sequenceDiagram
     participant BurnHook
     participant State
 
-    Note over Initiator: Can be token holder or denom admin
+    Note over Initiator: Can only be token holder
     
     Initiator->>Bank: burn(from, denom, amount)
     Bank->>Bank: Verify caller authorization
