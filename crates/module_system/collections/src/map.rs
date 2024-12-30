@@ -105,14 +105,14 @@ unsafe impl<K: ObjectKey, V: ObjectValue> StateObjectResource for Map<K, V> {
         }
         let mut key_fields = Vec::new_in(allocator);
         for (i, field) in K::FieldTypes::FIELDS.iter().enumerate() {
-            let mut field = field.clone();
+            let mut field = *field;
             field.name = key_names[i];
             key_fields.push(field);
         }
         desc.key_fields = List::Owned(key_fields);
         let mut value_fields = Vec::new_in(allocator);
         for (i, field) in V::FieldTypes::FIELDS.iter().enumerate() {
-            let mut field = field.clone();
+            let mut field = *field;
             field.name = value_names[i];
             value_fields.push(field);
         }
