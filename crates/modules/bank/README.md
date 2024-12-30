@@ -61,6 +61,10 @@ The module maintains several key state components:
 
 The send operation transfers tokens from one account to another, with multiple hooks that can intercept and validate the transfer.
 
+   ```rust
+   send(to: AccountID, amount: &[Coin])
+   ```
+
 **State Changes:**
 - Decreases sender's balance
 - Increases recipient's balance
@@ -111,6 +115,10 @@ sequenceDiagram
 
 The mint operation creates new tokens, increasing both the recipient's balance and the total supply. Only the denom admin can mint tokens.
 
+  ```rust
+   mint(to: AccountID, denom: &str, amount: u128)
+   ```
+
 **State Changes:**
 - Increases recipient's balance
 - Increases total supply for the denom
@@ -144,6 +152,10 @@ sequenceDiagram
 #### Burn Operation
 
 The burn operation destroys tokens, reducing both the holder's balance and the total supply. Can be initiated by either the token holder or the denom admin.
+
+  ```rust
+   burn(from: AccountID, denom: &str, amount: u128)
+   ```
 
 **State Changes:**
 - Decreases holder's balance
