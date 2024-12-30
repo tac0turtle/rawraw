@@ -258,7 +258,7 @@ pub mod bank {
                 if let Some(hook) = self.denom_recieve_hooks.get(ctx, ctx.caller())? {
                     println!("on_receive");
                     let hook_client = <dyn ReceiveHook>::new_client(hook);
-                    hook_client.on_receive(ctx, to, &coin.denom, coin.amount)?;
+                    hook_client.on_receive(ctx, to, coin.denom, coin.amount)?;
                 }
 
                 self.balances
