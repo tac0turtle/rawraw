@@ -77,4 +77,6 @@ mod tests {
     }
 }
 
-fn main() {}
+fn main() {
+    ixc_core::schema::print_handler_schema::<simple_asset::SimpleAsset>().unwrap();
+}

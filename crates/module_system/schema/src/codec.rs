@@ -2,6 +2,7 @@
 
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
+use crate::encoding::Encoding;
 use crate::mem::MemoryManager;
 use crate::value::SchemaValue;
 use crate::value::ValueCodec;
@@ -23,6 +24,12 @@ pub trait Codec {
         memory_manager: &'a MemoryManager,
         visitor: &mut dyn ValueCodec<'a>,
     ) -> Result<(), DecodeError>;
+}
+
+/// A codec with a well-known encoding.
+pub trait WellKnownCodec: Codec {
+    /// Get the well-known encoding of the codec.
+    const ENCODING: Encoding;
 }
 
 /// Decode a value.
