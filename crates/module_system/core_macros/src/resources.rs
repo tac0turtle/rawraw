@@ -59,7 +59,8 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             visit_clients.push(quote! {
                 visitor.visit_client::<#ty>(stringify!(#field_name), &#account_id.into());
             });
-        } else if let Some(client_factory) = maybe_extract_attribute::<_, ClientFactoryAttr>(field)? {
+        } else if let Some(client_factory) = maybe_extract_attribute::<_, ClientFactoryAttr>(field)?
+        {
             field_inits.push(quote! {
                 #field_name: ::core::default::Default::default()
             });

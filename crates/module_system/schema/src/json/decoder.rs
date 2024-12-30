@@ -64,12 +64,12 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_u64(&mut self) -> Result<u64, DecodeError> {
         let s = self.value.as_str().ok_or(DecodeError::InvalidData)?;
-        Ok(u64::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
+        u64::from_str(s).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_u128(&mut self) -> Result<u128, DecodeError> {
         let s = self.value.as_str().ok_or(DecodeError::InvalidData)?;
-        Ok(u128::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
+        u128::from_str(s).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_i8(&mut self) -> Result<i8, DecodeError> {
@@ -98,12 +98,12 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_i64(&mut self) -> Result<i64, DecodeError> {
         let s = self.value.as_str().ok_or(DecodeError::InvalidData)?;
-        Ok(i64::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
+        i64::from_str(s).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_i128(&mut self) -> Result<i128, DecodeError> {
         let s = self.value.as_str().ok_or(DecodeError::InvalidData)?;
-        Ok(i128::from_str(&s).map_err(|_| DecodeError::InvalidData)?)
+        i128::from_str(&s).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_borrowed_str(&mut self) -> Result<&'a str, DecodeError> {
@@ -179,7 +179,6 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     ) -> Result<(), DecodeError> {
         match self.value {
             serde_json::Value::Object(ref obj) => {
-                let obj = self.value.as_object().ok_or(DecodeError::InvalidData)?;
                 let typ = obj.get("type").ok_or(DecodeError::InvalidData)?;
                 let variant =
                     find_variant(enum_type, typ.as_str().ok_or(DecodeError::InvalidData)?)?;

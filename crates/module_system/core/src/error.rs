@@ -80,7 +80,9 @@ impl<E: HandlerCode + SchemaValue<'static>> Display for HandlerError<E> {
     }
 }
 
-impl<E: HandlerCode + SchemaValue<'static>, F: HandlerCode + SchemaValue<'static>> From<ClientError<E>> for HandlerError<F> {
+impl<E: HandlerCode + SchemaValue<'static>, F: HandlerCode + SchemaValue<'static>>
+    From<ClientError<E>> for HandlerError<F>
+{
     fn from(value: ClientError<E>) -> Self {
         let code: ErrorCode<F> = if value.code == ErrorCode::SystemCode(SystemCode::OutOfGas) {
             ErrorCode::SystemCode(SystemCode::OutOfGas)

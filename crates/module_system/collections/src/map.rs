@@ -1,9 +1,9 @@
 //! The map module contains the `Map` struct, which represents a key-value map in storage.
 use crate::prefix::Prefix;
 use crate::store_client::KVStoreClient;
+use allocator_api2::vec::Vec;
 use core::borrow::Borrow;
 use core::marker::PhantomData;
-use allocator_api2::vec::Vec;
 use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;

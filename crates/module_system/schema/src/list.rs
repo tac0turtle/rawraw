@@ -74,7 +74,7 @@ impl<'a, T: SchemaValue<'a>> ListDecodeVisitor<'a> for alloc::vec::Vec<T> {
     }
 }
 
-impl<'a, 'b, T: SchemaValue<'a>> ListEncodeVisitor for &'b [T] {
+impl<'a, T: SchemaValue<'a>> ListEncodeVisitor for &[T] {
     fn size(&self) -> usize {
         self.len()
     }
@@ -162,7 +162,7 @@ where
     type Type = ListT<V::Type>;
 }
 
-impl<'a, V: Clone> List<'a, V> {
+impl<V: Clone> List<'_, V> {
     /// Return the length of the list.
     pub fn len(&self) -> usize {
         match self {

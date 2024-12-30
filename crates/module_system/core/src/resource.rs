@@ -113,7 +113,8 @@ pub fn extract_state_object_descriptor<'a, R: StateObjectResource, V: ResourcesV
     key_names: &'a [&'a str],
     value_names: &'a [&'a str],
 ) {
-    let mut state_object = R::descriptor(visitor.allocator(), collection_name, key_names, value_names);
+    let mut state_object =
+        R::descriptor(visitor.allocator(), collection_name, key_names, value_names);
     let mut prefix_vec = Vec::new_in(visitor.allocator());
     prefix_vec.push(prefix);
     state_object.prefix = List::Owned(prefix_vec);

@@ -22,7 +22,7 @@ pub mod schema;
 pub use account_api::create_account;
 pub use context::Context;
 pub use events::EventBus;
-pub use handler::{Service, ClientFactory};
+pub use handler::{ClientFactory, Service};
 pub use result::Result;
 pub use unique_id::new_unique_id;
 

@@ -107,12 +107,6 @@ impl<S: StdStateManager> StateHandler for StdStateHandler<'_, S> {
                 self.state.emit_event(account_id, type_selector, body)?;
                 Ok(Default::default())
             }
-            EMIT_EVENT_SELECTOR => {
-                let body = request.in1().expect_bytes()?;
-                let type_selector = request.in2().expect_u64()?;
-                self.state.emit_event(account_id, type_selector, body)?;
-                Ok(Default::default())
-            }
             _ => Err(SystemCode(MessageNotHandled)),
         }
     }

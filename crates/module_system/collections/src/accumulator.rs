@@ -8,9 +8,9 @@ use ixc_core::resource::{InitializationError, StateObjectResource};
 use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::ErrorCode;
+use ixc_schema::schema::SchemaValue;
 use ixc_schema::state_object::{ObjectKey, StateObjectDescriptor};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use ixc_schema::schema::SchemaValue;
 
 /// A 128-bit unsigned integer accumulator.
 pub struct Accumulator {

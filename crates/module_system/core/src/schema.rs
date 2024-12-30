@@ -16,7 +16,9 @@ use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::{Type, TypeCollector, TypeVisitor};
 
 /// Extract the schema of the handler.
-pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> Result<HandlerSchema<'a>, String> {
+pub fn extract_handler_schema<'a, H: Handler>(
+    allocator: &'a dyn Allocator,
+) -> Result<HandlerSchema<'a>, String> {
     struct Visitor<'b> {
         allocator: &'b dyn Allocator,
         type_collector: TypeCollector<'b>,
@@ -78,7 +80,7 @@ pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> R
             self.clients.push(desc);
         }
     }
-    let mut visitor = Visitor{
+    let mut visitor = Visitor {
         allocator,
         type_collector: TypeCollector::new(allocator),
         messages: Vec::new_in(allocator),
@@ -88,7 +90,13 @@ pub fn extract_handler_schema<'a, H: Handler>(allocator: &'a dyn Allocator) -> R
     H::visit_schema(&mut visitor);
     H::visit_resources(&mut visitor);
     if !visitor.type_collector.errors.is_empty() {
-        return Err(visitor.type_collector.errors.iter().as_slice().join("\n").to_string());
+        return Err(visitor
+            .type_collector
+            .errors
+            .iter()
+            .as_slice()
+            .join("\n")
+            .to_string());
     }
     let mut types = Vec::new_in(allocator);
     for (_, ty) in visitor.type_collector.types.drain() {
@@ -108,6 +116,9 @@ pub fn print_handler_schema<'a, H: Handler>() -> Result<(), String> {
     let schema = extract_handler_schema::<H>(&mem)?;
     let mut out = Vec::new();
     json::encode_value(&schema, &mut out).map_err(|e| e.to_string())?;
-    std::println!("{}", std::str::from_utf8(&out).map_err(|_| "invalid utf-8")?);
+    std::println!(
+        "{}",
+        std::str::from_utf8(&out).map_err(|_| "invalid utf-8")?
+    );
     Ok(())
 }

@@ -121,7 +121,7 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     ) -> Result<(), EncodeError> {
         write!(self.writer, "{{")?;
         let mut first = true;
-        let mut pos = self.writer.0.len();
+        let mut pos;
         for (i, field) in struct_type.fields.iter().enumerate() {
             pos = self.writer.0.len();
             if !first {
@@ -176,11 +176,11 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
         }
     }
 
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
+    fn encode_time(&mut self, _x: Time) -> Result<(), EncodeError> {
         todo!()
     }
 
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
+    fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
         todo!()
     }
 }
@@ -337,11 +337,11 @@ impl<A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
             .encode_enum_variant(discriminant, enum_type, value)
     }
 
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
+    fn encode_time(&mut self, _x: Time) -> Result<(), EncodeError> {
         todo!()
     }
 
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
+    fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
         todo!()
     }
 }
