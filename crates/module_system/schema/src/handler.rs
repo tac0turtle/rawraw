@@ -11,6 +11,8 @@ use ixc_schema_macros::SchemaValue;
 #[non_exhaustive]
 #[derive(Debug, Clone, Eq, PartialEq, Default, SchemaValue)]
 pub struct HandlerSchema<'a> {
+    /// The fully qualified identifier of the handler.
+    pub id: &'a str,
     /// The types used by the account in its public API or to interact with other accounts.
     pub types: List<'a, SchemaType<'a>>,
     /// The messages that the account handles.

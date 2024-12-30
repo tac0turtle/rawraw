@@ -1,3 +1,4 @@
+use crate::any::AnyMessage;
 use crate::decoder::DecodeError;
 use crate::enums::{EnumDecodeVisitor, EnumType, EnumVariantDefinition};
 use crate::list::ListDecodeVisitor;
@@ -12,6 +13,7 @@ use core::str::FromStr;
 use ixc_message_api::alloc_util::{copy_bytes, copy_str};
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::field::Field;
 
 /// Decode the value from the JSON input string.
 pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
@@ -127,15 +129,14 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
             .map_err(|_| DecodeError::InvalidData)
     }
 
-    fn decode_struct(
+    fn decode_struct_fields(
         &mut self,
         visitor: &mut dyn StructDecodeVisitor<'a>,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), DecodeError> {
         let obj = self.value.as_object().ok_or(DecodeError::InvalidData)?;
         for (field_name, field_value) in obj.iter() {
-            let field_idx = struct_type
-                .fields
+            let field_idx = fields
                 .iter()
                 .position(|f| f.name == field_name)
                 .ok_or(DecodeError::UnknownField)?;
@@ -207,6 +208,10 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     }
 
     fn decode_duration(&mut self) -> Result<Duration, DecodeError> {
+        todo!()
+    }
+
+    fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError> {
         todo!()
     }
 

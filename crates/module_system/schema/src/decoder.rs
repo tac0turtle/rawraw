@@ -11,6 +11,7 @@ use core::fmt::{Display, Formatter};
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
 use crate::any::AnyMessage;
+use crate::field::Field;
 
 /// The trait that decoders must implement.
 pub trait Decoder<'a> {
@@ -46,11 +47,11 @@ pub trait Decoder<'a> {
     #[cfg(feature = "std")]
     /// Decode owned bytes.
     fn decode_owned_bytes(&mut self) -> Result<alloc::vec::Vec<u8>, DecodeError>;
-    /// Decode a struct.
-    fn decode_struct(
+    /// Decode a struct fields. Also used for "struct-like" tuples in state objects.
+    fn decode_struct_fields(
         &mut self,
         visitor: &mut dyn StructDecodeVisitor<'a>,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), DecodeError>;
     /// Decode a list.
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError>;

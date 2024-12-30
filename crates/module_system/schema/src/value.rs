@@ -9,7 +9,6 @@ use crate::mem::MemoryManager;
 use crate::types::*;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::message::Param;
-use crate::field::Field;
 
 /// A visitor for decoding values. Unlike SchemaValue, this trait is object safe.
 pub trait ValueCodec<'a> {

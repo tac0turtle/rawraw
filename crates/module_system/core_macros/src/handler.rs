@@ -54,7 +54,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
         items,
         quote! {
             impl ::ixc::core::handler::HandlerResources for #handler {
-                const NAME: &'static str = stringify!(#handler);
+                const NAME: &'static str = ::core::concat!(::core::module_path!(), "::", ::core::stringify!(#handler));
             }
         },
     )?;

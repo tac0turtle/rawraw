@@ -8,6 +8,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::any::AnyMessage;
+use crate::field::Field;
 
 pub fn decode_value<'a>(
     input: &'a [u8],
@@ -69,17 +71,17 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)
     }
 
-    fn decode_struct(
+    fn decode_struct_fields(
         &mut self,
         visitor: &mut dyn StructDecodeVisitor<'a>,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), DecodeError> {
         let mut sub = Decoder {
             buf: self.buf,
             scope: self.scope,
         };
         let mut inner = InnerDecoder { outer: &mut sub };
-        for (i, _) in struct_type.fields.iter().enumerate() {
+        for (i, _) in fields.iter().enumerate() {
             visitor.decode_field(i, &mut inner)?;
         }
         Ok(())
@@ -183,6 +185,10 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         let discriminant = self.decode_i32()?;
         visitor.decode_variant(discriminant, self)
     }
+
+    fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError> {
+        todo!()
+    }
 }
 
 struct InnerDecoder<'b, 'a: 'b> {
@@ -217,10 +223,10 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)
     }
 
-    fn decode_struct(
+    fn decode_struct_fields(
         &mut self,
         visitor: &mut dyn StructDecodeVisitor<'a>,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
         let bz = self.outer.read_bytes(size)?;
@@ -228,7 +234,7 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
             buf: bz,
             scope: self.outer.scope,
         };
-        sub.decode_struct(visitor, struct_type)
+        sub.decode_struct_fields(visitor, fields)
     }
 
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
@@ -313,6 +319,10 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         enum_type: &EnumType,
     ) -> Result<(), DecodeError> {
         self.outer.decode_enum_variant(visitor, enum_type)
+    }
+
+    fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError> {
+        todo!()
     }
 }
 

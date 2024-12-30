@@ -16,6 +16,7 @@ use crate::SchemaValue;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
 use hashbrown::{DefaultHashBuilder, HashMap};
+use ixc::structs::StructType;
 
 /// The `Type` trait is implemented for all types that can be used in the schema.
 pub trait Type {
@@ -259,12 +260,24 @@ pub struct TypeCollector<'a> {
 impl TypeVisitor for TypeCollector<'_> {
     fn visit<T: Type>(&mut self) {
         if let Some(t) = T::SCHEMA_TYPE {
-            if let Some(existing) = self.types.get(t.name()) {
+            if let Some(existing) = self.types.name_to_type.get(t.name()) {
                 if existing != &t {
                     self.errors.push(t.name());
                 }
             } else {
-                self.types.insert(t.name(), t);
+                self.types.name_to_type.insert(t.name(), t);
+            }
+            if let Some(SchemaType::Struct(struct_type)) = T::SCHEMA_TYPE {
+                if let Some(existing) = self.types.selector_to_type.get(&struct_type.type_selector)
+                {
+                    if existing != &struct_type {
+                        self.errors.push(struct_type.name);
+                    }
+                } else {
+                    self.types
+                        .selector_to_type
+                        .insert(struct_type.type_selector, struct_type);
+                }
             }
         }
         T::visit_referenced_types(self);
@@ -275,14 +288,26 @@ impl<'a> TypeCollector<'a> {
     /// Create a new type collector.
     pub fn new(allocator: &'a dyn Allocator) -> Self {
         Self {
-            types: HashMap::new_in(allocator),
+            types: TypeMap::new(allocator),
             errors: Vec::new_in(allocator),
         }
     }
 }
 
 /// A map of type names to types.
-pub type TypeMap<'a> = HashMap<&'a str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>;
+pub struct TypeMap<'a> {
+    name_to_type: HashMap<&'a str, SchemaType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
+    selector_to_type: HashMap<u64, StructType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
+}
+
+impl <'a> TypeMap<'a> {
+    fn new(allocator: &'a dyn Allocator) -> Self {
+        Self {
+            name_to_type: HashMap::new_in(allocator),
+            selector_to_type: HashMap::new_in(allocator),
+        }
+    }
+}
 
 /// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]

@@ -2,13 +2,15 @@ use crate::encoder::EncodeError;
 use crate::enums::EnumType;
 use crate::json::escape::escape_json;
 use crate::list::ListEncodeVisitor;
-use crate::structs::{StructEncodeVisitor, StructType};
+use crate::structs::{StructEncodeVisitor};
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
 use base64::prelude::*;
 use core::fmt::Write;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::any::AnyMessage;
+use crate::field::Field;
 
 /// Encode the value to a JSON string.
 /// This method is intended to be deterministic and performant, so that it is suitable
@@ -99,6 +101,7 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
+        todo!("don't allocate");
         write!(self.writer, "\"{}\"", BASE64_STANDARD.encode(x))
     }
 
@@ -114,15 +117,15 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
         write!(self.writer, "]")
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         write!(self.writer, "{{")?;
         let mut first = true;
         let mut pos;
-        for (i, field) in struct_type.fields.iter().enumerate() {
+        for (i, field) in fields.iter().enumerate() {
             pos = self.writer.0.len();
             if !first {
                 write!(self.writer, ",")?;
@@ -181,6 +184,10 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
+        todo!()
+    }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
         todo!()
     }
 }
@@ -296,13 +303,13 @@ impl<A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
         self.outer.encode_list(visitor)
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         let cur_fields_written = self.outer.num_nested_fields_written;
-        self.outer.encode_struct(visitor, struct_type)?;
+        self.outer.encode_struct_fields(visitor, fields)?;
         // if we've written no fields, then we need to tell the parent writer to truncate the field name
         if self.outer.num_nested_fields_written == cur_fields_written {
             self.mark_not_present()?;
@@ -342,6 +349,10 @@ impl<A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
     }
 
     fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
+        todo!()
+    }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
         todo!()
     }
 }

@@ -17,8 +17,7 @@ simple_time = { path = "../util/simple_time", version = "0.0.2" }
 allocator-api2 = { workspace = true }
 hashbrown = "0.15.2"
 num_enum = "0.7.3"
-base64 = { version = "0.22.1", optional = true }
-logos = { version = "0.15.0", optional = true }
+base64 = { version = "0.22.1", default-features = false }
 serde_json = {version = "1.0.134", optional = true}
 
 [dev-dependencies]
@@ -29,7 +28,7 @@ rangemap = "1.5.1"
 [features]
 default = ["std", "json_decode"]
 std = []
-json_decode = ["std", "dep:base64", "dep:logos", "dep:serde_json"]
+json_decode = ["std", "dep:serde_json", "base64/alloc"]
 use_ixc_macro_path = []
 
 # TODO remove

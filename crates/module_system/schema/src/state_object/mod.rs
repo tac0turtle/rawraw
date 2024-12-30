@@ -1,6 +1,5 @@
 //! State object traits.
 
-mod field_types;
 mod key;
 mod key_field;
 mod prefix;

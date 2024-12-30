@@ -10,6 +10,8 @@ use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::any::AnyMessage;
+use crate::field::Field;
 
 pub fn encode_value<'a>(
     value: &dyn ValueCodec,
@@ -63,17 +65,17 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
         Ok(())
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
-        let mut i = struct_type.fields.len();
+        let mut i = fields.len();
         let mut sub = Encoder {
             writer: self.writer,
         };
         let mut inner = InnerEncoder::<W> { outer: &mut sub };
-        for f in struct_type.fields.iter().rev() {
+        for f in fields.iter().rev() {
             i -= 1;
             visitor.encode_field(i, &mut inner)?;
         }
@@ -145,6 +147,10 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
         }
         self.encode_i32(discriminant)
     }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        todo!()
+    }
 }
 
 pub(crate) struct EncodeSizer {
@@ -185,13 +191,13 @@ impl crate::encoder::Encoder for EncodeSizer {
         Ok(())
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         let mut sub = InnerEncodeSizer { outer: self };
-        for (i, f) in struct_type.fields.iter().enumerate() {
+        for (i, f) in fields.iter().enumerate() {
             visitor.encode_field(i, &mut sub)?;
         }
         Ok(())
@@ -269,6 +275,10 @@ impl crate::encoder::Encoder for EncodeSizer {
         }
         self.encode_i32(discriminant)
     }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        todo!()
+    }
 }
 
 pub(crate) struct InnerEncoder<'b, 'a: 'b, W> {
@@ -305,13 +315,13 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         self.outer.encode_u32(size)
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         let end_pos = self.outer.writer.pos(); // this is a reverse writer so we start at the end
-        self.outer.encode_struct(visitor, struct_type)?;
+        self.outer.encode_struct_fields(visitor, fields)?;
         let start_pos = self.outer.writer.pos(); // now we know the start position
         let size = (end_pos - start_pos) as u32;
         self.outer.encode_u32(size)
@@ -381,6 +391,10 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         self.outer
             .encode_enum_variant(discriminant, enum_type, value)
     }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        todo!()
+    }
 }
 
 pub(crate) struct InnerEncodeSizer<'a> {
@@ -417,13 +431,13 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
         self.outer.encode_list(visitor)
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         self.outer.size += 4;
-        self.outer.encode_struct(visitor, struct_type)
+        self.outer.encode_struct_fields(visitor, fields)
     }
 
     fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError> {
@@ -495,6 +509,10 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
     ) -> Result<(), EncodeError> {
         self.outer
             .encode_enum_variant(discriminant, enum_type, value)
+    }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        todo!()
     }
 }
 

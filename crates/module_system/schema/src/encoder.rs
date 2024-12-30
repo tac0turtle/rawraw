@@ -9,6 +9,7 @@ use core::fmt::Display;
 use ixc_message_api::code::{ErrorCode, SystemCode};
 use ixc_message_api::AccountID;
 use crate::any::AnyMessage;
+use crate::field::Field;
 
 /// The trait that encoders must implement.
 pub trait Encoder {
@@ -40,11 +41,11 @@ pub trait Encoder {
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError>;
     /// Encode a list.
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError>;
-    /// Encode a struct.
-    fn encode_struct(
+    /// Encode struct fields. Also used for "struct-like" tuples in state objects.
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError>;
     /// Encode a optional value.
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError>;

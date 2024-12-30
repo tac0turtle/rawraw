@@ -55,10 +55,10 @@ pub(crate) fn derive_struct_schema(
                 stringify!(#struct_name),
                  &[#(#fields)*],
                  #sealed,
+                 #type_selector,
             );
 
             const TYPE_SELECTOR: u64 = #type_selector;
-
 
             fn visit_field_types<V: #ixc_schema_path::types::TypeVisitor>(visitor: &mut V) {
                 #(#visit_field_types);*
@@ -88,11 +88,11 @@ pub(crate) fn derive_struct_schema(
                 &mut self,
                 decoder: &mut dyn #ixc_schema_path::decoder::Decoder< #lifetime >,
             ) -> ::core::result::Result<(), #ixc_schema_path::decoder::DecodeError> {
-                decoder.decode_struct(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
+                decoder.decode_struct_fields(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE.fields)
             }
 
             fn encode(&self, encoder: &mut dyn #ixc_schema_path::encoder::Encoder) -> ::core::result::Result<(), #ixc_schema_path::encoder::EncodeError> {
-                encoder.encode_struct(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE)
+                encoder.encode_struct_fields(self, &<Self as #ixc_schema_path::structs::StructSchema>::STRUCT_TYPE.fields)
             }
         }
 
