@@ -1,16 +1,16 @@
+use crate::any::AnyMessage;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
+use crate::field::Field;
 use crate::json::escape::escape_json;
 use crate::list::ListEncodeVisitor;
-use crate::structs::{StructEncodeVisitor};
+use crate::structs::StructEncodeVisitor;
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
 use base64::prelude::*;
 use core::fmt::Write;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use crate::any::AnyMessage;
-use crate::field::Field;
 
 /// Encode the value to a JSON string.
 /// This method is intended to be deterministic and performant, so that it is suitable
@@ -101,8 +101,24 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
-        todo!("don't allocate");
-        write!(self.writer, "\"{}\"", BASE64_STANDARD.encode(x))
+        write!(self.writer, "\"")?;
+        
+        // calculate the number of bytes needed to encode the string
+        let num_bytes_needed = x.len() * 4 / 3 + 4;
+        // resize the buffer to accommodate the encoded string
+        let cur_buf_len = self.writer.0.len();
+        let proposed_buf_len = cur_buf_len + num_bytes_needed;
+        self.writer.0.resize(proposed_buf_len, 0);
+        // get a mutable slice of the buffer
+        let mut writeable_buf = &mut self.writer.0[cur_buf_len..];
+        let written = BASE64_STANDARD
+            .encode_slice(x, &mut writeable_buf)
+            .map_err(|_| EncodeError::UnknownError)?;
+        // resize the buffer back to the correct size (original + encoded bytes)
+        let real_new_buf_len = cur_buf_len + written;
+        self.writer.0.truncate(real_new_buf_len);
+        
+        write!(self.writer, "\"")
     }
 
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {
