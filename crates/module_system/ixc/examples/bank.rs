@@ -4,7 +4,6 @@
 pub mod bank {
     use ixc::*;
     use ixc_core::error::unimplemented_ok;
-    use ixc_core::handler::Service;
     use mockall::automock;
 
     #[derive(Resources)]

@@ -16,9 +16,9 @@ use ixc_schema::state_object::StateObjectDescriptor;
 use ixc_schema::types::{Type, TypeCollector, TypeVisitor};
 
 /// Extract the schema of the handler.
-pub fn extract_handler_schema<'a, H: Handler>(
-    allocator: &'a dyn Allocator,
-) -> Result<HandlerSchema<'a>, String> {
+pub fn extract_handler_schema<H: Handler>(
+    allocator: &dyn Allocator,
+) -> Result<HandlerSchema, String> {
     struct Visitor<'b> {
         allocator: &'b dyn Allocator,
         type_collector: TypeCollector<'b>,
@@ -55,12 +55,12 @@ pub fn extract_handler_schema<'a, H: Handler>(
                 types: &'d mut TypeCollector<'c>,
                 messages: Vec<MessageDescriptor<'c>, &'c dyn Allocator>,
             }
-            impl<'c, 'd> TypeVisitor for ClientVisitor<'c, 'd> {
+            impl TypeVisitor for ClientVisitor<'_, '_> {
                 fn visit<T: Type>(&mut self) {
                     self.types.visit::<T>();
                 }
             }
-            impl<'c, 'd> APISchemaVisitor<'c> for ClientVisitor<'c, 'd> {
+            impl<'c> APISchemaVisitor<'c> for ClientVisitor<'c, '_> {
                 fn allocator(&self) -> &'c dyn Allocator {
                     self.allocator
                 }
@@ -111,7 +111,7 @@ pub fn extract_handler_schema<'a, H: Handler>(
 }
 
 /// Dump the schema of the handler to stdout as JSON.
-pub fn print_handler_schema<'a, H: Handler>() -> Result<(), String> {
+pub fn print_handler_schema<H: Handler>() -> Result<(), String> {
     let mem = MemoryManager::new();
     let schema = extract_handler_schema::<H>(&mem)?;
     let mut out = Vec::new();
