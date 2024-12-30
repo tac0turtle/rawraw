@@ -3,8 +3,8 @@
 use crate::result::ClientResult;
 use core::error::Error;
 use core::fmt::{Debug, Display, Formatter};
-use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_message_api::code::SystemCode::EncodingError;
+use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_schema::decoder::DecodeError;
 use ixc_schema::encoder::EncodeError;
 use ixc_schema::SchemaValue;

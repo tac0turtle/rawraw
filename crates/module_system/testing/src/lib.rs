@@ -20,6 +20,7 @@ use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::error::HandlerError;
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
@@ -33,7 +34,6 @@ use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::sync::Mutex;
-use ixc_message_api::error::HandlerError;
 
 /// Defines a test harness for running tests against account and module implementations.
 pub struct TestApp<V = NativeVMImpl> {
@@ -286,7 +286,10 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
-                Err(HandlerError { code: ErrorCode::SystemCode(SystemCode::MessageNotHandled), .. }) => continue,
+                Err(HandlerError {
+                    code: ErrorCode::SystemCode(SystemCode::MessageNotHandled),
+                    ..
+                }) => continue,
                 _ => return res,
             }
         }
@@ -302,7 +305,10 @@ impl RawHandler for MockHandler {
         for mock in &self.mocks {
             let res = mock.handle_query(message, callbacks, allocator);
             match res {
-                Err(HandlerError { code: ErrorCode::SystemCode(SystemCode::MessageNotHandled), .. }) => continue,
+                Err(HandlerError {
+                    code: ErrorCode::SystemCode(SystemCode::MessageNotHandled),
+                    ..
+                }) => continue,
                 _ => return res,
             }
         }

@@ -160,12 +160,12 @@ mod tests {
     use super::vesting::*;
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_core::handler::{Client, Service};
+    use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
     use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;
     use simple_time::{Duration, Time};
     use std::ops::{AddAssign, SubAssign};
     use std::sync::{Arc, RwLock};
-    use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
 
     #[test]
     fn test_unlock() {

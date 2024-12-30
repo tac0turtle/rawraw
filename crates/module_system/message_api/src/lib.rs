@@ -3,14 +3,13 @@
 //! This crate provides a low-level implementation of the Cosmos SDK RFC 003 message passing API.
 #![no_std]
 
-
 mod account_id;
 pub mod alloc_util;
 pub mod code;
+pub mod error;
 pub mod gas;
 pub mod handler;
 pub mod message;
-pub mod error;
 
 pub use account_id::AccountID;
 

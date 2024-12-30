@@ -3,8 +3,8 @@
 #[cfg(feature = "std")]
 extern crate alloc;
 
-use core::fmt::{Debug, Display, Formatter};
 use crate::code::{ErrorCode, SystemCode};
+use core::fmt::{Debug, Display, Formatter};
 
 /// An error type that can be returned by a handler that includes an optional message.
 #[derive(Clone, Debug)]
@@ -20,19 +20,28 @@ pub struct HandlerError {
 impl HandlerError {
     /// Create a new handler error with the given error code.
     pub fn new(code: ErrorCode) -> Self {
-        Self { code, message: None }
+        Self {
+            code,
+            message: None,
+        }
     }
 }
 
 impl From<SystemCode> for HandlerError {
     fn from(code: SystemCode) -> Self {
-        Self { code: code.into(), message: None }
+        Self {
+            code: code.into(),
+            message: None,
+        }
     }
 }
 
 impl From<ErrorCode> for HandlerError {
     fn from(code: ErrorCode) -> Self {
-        Self { code, message: None }
+        Self {
+            code,
+            message: None,
+        }
     }
 }
 
