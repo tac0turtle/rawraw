@@ -29,7 +29,7 @@ mod tests {
             let mut writer = vec![];
             encode_value(&value, &mut writer).unwrap();
             let res = std::str::from_utf8(&writer).unwrap();
-            let decoded = decode_value::<ABitOfEverything>(&res, &Default::default()).unwrap();
+            let decoded = decode_value::<ABitOfEverything>(res, &Default::default()).unwrap();
             assert_eq!(value, decoded);
         }
     }
