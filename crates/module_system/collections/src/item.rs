@@ -57,7 +57,7 @@ unsafe impl<T: ObjectValue> StateObjectResource for Item<T> {
         key_names: &[&'a str],
         value_names: &[&'a str],
     ) -> StateObjectDescriptor<'a> {
-        if value_names.len() == 0 {
+        if value_names.is_empty() {
             // we have a special default case where the item is named by the name of the collection
             Map::<(), T>::descriptor(allocator, collection_name, key_names, &[collection_name])
         } else {

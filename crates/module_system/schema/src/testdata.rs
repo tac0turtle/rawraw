@@ -1,4 +1,3 @@
-use crate::codec::Codec;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_schema_macros::SchemaValue;

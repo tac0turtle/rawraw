@@ -17,8 +17,7 @@ pub use decoder::decode_value;
 mod tests {
     use crate::json::decoder::decode_value;
     use crate::json::encoder::encode_value;
-    use crate::testdata::Prims;
-    use crate::testdata::{ABitOfEverything, TestEnum};
+    use crate::testdata::ABitOfEverything;
     use allocator_api2::vec;
     use proptest::proptest;
 
