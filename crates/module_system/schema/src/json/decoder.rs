@@ -103,12 +103,12 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_i128(&mut self) -> Result<i128, DecodeError> {
         let s = self.value.as_str().ok_or(DecodeError::InvalidData)?;
-        i128::from_str(&s).map_err(|_| DecodeError::InvalidData)
+        i128::from_str(s).map_err(|_| DecodeError::InvalidData)
     }
 
     fn decode_borrowed_str(&mut self) -> Result<&'a str, DecodeError> {
         let s = self.value.as_str().ok_or(DecodeError::InvalidData)?;
-        unsafe { copy_str(self.mem, &s).map_err(|_| DecodeError::InvalidData) }
+        unsafe { copy_str(self.mem, s).map_err(|_| DecodeError::InvalidData) }
     }
 
     fn decode_owned_str(&mut self) -> Result<String, DecodeError> {
