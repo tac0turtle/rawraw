@@ -1,11 +1,24 @@
 use rowan::ast::AstNode;
-use crate::frontend::syntax::IXCLanguage;
+use crate::frontend::ast::*;
+use crate::frontend::resolver::symbol::SymbolDefiner;
+use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 
 pub trait HasMembers: AstNode<Language = IXCLanguage> {
     fn provide_members(&self, member_set: &mut MemberSet);
 }
 
+pub fn as_has_members(syntax_node: SyntaxNode) -> Option<Box<dyn HasMembers>> {
+    match syntax_node.kind() {
+        SyntaxKind::INTERFACE => Some(Box::new(Interface::cast(syntax_node)?)),
+        SyntaxKind::STRUCT => Some(Box::new(Struct::cast(syntax_node)?)),
+        _ => None,
+    }
+}
+
 pub struct MemberSet {}
 
 impl MemberSet {
+    pub fn add<N: SymbolDefiner>(&mut self, node: N) {
+        // TODO
+    }
 }

@@ -11,6 +11,12 @@ interface BankAPI {
        amount: u128,
    }
 
+   event EventBurn {
+       from: AccountID,
+       denom: Str,
+       amount: u128,
+   }
+
    tx send(key to: AccountID, coins: []Coin) emits(EventTransfer);
    tx burn(key from: AccountID, coins: []Coin) emits(EventBurn);
 

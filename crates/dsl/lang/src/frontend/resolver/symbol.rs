@@ -29,16 +29,6 @@ impl SymbolDefiner for Object {
     }
 }
 
-impl SymbolDefiner for Struct {
-    fn get_name(&self) -> Option<Name> {
-        None
-    }
-
-    fn wrap_ptr(ptr: AstPtr<Self>) -> ItemPtr {
-        ItemPtr::Struct(ptr)
-    }
-}
-
 impl SymbolDefiner for Event {
     fn get_name(&self) -> Option<Name> {
         self.name()

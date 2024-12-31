@@ -18,6 +18,7 @@ impl ConcreteNode for ErrorNode {
     const KIND: SyntaxKind = SyntaxKind::ERROR_NODE;
 }
 
+#[derive(Clone)]
 pub struct ParsedAST {
     pub root: GreenNode,
     pub diagnostics: Vec<Diagnostic>,

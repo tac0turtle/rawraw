@@ -4,7 +4,7 @@ use line_index::LineIndex;
 use rowan::TextRange;
 use tower_lsp::lsp_types;
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,

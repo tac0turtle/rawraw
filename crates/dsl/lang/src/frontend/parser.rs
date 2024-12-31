@@ -16,6 +16,7 @@ mod struct_;
 mod test;
 mod type_;
 
+#[comemo::memoize]
 pub fn parse(src: &str) -> ParsedAST {
     let tokens = lexer::lex(src).collect();
     let mut parser = parser::Parser::new(src, tokens);

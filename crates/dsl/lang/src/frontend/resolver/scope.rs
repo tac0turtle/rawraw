@@ -1,15 +1,24 @@
 use crate::frontend::ast::{ConcreteNode, File, Interface, InterfaceItem, Item, ParsedAST};
 use crate::frontend::diagnostic::Diagnostic;
-use crate::frontend::resolver::definer::SymbolDefiner;
+use crate::frontend::resolver::symbol::SymbolDefiner;
 use crate::frontend::resolver::ids::{AstPtr, NodePath};
 use crate::frontend::resolver::item_ref::ItemPtr;
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 use dashmap::DashMap;
 use rowan::ast::AstNode;
 use std::collections::BTreeMap;
+use crate::frontend::resolver::members::HasMembers;
 
 pub trait ScopeProvider: AstNode<Language = IXCLanguage> {
     fn provide_scope(&self, scope: &mut ScopeBuilder);
+}
+
+pub fn as_scope_provider(syntax_node: SyntaxNode) -> Option<Box<dyn ScopeProvider>> {
+    match syntax_node.kind() {
+        SyntaxKind::FILE => Some(Box::new(File::cast(syntax_node)?)),
+        SyntaxKind::INTERFACE => Some(Box::new(Interface::cast(syntax_node)?)),
+        _ => None,
+    }
 }
 
 pub fn resolve_scope(ast: &ParsedAST, path: &NodePath) -> Option<Scope> {
@@ -33,12 +42,12 @@ pub fn resolve_name_ref(ast: &ParsedAST, node_path: &NodePath, name_ref: &str) -
                 return Some(item.clone());
             }
             if !scope.inherit_parent_scope {
-                let parent = node_path.parent_path(&ast.syntax())?;
+                let parent = node_path.parent_path()?;
                 return resolve_name_ref(ast, &parent, name_ref);
             }
             return None
         } else {
-            maybe_node_path = node_path.parent_path(&ast.syntax());
+            maybe_node_path = node_path.parent_path();
         }
     }
     None
@@ -94,6 +103,10 @@ impl ScopeBuilder {
 
     pub fn inherit_parent_scope(&mut self) {
         self.scope.inherit_parent_scope = true
+    }
+
+    pub fn put_members_into_scope<N: HasMembers>(&mut self, node: &N) {
+        // TODO
     }
 
     pub fn report_diagnostic(&self, diagnostic: Diagnostic) {

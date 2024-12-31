@@ -2,6 +2,7 @@ use line_index::LineIndex;
 use rowan::TextSize;
 use tower_lsp::lsp_types;
 
+#[comemo::memoize]
 pub fn build_line_index(src: &str) -> LineIndex {
     LineIndex::new(src)
 }
