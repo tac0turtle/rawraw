@@ -1,9 +1,11 @@
 use crate::any::AnyMessage;
 use crate::decoder::DecodeError;
 use crate::enums::{EnumDecodeVisitor, EnumType, EnumVariantDefinition};
+use crate::field::Field;
+use crate::json::JSONCodec;
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
-use crate::structs::{StructDecodeVisitor, StructType};
+use crate::structs::StructDecodeVisitor;
 use crate::value::ValueCodec;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -13,29 +15,33 @@ use core::str::FromStr;
 use ixc_message_api::alloc_util::{copy_bytes, copy_str};
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use crate::field::Field;
 
-/// Decode the value from the JSON input string.
-pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
-    input: &'a str,
-    memory_manager: &'a MemoryManager,
-) -> Result<V, DecodeError> {
-    let value = serde_json::from_str(input).map_err(|_| DecodeError::InvalidData)?;
-    let mut decoder = Decoder {
-        value,
-        mem: memory_manager,
-    };
-    let mut res = V::default();
-    res.decode(&mut decoder)?;
-    Ok(res)
+impl JSONCodec<'_> {
+    /// Decode the value from the JSON input string.
+    pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
+        &self,
+        input: &'a str,
+        memory_manager: &'a MemoryManager,
+    ) -> Result<V, DecodeError> {
+        let value = serde_json::from_str(input).map_err(|_| DecodeError::InvalidData)?;
+        let mut decoder = Decoder {
+            codec: self,
+            value,
+            mem: memory_manager,
+        };
+        let mut res = V::default();
+        res.decode(&mut decoder)?;
+        Ok(res)
+    }
 }
 
-struct Decoder<'a> {
+struct Decoder<'a, 'b> {
+    codec: &'b JSONCodec<'b>,
     value: serde_json::Value,
     mem: &'a MemoryManager,
 }
 
-impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
+impl<'a> crate::decoder::Decoder<'a> for Decoder<'a, '_> {
     fn decode_bool(&mut self) -> Result<bool, DecodeError> {
         self.value.as_bool().ok_or(DecodeError::InvalidData)
     }
@@ -141,6 +147,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
                 .position(|f| f.name == field_name)
                 .ok_or(DecodeError::UnknownField)?;
             let mut inner = Decoder {
+                codec: self.codec,
                 value: field_value.clone(),
                 mem: self.mem,
             };
@@ -153,6 +160,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         let arr = self.value.as_array().ok_or(DecodeError::InvalidData)?;
         for value in arr.iter() {
             let mut inner = Decoder {
+                codec: self.codec,
                 value: value.clone(),
                 mem: self.mem,
             };
@@ -170,7 +178,8 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     }
 
     fn decode_account_id(&mut self) -> Result<AccountID, DecodeError> {
-        Ok(AccountID::new(self.decode_u128()?))
+        let s = self.value.as_str().ok_or(DecodeError::InvalidData)?;
+        Ok(self.codec.account_id_codec.decode_str(s)?)
     }
 
     fn decode_enum_variant(
@@ -185,6 +194,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
                     find_variant(enum_type, typ.as_str().ok_or(DecodeError::InvalidData)?)?;
                 let value = obj.get("value").ok_or(DecodeError::InvalidData)?;
                 let mut inner = Decoder {
+                    codec: self.codec,
                     value: value.clone(),
                     mem: self.mem,
                 };
@@ -194,6 +204,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
                 let variant = find_variant(enum_type, s)?;
                 // we pass a decoder with null because we don't have a value to decode
                 let mut inner = Decoder {
+                    codec: self.codec,
                     value: serde_json::Value::Null,
                     mem: self.mem,
                 };

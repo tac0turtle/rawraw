@@ -7,19 +7,33 @@
 mod decoder;
 mod encoder;
 mod escape;
+mod account_id;
+pub use account_id::AccountIDStringCodec;
 
-pub use encoder::encode_value;
+/// A codec for encoding and decoding values using the JSON format.
+#[derive(Clone)]
+pub struct JSONCodec<'a> {
+    account_id_codec: &'a dyn AccountIDStringCodec,
+}
 
-#[cfg(feature = "json_decode")]
-pub use decoder::decode_value;
+impl<'a> JSONCodec<'a> {
+    /// Create a new JSON codec with the provided account ID codec.
+    pub fn new(account_id_codec: &'a dyn AccountIDStringCodec) -> Self {
+        Self {
+            account_id_codec,
+        }
+    }
+}
+
+use core::fmt::Write;
 
 #[cfg(test)]
 mod tests {
-    use crate::json::decoder::decode_value;
-    use crate::json::encoder::encode_value;
     use crate::testdata::ABitOfEverything;
     use allocator_api2::vec;
     use proptest::proptest;
+    use crate::json::account_id::DefaultAccountIDStringCodec;
+    use crate::json::JSONCodec;
 
     extern crate std;
 
@@ -27,9 +41,10 @@ mod tests {
         #[test]
         fn test_roundtrip(value: ABitOfEverything) {
             let mut writer = vec![];
-            encode_value(&value, &mut writer).unwrap();
+            let codec = JSONCodec::new(&DefaultAccountIDStringCodec);
+            codec.encode_value(&value, &mut writer).unwrap();
             let res = std::str::from_utf8(&writer).unwrap();
-            let decoded = decode_value::<ABitOfEverything>(res, &Default::default()).unwrap();
+            let decoded = codec.decode_value::<ABitOfEverything>(res, &Default::default()).unwrap();
             assert_eq!(value, decoded);
         }
     }

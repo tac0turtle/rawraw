@@ -11,25 +11,31 @@ use base64::prelude::*;
 use core::fmt::Write;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::json::JSONCodec;
 
-/// Encode the value to a JSON string.
-/// This method is intended to be deterministic and performant, so that it is suitable
-/// for signature verification.
-/// It avoids any intermediate allocations and simply writes its output to the provided buffer
-/// which can be configured with a custom allocator.
-pub fn encode_value<A: Allocator>(
-    value: &dyn ValueCodec,
-    writer: &mut allocator_api2::vec::Vec<u8, A>,
-) -> Result<(), EncodeError> {
-    let mut encoder = Encoder {
-        writer: Writer(writer),
-        num_nested_fields_written: 0,
-    };
-    value.encode(&mut encoder)?;
-    Ok(())
+impl JSONCodec<'_> {
+    /// Encode the value to a JSON string.
+    /// This method is intended to be deterministic and performant, so that it is suitable
+    /// for signature verification.
+    /// It avoids any intermediate allocations and simply writes its output to the provided buffer
+    /// which can be configured with a custom allocator.
+    pub fn encode_value<A: Allocator>(
+        &self,
+        value: &dyn ValueCodec,
+        writer: &mut allocator_api2::vec::Vec<u8, A>,
+    ) -> Result<(), EncodeError> {
+        let mut encoder = Encoder {
+            codec: self,
+            writer: Writer(writer),
+            num_nested_fields_written: 0,
+        };
+        value.encode(&mut encoder)?;
+        Ok(())
+    }
 }
 
 struct Encoder<'a, A: Allocator> {
+    codec: &'a JSONCodec<'a>,
     writer: Writer<'a, A>,
     // this is only used to avoid writing the field name if a nested object is empty
     num_nested_fields_written: usize,
@@ -171,8 +177,10 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError> {
-        let id: u128 = x.into();
-        self.encode_u128(id)
+        write!(self.writer, "\"")?;
+        self.codec.account_id_codec.encode_str(&x, &mut self.writer)?;
+        write!(self.writer, "\"")?;
+        Ok(())
     }
 
     fn encode_enum_variant(
