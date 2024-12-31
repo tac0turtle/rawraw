@@ -1,7 +1,7 @@
 use crate::frontend::ast::{File, Interface};
 use crate::frontend::resolver::members::{HasMembers, MemberSet};
 use crate::frontend::resolver::node_id::{NodeId, NodePath};
-use crate::frontend::resolver::symbol::{SymbolDefiner, SymbolId};
+use crate::frontend::resolver::symbol::{PrimitiveSymbol, SymbolDefiner, SymbolId};
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 use rowan::ast::AstNode;
 use std::collections::BTreeMap;
@@ -136,6 +136,10 @@ impl ScopeBuilder {
         for (name, symbol) in members.members {
             self.scope.names.insert(name, symbol);
         }
+    }
+    
+    pub fn define_primitive(&mut self, name: &str, symbol: PrimitiveSymbol) {
+        self.scope.names.insert(name.to_string(), SymbolId::Primitive(symbol));
     }
 }
 
