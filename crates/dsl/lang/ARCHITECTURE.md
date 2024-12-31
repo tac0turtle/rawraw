@@ -17,7 +17,7 @@ and also get immediate feedback on how our language feels to use.
 
 The best advice available on the internet suggested following what [Rust Analyzer](https://github.com/rust-lang/rust-analyzer)
 if you want IDE friendly language tooling in Rust.
-So this compiler frontend uses the [rowan](https://docs.rs/rowan), [ungrammar](https://docs.rs/ungrammar) and [salsa](https://docs.rs/salsa)
+So this compiler frontend uses the [rowan](https://docs.rs/rowan), [ungrammar](https://docs.rs/ungrammar) and ~~[salsa](https://docs.rs/salsa)~~
 crates used by Rust analyzer.
 
 Here's a quick overview of the frontend structure:
@@ -26,7 +26,7 @@ Here's a quick overview of the frontend structure:
     * `src/frontend/lexer/lex_tokens.rs` - the [logos](https://docs.rs/logos) lexer `Token` enum
     * `src/frontend/syntax/syntax_kind.rs` - the `SyntaxKind` enum for [rowan](https://docs.rs/rowan)
     * `src/frontend/ast/nodes.rs`- type safe wrappers around the untyped [rowan](https://docs.rs/rowan) CST
-* `db.rs` - [salsa](https://docs.rs/salsa) database for fast incremental computation
+* ~~`db.rs` - [salsa](https://docs.rs/salsa) database for fast incremental computation~~
 * `src/frontend` - the main module for the frontend
   * `lexer` - the [logos](https://docs.rs/logos) lexer
   * `parser` - handwritten parser based off of https://matklad.github.io/2023/05/21/resilient-ll-parsing-tutorial.html
@@ -46,10 +46,39 @@ The current handwritten parser implementation follows almost verbatim this artic
 takes lexed `Token`s and builds a concrete syntax tree (CST) using [rowan](https://docs.rs/rowan). An abstract syntax tree (AST)
 is then code generated on top of the CST from an [ungrammar](https://docs.rs/ungrammar) file. This is all pretty similar to how things work in Rust analyzer.
 
+### Name Resolution
+
+Name resolution is at the core of many IDE features such as go to definition, auto-complete, hover, and rename
+It is also the pre-requisite for doing type checking.
+
+A basic design pattern followed in the AST design is to wrap all identifier tokens (`Ident`s) which *define* symbols in `Name`  nodes and all `Ident`s which *reference* other symbols in `NameRef` nodes.
+So name resolution at a high level is mapping all the `NameRef` nodes to `Name` nodes. 
+
+A `NameRef` can be resolved to a `Name` node by discovering the nearest parent node which provides a scope
+of names.
+Typed AST nodes which provide scopes implement the `ScopeProvider` trait so basically if we want to resolve a
+given `NameRef` we just walk up the tree until we find a parent node which implements `ScopeProvider` and then
+we use it to resolve the symbol.
+
+`Name` nodes which define a symbol are always related to some parent node that they are defining such as a function
+or struct.
+So the nodes for functions, structs, etc. implement the `SymbolDefiner` trait which returns the actual `Name` node which defines them.
+
+### Incremental Compilation
+
+I was going to use [salsa](https://docs.rs/salsa) which Rust analyzer uses, but it's in a weird state.
+The version in the Salsa book doesn't correspond at all the tagged versions on GitHub.
+Apparently it's an experimental rewrite, but it's been in this stage for a while it seems and
+I ran into some bugs collecting diagnostics.
+Instead, the much simpler [comemo](https://docs.rs/comemo) crate is used for incremental compilation.
+It seems less widely used but is used in a production app (https://typst.app), see https://laurmaedje.github.io/posts/comemo/.
+It's 1837 lines of code (vs Salsa at 13,509) so less daunting to maintain in the future if needed, 
+less obtrusive in the design of code and no problems so far.
+
 ## Language Server
 
 The language server implementation lives in `src/lsp_server` and uses the [tower-lsp](https://docs.rs/tower-lsp) crate.
-The root `LSPServer` type lives in `src/lsp_server/server.rs` and it holds a reference to the [salsa](https://docs.rs/salsa) database which holds all the incremental computations including the results of lexing, parsing, name resolution, etc.
+The root `LSPServer` type lives in `src/lsp_server/server.rs`.
 
 Each file in `src/lsp_server` is intended to implement a single LSP operation or provide some utility functions. 
 For example, the implementation of `textDocument.hover` is in `hover.rs` and `server.rs` just provides a thin wrapper

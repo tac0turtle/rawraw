@@ -23,6 +23,10 @@ interface BankAPI {
    query get_balance(account: AccountID, denom: Str) u128;
 }
 
+interface BlockInfoAPI {
+    query block_time() Time;
+}
+
 object Bank {
    account_scoped map balances[account: AccountID, denom: Str] => amount: U128Accumulator;
    map supply[denom: Str] => amount: U128Accumulator;
