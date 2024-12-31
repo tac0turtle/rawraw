@@ -4,7 +4,7 @@ use rowan::ast::AstNode;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AstPtr<N: AstNode + ?Sized> {
     _marker: std::marker::PhantomData<fn(N)>,
-    path: NodePath,
+    pub path: NodePath,
 }
 
 impl<N: AstNode<Language = IXCLanguage>> AstPtr<N> {
@@ -28,13 +28,13 @@ pub struct NodePath(Vec<usize>);
 impl NodePath {
     pub fn new(node: &SyntaxNode) -> Self {
         let mut path = vec![node.index()];
-        let mut some_node = Some(node.clone());
+        let mut parent = node.parent();
         loop {
-            if let Some(node) = some_node {
+            if let Some(node) = parent {
                 path.push(node.index());
-                some_node = node.parent();
+                parent = node.parent();
             } else {
-                break
+                break;
             }
         }
         NodePath(path)
@@ -42,11 +42,8 @@ impl NodePath {
 
     pub fn resolve(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
         let mut node = node.clone();
-        let mut idx = self.0.len();
-        while idx > 0 {
-            let i = self.0[idx - 1];
-            node = node.children().nth(i)?;
-            idx -= 1;
+        for i in self.0.iter().rev() {
+            node = node.children().nth(*i)?;
         }
         Some(node)
     }

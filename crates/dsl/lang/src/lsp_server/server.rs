@@ -14,7 +14,6 @@ impl LanguageServer for LSPServer {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
-                // inlay_hint_provider: Some(OneOf::Left(true)),
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
                     TextDocumentSyncOptions {
                         open_close: Some(true),
@@ -52,6 +51,7 @@ impl LanguageServer for LSPServer {
                 //     ),
                 // ),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                definition_provider: Some(OneOf::Left(true)),
                 ..ServerCapabilities::default()
             },
         })
@@ -80,17 +80,24 @@ impl LanguageServer for LSPServer {
     async fn did_close(&self, _: DidCloseTextDocumentParams) {
     }
 
-    async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
-        // self.on_semantic_tokens_full(params).await
-        Ok(None)
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        self.on_hover(params).await
     }
 
     async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
         self.on_document_symbol(params).await
     }
 
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        self.on_hover(params).await
+    async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
+        // self.on_semantic_tokens_full(params).await
+        Ok(None)
+    }
+
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        self.on_goto_definition(params).await
     }
 }
 
