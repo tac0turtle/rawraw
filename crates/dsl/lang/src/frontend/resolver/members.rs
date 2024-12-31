@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use rowan::ast::AstNode;
 use crate::frontend::ast::*;
+use crate::frontend::resolver::node_id::{NodeId, NodePath};
 use crate::frontend::resolver::symbol::{SymbolDefiner, SymbolId};
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 
@@ -17,11 +18,25 @@ pub fn as_has_members(syntax_node: SyntaxNode) -> Option<Box<dyn HasMembers>> {
 }
 
 pub struct MemberSet {
-    members: BTreeMap<String, SymbolId>,
+    pub(crate) node_id: NodeId,
+    pub(crate) members: BTreeMap<String, SymbolId>,
 }
 
 impl MemberSet {
+    pub fn new(node_id: NodeId) -> Self {
+        Self {
+            node_id,
+            members: Default::default(),
+        }
+    }
+    
     pub fn add<N: SymbolDefiner>(&mut self, node: N) {
-        // TODO
+        let path = NodePath::new(&node.syntax());
+        let id = NodeId::new(self.node_id.filename.as_str(), path);
+        if let Some(name) = node.get_name() {
+            if let Some(name) = name.name() {
+                self.members.insert(name.text().to_string(), SymbolId::Node(id));
+            }
+        }
     }
 }

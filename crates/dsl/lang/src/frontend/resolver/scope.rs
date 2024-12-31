@@ -1,5 +1,5 @@
 use crate::frontend::ast::{File, Interface};
-use crate::frontend::resolver::members::HasMembers;
+use crate::frontend::resolver::members::{HasMembers, MemberSet};
 use crate::frontend::resolver::node_id::{NodeId, NodePath};
 use crate::frontend::resolver::symbol::{SymbolDefiner, SymbolId};
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
@@ -22,7 +22,11 @@ pub fn as_scope_provider(syntax_node: SyntaxNode) -> Option<Box<dyn ScopeProvide
 
 #[comemo::memoize]
 pub fn resolve_scope(files: Tracked<FileSources>, node_id: &NodeId) -> Option<Scope> {
-    todo!()
+    let node = node_id.resolve(files)?;
+    let mut builder = ScopeBuilder::new(node_id.filename.as_str(), node.clone());
+    let provider = as_scope_provider(node)?;
+    provider.provide_scope(&mut builder);
+    Some(builder.scope)
 }
 
 // pub fn resolve_scope(ast: &ParsedAST, path: &NodePath) -> Option<Scope> {
@@ -90,7 +94,7 @@ impl Scope {
     }
 
     pub fn resolve_name_ref(&self, name_ref: &str) -> Option<SymbolId> {
-        todo!()
+        self.names.get(name_ref).cloned()
     }
 }
 
@@ -126,7 +130,12 @@ impl ScopeBuilder {
     }
 
     pub fn put_members_into_scope<N: HasMembers>(&mut self, node: &N) {
-        // TODO
+        assert_eq!(&self.node, node.syntax());
+        let mut members = MemberSet::new(self.scope.node_id.clone());
+        node.provide_members(&mut members);
+        for (name, symbol) in members.members {
+            self.scope.names.insert(name, symbol);
+        }
     }
 }
 

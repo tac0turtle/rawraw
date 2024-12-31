@@ -50,7 +50,6 @@ impl NodeId {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NodePath(
-    // TODO: replace with a Vec<usize> when we can fix that implementation because it is more stable with respect to formatting changes
     Vec<(SyntaxKind, usize)>
 );
 
