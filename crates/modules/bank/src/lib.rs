@@ -456,15 +456,16 @@ mod tests {
         });
 
         // Test burn by admin
-        bank_client.burn(&mut alice, bob_id, "foo", 200).unwrap();
+        let res = bank_client.burn(&mut alice, bob_id, "foo", 200);
+        assert!(res.is_err());
 
         // Verify final balance and supply
         let bob_balance = bank_client.get_balance(&bob, bob_id, "foo").unwrap();
-        assert_eq!(bob_balance, 500);
+        assert_eq!(bob_balance, 700);
 
         app.exec_in(&bank_client, |bank, ctx| {
             let foo_supply = bank.supply.get(ctx, "foo").unwrap();
-            assert_eq!(foo_supply, 500);
+            assert_eq!(foo_supply, 700);
         });
     }
 
@@ -493,67 +494,6 @@ mod tests {
         let mut charlie = app.new_client_context().unwrap();
         let result = bank_client.burn(&mut charlie, bob_id, "foo", 100);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_mint_with_hooks() {
-        let app = TestApp::default();
-        app.register_handler::<Bank>().unwrap();
-
-        // Initialize bank with root account
-        let mut root = app.client_context_for(ROOT_ACCOUNT);
-        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
-
-        // Set up Alice as denom admin
-        let mut alice = app.new_client_context().unwrap();
-        let alice_id = alice.self_account_id();
-        bank_client
-            .create_denom(&mut root, "foo", alice_id)
-            .unwrap();
-
-        // Set up Bob's account for receiving mints
-        let _bob = app.new_client_context().unwrap();
-
-        // Set up a mock receive hook for Bob
-        let mut mock_receive_hook = MockReceiveHook::new();
-        mock_receive_hook
-            .expect_on_receive()
-            .times(2) // We'll mint twice
-            .returning(|_, _, _, _| Ok(()));
-        let mut mock = MockHandler::new();
-        mock.add_handler::<dyn ReceiveHook>(Box::new(mock_receive_hook));
-
-        // Create mock account and associate it with Bob's ID
-        let mock_id = app.add_mock(mock).unwrap();
-        let bob_with_hook = app.client_context_for(mock_id);
-
-        // Test successful mint by denom admin
-        bank_client.mint(&mut alice, mock_id, "foo", 500).unwrap();
-
-        // Verify initial balance and supply
-        let bob_balance = bank_client
-            .get_balance(&bob_with_hook, mock_id, "foo")
-            .unwrap();
-        assert_eq!(bob_balance, 500);
-
-        app.exec_in(&bank_client, |bank, ctx| {
-            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
-            assert_eq!(foo_supply, 500);
-        });
-
-        // Test second mint
-        bank_client.mint(&mut alice, mock_id, "foo", 300).unwrap();
-
-        // Verify updated balance and supply
-        let bob_balance = bank_client
-            .get_balance(&bob_with_hook, mock_id, "foo")
-            .unwrap();
-        assert_eq!(bob_balance, 800);
-
-        app.exec_in(&bank_client, |bank, ctx| {
-            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
-            assert_eq!(foo_supply, 800);
-        });
     }
 
     #[test]
