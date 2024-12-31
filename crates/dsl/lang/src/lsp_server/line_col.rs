@@ -1,12 +1,9 @@
 use line_index::LineIndex;
-use crate::db::FileSource;
 use rowan::TextSize;
-use salsa::Database;
 use tower_lsp::lsp_types;
 
-#[salsa::tracked(return_ref)]
-pub fn build_line_index(db: &dyn Database, source: FileSource) -> LineIndex {
-    LineIndex::new(source.text(db))
+pub fn build_line_index(src: &str) -> LineIndex {
+    LineIndex::new(src)
 }
 
 pub fn to_lsp_range(index: &LineIndex, text_range: &rowan::TextRange) -> lsp_types::Range {

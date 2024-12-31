@@ -1,9 +1,6 @@
 use std::io::Read;
-use salsa::Database;
-use crate::db::FileSource;
 use crate::frontend;
 use crate::frontend::ast::ParsedAST;
-use crate::frontend::diagnostic::Diagnostic;
 
 pub mod ast;
 pub mod parser;
@@ -14,22 +11,18 @@ pub mod resolver;
 // mod type_checker;
 // mod checker;
 
-#[salsa::tracked]
-pub fn compile(db: &dyn Database, src: FileSource) -> ParsedAST<'_> {
-    parser::parse(&*db, src)
+pub fn compile(src: &str) -> ParsedAST {
+    parser::parse(src)
 }
 
 pub fn compile_cli(filename: &str) {
     if let Some(input) = read_file(filename) {
-        let db = crate::db::Db::default();
-        let src = FileSource::new(&db, input.clone());
-        let ast = frontend::compile(&db, src);
-        let diags = compile::accumulated::<Diagnostic>(&db, src);
-        for diag in diags {
+        let ast = frontend::compile(input.as_str());
+        for diag in &ast.diagnostics {
             diag.print_report(&input);
         }
         // debugging
-        println!("{:#?}", ast.syntax(&db));
+        println!("{:#?}", ast.syntax());
     }
 }
 

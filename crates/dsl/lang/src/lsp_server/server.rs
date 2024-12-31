@@ -1,19 +1,11 @@
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Mutex;
 use dashmap::DashMap;
-use rowan::GreenNode;
 use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
-use crate::db::{Db, FileSource};
-use crate::lsp_server::semantic_tokens::LEGEND_TYPE;
 
 pub struct LSPServer {
     pub client: Client,
-    pub db: Mutex<Db>,
+    pub files: DashMap<String, String>,
 }
 
 #[tower_lsp::async_trait]
@@ -110,7 +102,7 @@ pub async fn main() {
 
     let (service, socket) = LspService::build(|client| LSPServer {
         client,
-        db: Default::default(),
+        files: Default::default(),
     })
     .finish();
 

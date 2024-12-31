@@ -2,15 +2,15 @@ use crate::frontend::ast::*;
 use crate::frontend::resolver::ids::AstPtr;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ItemPtr<'db> {
-    File(AstPtr<'db, File>),
-    Interface(AstPtr<'db, Interface>),
-    Object(AstPtr<'db, Object>),
-    Struct(AstPtr<'db, Struct>),
-    ImplFn(AstPtr<'db, ImplFn>),
-    FnParam(AstPtr<'db, FnParam>),
-    Event(AstPtr<'db, Event>),
-    InterfaceFn(AstPtr<'db, InterfaceFn>),
-    MapCollection(AstPtr<'db, MapCollection>),
-    VarCollection(AstPtr<'db, VarCollection>),
+pub enum ItemPtr {
+    File(AstPtr<File>),
+    Interface(AstPtr<Interface>),
+    Object(AstPtr<Object>),
+    Struct(AstPtr<Struct>),
+    ImplFn(AstPtr<ImplFn>),
+    FnParam(AstPtr<FnParam>),
+    Event(AstPtr<Event>),
+    InterfaceFn(AstPtr<InterfaceFn>),
+    MapCollection(AstPtr<MapCollection>),
+    VarCollection(AstPtr<VarCollection>),
 }

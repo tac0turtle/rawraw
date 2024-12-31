@@ -4,7 +4,6 @@ use line_index::LineIndex;
 use rowan::TextRange;
 use tower_lsp::lsp_types;
 
-#[salsa::accumulator]
 #[derive(Eq, PartialEq)]
 pub struct Diagnostic {
     pub message: String,

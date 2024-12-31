@@ -1,9 +1,8 @@
 use crate::frontend::ast::{ConcreteNode, ErrorNode};
-use crate::frontend::diagnostic::{text_range_from_span, Diagnostic, Severity};
+use crate::frontend::diagnostic::{text_range_from_span, Severity, Diagnostic};
 use crate::frontend::lexer::Token;
 use crate::frontend::syntax::SyntaxKind;
 use rowan::{GreenNode, GreenNodeBuilder};
-use salsa::{Accumulator, Database};
 use std::cell::Cell;
 use std::ops::Range;
 

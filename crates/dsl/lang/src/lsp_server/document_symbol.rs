@@ -1,4 +1,3 @@
-use crate::db::DatabaseExt;
 use crate::frontend::ast::*;
 use crate::frontend::parser;
 use crate::frontend::syntax::SyntaxNode;
@@ -15,10 +14,9 @@ impl LSPServer {
         &self,
         params: DocumentSymbolParams,
     ) -> tower_lsp::jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        let db = self.db.lock().unwrap();
-        if let Some(src) = db.file_source(params.text_document.uri.as_str()) {
-            let ast = parser::parse(&*db, src).syntax(&*db);
-            let line_index = build_line_index(&*db, src);
+        if let Some(src) = self.files.get(params.text_document.uri.as_str()) {
+            let ast = parser::parse(&src).syntax();
+            let line_index = build_line_index(&src);
             let builder = SymbolBuilder {
                 line_index: &line_index,
             };

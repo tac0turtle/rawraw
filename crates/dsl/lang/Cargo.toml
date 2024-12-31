@@ -15,7 +15,6 @@ syn = "2.0.90"
 quote = "1.0.37"
 prettyplease = "0.2.25"
 num_enum = "0.7.3"
-salsa = { git = "https://github.com/salsa-rs/salsa.git", rev = "88a1d7774d78f048fbd77d40abca9ebd729fd1f0" }
 line-index = "0.1.2"
 tokio = { version = "1.0", features = ["full"] }
 tower-lsp = "0.20.0"

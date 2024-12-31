@@ -1,14 +1,11 @@
-use crate::db::{DatabaseExt, FileSource};
 use crate::frontend::parser;
-use crate::frontend::syntax::{SyntaxKind, SyntaxNode};
-use crate::lsp_server::line_col::{build_line_index, to_lsp_position, to_lsp_range};
+use crate::frontend::syntax::SyntaxKind;
+use crate::lsp_server::line_col::{build_line_index, to_lsp_position};
 use crate::lsp_server::server::LSPServer;
-use line_index::LineIndex;
 use rowan::NodeOrToken::Token;
-use salsa::Database;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
-    MessageType, SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensParams,
+    SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensParams,
     SemanticTokensResult,
 };
 
@@ -17,9 +14,8 @@ impl LSPServer {
         &self,
         params: SemanticTokensParams,
     ) -> Result<Option<SemanticTokensResult>> {
-        let db = self.db.lock().unwrap();
-        if let Some(src) = db.file_source(params.text_document.uri.as_str()) {
-            let data = semantic_tokens_from_ast(&*db, src);
+        if let Some(src) = self.files.get(params.text_document.uri.as_str()) {
+            let data = semantic_tokens_from_ast(&src);
             Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
                 result_id: None,
                 data,
@@ -41,12 +37,10 @@ pub const LEGEND_TYPE: &[SemanticTokenType] = &[
     SemanticTokenType::PARAMETER,
 ];
 
-#[salsa::tracked]
-pub fn semantic_tokens_from_ast(db: &dyn Database, src: FileSource) -> Vec<SemanticToken> {
-    let ast = parser::parse(&*db, src);
-    let node = ast.root(&*db);
-    let root = SyntaxNode::new_root(node.clone());
-    let line_index = build_line_index(db, src);
+pub fn semantic_tokens_from_ast(src: &str) -> Vec<SemanticToken> {
+    let ast = parser::parse(src);
+    let root = ast.syntax();
+    let line_index = build_line_index(src);
     let mut semantic_tokens = vec![];
     let mut last_line = 0;
     root.descendants_with_tokens().for_each(|node| {
@@ -54,7 +48,7 @@ pub fn semantic_tokens_from_ast(db: &dyn Database, src: FileSource) -> Vec<Seman
             let kind = token.kind();
             let range = token.text_range();
             let len = range.len();
-            let pos = to_lsp_position(line_index, range.start());
+            let pos = to_lsp_position(&line_index, range.start());
             let line = pos.line;
             let delta_line = line - last_line;
             match kind {

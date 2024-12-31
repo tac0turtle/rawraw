@@ -1,26 +1,20 @@
-use crate::db::FileSource;
 use crate::frontend;
 use crate::frontend::ast::ParsedAST;
 use crate::frontend::diagnostic::{Diagnostic, Severity};
 use crate::lsp_server::line_col::{build_line_index, to_lsp_range};
-use crate::lsp_server::server::LSPServer;
 use line_index::LineIndex;
-use salsa::Database;
 use tower_lsp::lsp_types;
-use tower_lsp::lsp_types::MessageType;
 
 pub fn run_diagnostics<'a>(
-    db: &'a dyn Database,
-    src: FileSource,
-) -> (ParsedAST<'a>, Vec<lsp_types::Diagnostic>) {
-    let ast = frontend::compile(&*db, src);
-    let line_index = build_line_index(&*db, src);
-    let diags = frontend::compile::accumulated::<Diagnostic>(&*db, src);
+    src: &str,
+) -> Vec<lsp_types::Diagnostic> {
+    let ast = frontend::compile(src);
+    let line_index = build_line_index(src);
     let mut lsp_diags = vec![];
-    for diag in diags {
+    for diag in ast.diagnostics {
         lsp_diags.push(to_lsp_diagnostic(&line_index, diag));
     }
-    (ast, lsp_diags)
+    lsp_diags
 }
 
 pub fn to_lsp_diagnostic(line_index: &LineIndex, diag: Diagnostic) -> lsp_types::Diagnostic {

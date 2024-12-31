@@ -1,40 +1,37 @@
 use crate::frontend::ast::{ConcreteNode, File, Interface, InterfaceItem, Item, ParsedAST};
 use crate::frontend::diagnostic::Diagnostic;
 use crate::frontend::resolver::definer::ItemDefiner;
-use crate::frontend::resolver::ids::{AstPtr, NodeId};
+use crate::frontend::resolver::ids::{AstPtr, NodePath};
 use crate::frontend::resolver::item_ref::ItemPtr;
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 use dashmap::DashMap;
 use rowan::ast::AstNode;
-use salsa::{Accumulator, Database};
 use std::collections::BTreeMap;
 
-#[salsa::tracked]
-pub fn resolve_scope<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_path: NodeId<'db>) -> Option<Scope<'db>> {
-    let registry = init_registry(db);
-    let node = node_path.path(db).resolve(&ast.syntax(db))?;
+pub fn resolve_scope(ast: &ParsedAST, path: &NodePath) -> Option<Scope> {
+    let registry = init_registry();
+    let node = path.resolve(&ast.syntax())?;
     let mut builder = ScopeBuilder {
-        path: node_path,
+        path: path.clone(),
         scope: Scope::default(),
-        db,
     };
     let f = registry.providers.get(&node.kind())?;
     f(node, &mut builder);
     Some(builder.scope)
 }
 
-pub fn resolve_name_ref<'db>(db: &'db dyn Database, ast: ParsedAST<'db>, node_id: NodeId<'db>, name_ref: &str) -> Option<ItemPtr<'db>> {
-    let mut maybe_node_path = Some(node_id.clone());
+pub fn resolve_name_ref(ast: &ParsedAST, node_path: &NodePath, name_ref: &str) -> Option<ItemPtr> {
+    let mut maybe_node_path = Some(node_path.clone());
     while let Some(ref node_path) = maybe_node_path {
-        if let Some(scope) = resolve_scope(db, ast, node_id.clone()) {
+        if let Some(scope) = resolve_scope(ast, node_path) {
             if let Some(item) = scope.names.get(name_ref) {
                 return Some(item.clone());
             }
-            if let Some(parent) = scope.parent {
-                return resolve_name_ref(db, ast, parent, name_ref);
+            if let Some(ref parent) = scope.parent {
+                return resolve_name_ref(ast, parent, name_ref);
             }
         } else {
-            maybe_node_path = node_path.parent_path(db);
+            maybe_node_path = node_path.parent_path();
         }
     }
     None
@@ -57,40 +54,39 @@ impl ScopeProviderRegistry {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Scope<'db> {
-    parent: Option<NodeId<'db>>,
-    names: BTreeMap<String, ItemPtr<'db>>,
+pub struct Scope {
+    parent: Option<NodePath>,
+    names: BTreeMap<String, ItemPtr>,
 }
 
-pub struct ScopeBuilder<'db> {
-    path: NodeId<'db>,
-    scope: Scope<'db>,
-    db: &'db dyn Database
+pub struct ScopeBuilder {
+    path: NodePath,
+    scope: Scope,
 }
 
-impl<'db> ScopeBuilder<'db> {
+impl ScopeBuilder {
     pub fn provide_symbol_for_children<N: ItemDefiner>(&mut self, node: N) {
         if let Some(name) = node.get_name().map(|it| it.name()).flatten() {
-            self.scope.names.insert(name.text().to_string(), N::wrap_ptr(AstPtr::new(self.db, &node)));
+            self.scope.names.insert(name.text().to_string(), N::wrap_ptr(AstPtr::new(&node)));
         } else {
             // TODO: report diagnostic
         }
     }
 
     pub fn inherit_parent_node_scope(&mut self) {
-        if let Some(parent) = self.path.parent_path(self.db) {
+        if let Some(parent) = self.path.parent_path() {
             self.scope.parent = Some(parent);
         }
     }
 
     pub fn report_diagnostic(&self, diagnostic: Diagnostic) {
-        diagnostic.accumulate(self.db)
+        todo!()
     }
 }
 
 // TODO find a way to const initialize this
 // #[salsa::tracked]
-fn init_registry(db: &dyn Database) -> ScopeProviderRegistry {
+fn init_registry() -> ScopeProviderRegistry {
     let mut registry = ScopeProviderRegistry::default();
     registry.register_provider::<File>(|node, builder| {
         builder.inherit_parent_node_scope();
