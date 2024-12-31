@@ -1,4 +1,4 @@
-//! Bank moduleodule that allows for the transfer of tokens between accounts.
+//! Bank module that allows for the transfer of tokens between accounts.
 #![allow(missing_docs)] //TODO remove when docs are added to macros
 #![allow(clippy::needless_lifetimes)]
 /// The bank module used for transfering tokens between accounts.
@@ -318,15 +318,8 @@ pub mod bank {
             mut evt: EventBus<EventBurn<'a>>,
         ) -> Result<()> {
             // Check if the caller is authorized to burn
-            // Only denom admin or the token owner can burn
-            let admin = self
-                .denom_admins
-                .get(ctx, denom)?
-                .ok_or(error!("denom not defined"))?;
-            ensure!(
-                admin == ctx.caller() || from == ctx.caller(),
-                "not authorized to burn tokens"
-            );
+            // Only the token owner can burn
+            ensure!(from == ctx.caller(), "not authorized to burn tokens");
 
             // Check if there are any burn hooks and execute them
             if let Some(hook) = self.denom_burn_hooks.get(ctx, denom)? {
