@@ -30,6 +30,7 @@ pub fn resolve_name_ref(ast: &ParsedAST, node_path: &NodePath, name_ref: &str) -
             if let Some(ref parent) = scope.parent {
                 return resolve_name_ref(ast, parent, name_ref);
             }
+            return None
         } else {
             maybe_node_path = node_path.parent_path();
         }

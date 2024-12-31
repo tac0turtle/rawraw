@@ -28,8 +28,14 @@ pub struct NodePath(Vec<usize>);
 impl NodePath {
     pub fn new(node: &SyntaxNode) -> Self {
         let mut path = vec![node.index()];
-        while let Some(node) = node.parent() {
-            path.push(node.index());
+        let mut some_node = Some(node.clone());
+        loop {
+            if let Some(node) = some_node {
+                path.push(node.index());
+                some_node = node.parent();
+            } else {
+                break
+            }
         }
         NodePath(path)
     }
