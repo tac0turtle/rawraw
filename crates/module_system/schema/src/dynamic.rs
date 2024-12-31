@@ -140,21 +140,31 @@ impl<'a> ListDecodeVisitor<'a> for DynamicList<'a> {
     }
 
     fn next(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
-        if let List::Owned(vec) = &mut self.data {
-            let mut value = DynamicValue::default_for_kind(
-                self.element_kind,
-                self.ref_type,
-                self.type_map,
-                self.allocator,
-            )
-            .map_err(|_| DecodeError::UnknownField)?;
-            value.decode(decoder)?;
-            vec.push(value);
-            Ok(())
-        } else {
-            // expected owned list
-            Err(DecodeError::InvalidData)
+        let mut value = DynamicValue::default_for_kind(
+            self.element_kind,
+            self.ref_type,
+            self.type_map,
+            self.allocator,
+        )
+        .map_err(|_| DecodeError::UnknownField)?;
+        
+        match &mut self.data {
+            List::Empty => {
+                self.data = {
+                    let mut vec = Vec::new_in(self.allocator);
+                    vec.push(value);
+                    List::Owned(vec)
+                }
+            }
+            List::Borrowed(vec) => {
+                log::error!("expected owned or empty list");
+                return Err(DecodeError::InvalidData);
+            }
+            List::Owned(vec) => {
+                vec.push(value);
+            }
         }
+        Ok(())
     }
 }
 
@@ -388,7 +398,7 @@ mod tests {
     use crate::json;
     use crate::json::account_id::DefaultAccountIDStringCodec;
     use crate::structs::StructSchema;
-    use crate::testdata::ABitOfEverything;
+    use crate::testdata::{ABitOfEverything, Prims};
     use crate::types::collect_types;
     use allocator_api2::vec::Vec;
     use proptest::proptest;
