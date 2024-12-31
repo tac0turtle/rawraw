@@ -73,7 +73,6 @@ pub mod bank {
         fn burn(
             &self,
             ctx: &mut Context,
-            from: AccountID,
             denom: &str,
             amount: u128,
             evt: EventBus<EventBurn<'_>>,
@@ -118,6 +117,7 @@ pub mod bank {
             &self,
             ctx: &mut Context<'a>,
             from: AccountID,
+            to: AccountID,
             denom: &str,
             amount: u128,
         ) -> Result<()>;
@@ -255,10 +255,9 @@ pub mod bank {
                 }
                 let from = ctx.caller();
 
-                if let Some(hook) = self.denom_recieve_hooks.get(ctx, ctx.caller())? {
-                    println!("on_receive");
+                if let Some(hook) = self.denom_recieve_hooks.get(ctx, to)? {
                     let hook_client = <dyn ReceiveHook>::new_client(hook);
-                    hook_client.on_receive(ctx, to, coin.denom, coin.amount)?;
+                    hook_client.on_receive(ctx, from, to, coin.denom, coin.amount)?;
                 }
 
                 self.balances
@@ -293,10 +292,9 @@ pub mod bank {
             self.supply.add(ctx, denom, amount)?;
             self.balances.add(ctx, (to, denom), amount)?;
 
-            if let Some(hook) = self.denom_recieve_hooks.get(ctx, ctx.caller())? {
-                println!("on_receive");
+            if let Some(hook) = self.denom_recieve_hooks.get(ctx, to)? {
                 let hook_client = <dyn ReceiveHook>::new_client(hook);
-                hook_client.on_receive(ctx, to, denom, amount)?;
+                hook_client.on_receive(ctx, ctx.caller(), to, denom, amount)?;
             }
             evt.emit(
                 ctx,
@@ -312,23 +310,20 @@ pub mod bank {
         fn burn<'a>(
             &self,
             ctx: &mut Context,
-            from: AccountID,
             denom: &'a str,
             amount: u128,
             mut evt: EventBus<EventBurn<'a>>,
         ) -> Result<()> {
             // Check if the caller is authorized to burn
-            // Only the token owner can burn
-            ensure!(from == ctx.caller(), "not authorized to burn tokens");
 
             // Check if there are any burn hooks and execute them
             if let Some(hook) = self.denom_burn_hooks.get(ctx, denom)? {
                 let hook_client = <dyn BurnHook>::new_client(hook);
-                hook_client.on_burn(ctx, from, denom, amount)?;
+                hook_client.on_burn(ctx, ctx.caller(), denom, amount)?;
             }
 
             // Verify sufficient balance and reduce it
-            self.balances.safe_sub(ctx, (from, denom), amount)?;
+            self.balances.safe_sub(ctx, (ctx.caller(), denom), amount)?;
 
             // Reduce total supply
             self.supply.safe_sub(ctx, denom, amount)?;
@@ -337,7 +332,7 @@ pub mod bank {
             evt.emit(
                 ctx,
                 &EventBurn {
-                    from,
+                    from: ctx.caller(),
                     coin: Coin { denom, amount },
                 },
             )?;
@@ -443,7 +438,7 @@ mod tests {
         bank_client.mint(&mut alice, bob_id, "foo", 1000).unwrap();
 
         // Test burn by token holder
-        bank_client.burn(&mut bob, bob_id, "foo", 300).unwrap();
+        bank_client.burn(&mut bob, "foo", 300).unwrap();
 
         // Verify balance
         let bob_balance = bank_client.get_balance(&bob, bob_id, "foo").unwrap();
@@ -456,7 +451,7 @@ mod tests {
         });
 
         // Test burn by admin
-        let res = bank_client.burn(&mut alice, bob_id, "foo", 200);
+        let res = bank_client.burn(&mut alice, "foo", 200);
         assert!(res.is_err());
 
         // Verify final balance and supply
@@ -467,33 +462,6 @@ mod tests {
             let foo_supply = bank.supply.get(ctx, "foo").unwrap();
             assert_eq!(foo_supply, 700);
         });
-    }
-
-    #[test]
-    fn test_burn_unauthorized() {
-        let app = TestApp::default();
-        app.register_handler::<Bank>().unwrap();
-
-        // Initialize bank
-        let mut root = app.client_context_for(ROOT_ACCOUNT);
-        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
-
-        // Set up Alice as denom admin
-        let mut alice = app.new_client_context().unwrap();
-        let alice_id = alice.self_account_id();
-        bank_client
-            .create_denom(&mut root, "foo", alice_id)
-            .unwrap();
-
-        // Mint tokens to Bob
-        let bob = app.new_client_context().unwrap();
-        let bob_id = bob.self_account_id();
-        bank_client.mint(&mut alice, bob_id, "foo", 1000).unwrap();
-
-        // Try to burn with unauthorized account (Charlie)
-        let mut charlie = app.new_client_context().unwrap();
-        let result = bank_client.burn(&mut charlie, bob_id, "foo", 100);
-        assert!(result.is_err());
     }
 
     #[test]
