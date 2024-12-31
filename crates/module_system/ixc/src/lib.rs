@@ -4,7 +4,8 @@
 pub use ixc_core::resource::Resources;
 #[doc(inline)]
 pub use ixc_core::{
-    bail, create_account, ensure, error, new_unique_id, Context, EventBus, Result, Service,
+    bail, create_account, ensure, error, new_unique_id, ClientFactory, Context, EventBus, Result,
+    Service,
 };
 
 #[doc(inline)]

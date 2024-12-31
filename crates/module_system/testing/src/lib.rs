@@ -20,6 +20,7 @@ use ixc_core::result::ClientResult;
 use ixc_core::Context;
 use ixc_message_api::code::SystemCode::FatalExecutionError;
 use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::error::HandlerError;
 use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, Request, Response};
 use ixc_message_api::AccountID;
@@ -281,15 +282,18 @@ impl RawHandler for MockHandler {
         message: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         for mock in &self.mocks {
             let res = mock.handle_msg(caller, message, callbacks, allocator);
             match res {
-                Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
+                Err(HandlerError {
+                    code: ErrorCode::SystemCode(SystemCode::MessageNotHandled),
+                    ..
+                }) => continue,
                 _ => return res,
             }
         }
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+        Err(SystemCode::MessageNotHandled.into())
     }
 
     fn handle_query<'a>(
@@ -297,15 +301,18 @@ impl RawHandler for MockHandler {
         message: &Message,
         callbacks: &dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         for mock in &self.mocks {
             let res = mock.handle_query(message, callbacks, allocator);
             match res {
-                Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)) => continue,
+                Err(HandlerError {
+                    code: ErrorCode::SystemCode(SystemCode::MessageNotHandled),
+                    ..
+                }) => continue,
                 _ => return res,
             }
         }
-        Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled))
+        Err(SystemCode::MessageNotHandled.into())
     }
 }
 
@@ -316,7 +323,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
         message_packet: &Message,
         callbacks: &dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, ixc_message_api::error::HandlerError> {
         self.0.handle_query(message_packet, callbacks, allocator)
     }
 
@@ -326,7 +333,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
         message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         self.0
             .handle_msg(caller, message_packet, callbacks, allocator)
     }
@@ -337,7 +344,7 @@ impl<T: RawHandler + ?Sized> RawHandler for MockWrapper<T> {
         message_packet: &Message,
         callbacks: &mut dyn HostBackend,
         allocator: &'a dyn Allocator,
-    ) -> Result<Response<'a>, ErrorCode> {
+    ) -> Result<Response<'a>, HandlerError> {
         self.0
             .handle_system(caller, message_packet, callbacks, allocator)
     }

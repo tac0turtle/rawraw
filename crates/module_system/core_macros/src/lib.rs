@@ -142,7 +142,7 @@ pub fn from(_attr: TokenStream2, _item: TokenStream2) -> manyhow::Result<TokenSt
 /// }
 /// ```
 #[manyhow]
-#[proc_macro_derive(Resources, attributes(state, client))]
+#[proc_macro_derive(Resources, attributes(state, client, client_factory))]
 pub fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStream2> {
     resources::derive_resources(input)
 }

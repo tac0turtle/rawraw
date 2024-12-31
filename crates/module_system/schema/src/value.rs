@@ -3,6 +3,7 @@
 use crate::codec::{decode_value, Codec};
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
+use crate::field::Field;
 use crate::list::AllocatorVecBuilder;
 use crate::mem::MemoryManager;
 use crate::types::*;
@@ -396,6 +397,12 @@ pub trait OptionalValue<'a> {
         value: &Self::Value,
         writer_factory: &'b dyn Allocator,
     ) -> Result<Option<&'b [u8]>, EncodeError>;
+
+    /// The schema of the value as a field, if any.
+    const AS_FIELD: Option<Field<'static>> = None;
+
+    /// Visit the value's type, if any.
+    fn visit_type<V: TypeVisitor>(visitor: &mut V);
 }
 
 impl<'a> OptionalValue<'a> for () {
@@ -416,6 +423,8 @@ impl<'a> OptionalValue<'a> for () {
     ) -> Result<Option<&'b [u8]>, EncodeError> {
         Ok(None)
     }
+
+    fn visit_type<V: TypeVisitor>(_visitor: &mut V) {}
 }
 
 impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
@@ -436,6 +445,12 @@ impl<'a, V: SchemaValue<'a>> OptionalValue<'a> for V {
         writer_factory: &'b dyn Allocator,
     ) -> Result<Option<&'b [u8]>, EncodeError> {
         Ok(Some(cdc.encode_value(value, writer_factory)?))
+    }
+
+    const AS_FIELD: Option<Field<'static>> = Some(to_field::<V::Type>());
+
+    fn visit_type<Visitor: TypeVisitor>(visitor: &mut Visitor) {
+        visitor.visit::<V::Type>();
     }
 }
 

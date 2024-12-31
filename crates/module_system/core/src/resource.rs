@@ -1,16 +1,26 @@
 //! Resource module.
 
+use crate::handler::Client;
+use crate::{ClientFactory, Service};
+use allocator_api2::alloc::Allocator;
+use allocator_api2::vec::Vec;
 use ixc_message_api::AccountID;
+use ixc_schema::list::List;
+use ixc_schema::state_object::StateObjectDescriptor;
+use ixc_schema::types::TypeVisitor;
 
 /// An account or module handler's resources.
 /// This is usually derived by the state management framework.
 /// # Safety
-/// The trait is marked as unsafe to detour users from creating it
+/// The trait is marked as unsafe because only macros should implement it.
 pub unsafe trait Resources: Sized {
     /// Initializes the resources.
     /// # Safety
     /// The function is marked as unsafe to detour users from calling it directly
     unsafe fn new(scope: &ResourceScope) -> Result<Self, InitializationError>;
+
+    /// Visit the resources to discover their schema.
+    fn visit_resources<'a, V: ResourcesVisitor<'a>>(visitor: &mut V);
 }
 
 /// The resource scope.
@@ -49,6 +59,15 @@ pub unsafe trait StateObjectResource: Sized {
     /// # Safety
     /// the function is marked as unsafe to detour users from calling it directly
     unsafe fn new(scope: &[u8], prefix: u8) -> Result<Self, InitializationError>;
+
+    #[cfg(feature = "std")]
+    /// Gets the descriptor for the state object with the supplied names.
+    fn descriptor<'a>(
+        allocator: &'a dyn Allocator,
+        collection_name: &'a str,
+        key_names: &[&'a str],
+        value_names: &[&'a str],
+    ) -> StateObjectDescriptor<'a>;
 }
 
 /// An error that occurs during resource initialization.
@@ -73,4 +92,41 @@ impl ResourceScope<'_> {
             .map(|resolver| resolver.resolve(name))
             .unwrap_or_else(|| default.ok_or(InitializationError::AccountNotFound))
     }
+}
+
+/// A visitor for discovering resources.
+pub trait ResourcesVisitor<'a>: TypeVisitor {
+    /// An allocator that can be used to allocate dynamicresources.
+    fn allocator(&self) -> &'a dyn Allocator;
+    /// Visit a state object.
+    fn visit_state_object(&mut self, state_object: &StateObjectDescriptor<'a>);
+    /// Visit a client.
+    fn visit_client<C: Client>(&mut self, name: &'a str, account_id: &AccountID);
+}
+
+/// Extract the state object descriptor for a state object.
+/// Used in macros to extract state object schemas.
+pub fn extract_state_object_descriptor<'a, R: StateObjectResource, V: ResourcesVisitor<'a>>(
+    visitor: &mut V,
+    prefix: u8,
+    collection_name: &'a str,
+    key_names: &'a [&'a str],
+    value_names: &'a [&'a str],
+) {
+    let mut state_object =
+        R::descriptor(visitor.allocator(), collection_name, key_names, value_names);
+    let mut prefix_vec = Vec::new_in(visitor.allocator());
+    prefix_vec.push(prefix);
+    state_object.prefix = List::Owned(prefix_vec);
+    visitor.visit_state_object(&state_object);
+}
+
+/// Visit a client factory to extract the schema.
+/// The signature of this function is a bit of a hack around a possible bug in the quote crate.
+pub fn visit_client_factory<'a, S: Service, V: ResourcesVisitor<'a>>(
+    _factory: ClientFactory<S>,
+    visitor: &mut V,
+    name: &'a str,
+) {
+    visitor.visit_client::<S::Client>(name, &AccountID::EMPTY);
 }

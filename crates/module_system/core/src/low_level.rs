@@ -6,7 +6,7 @@ use crate::result::ClientResult;
 use crate::Context;
 use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
-use ixc_message_api::code::{ErrorCode, HandlerCode};
+use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
 use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{MessageSelector, Request, Response};
@@ -128,39 +128,63 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
         M::Error,
     >,
     allocator: &'b dyn Allocator,
-) -> Result<Response<'b>, ErrorCode> {
+) -> Result<Response<'b>, ::ixc_message_api::error::HandlerError> {
     match res {
         Ok(value) => {
             if let Some(out1) =
                 <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
                     cdc, &value, allocator,
-                )?
+                )
+                .map_err(|_| {
+                    ixc_message_api::error::HandlerError::new(ErrorCode::SystemCode(
+                        SystemCode::EncodingError,
+                    ))
+                })?
             {
                 Ok(Response::new1(out1.into()))
             } else {
                 Ok(Response::default())
             }
         }
-        Err(e) => encode_handler_error(e),
+        Err(e) => Err(encode_handler_error(e)),
     }
 }
 
 /// Encodes a default response to the out1 pointer of the message packet.
 /// Used for encoding the response of a message in macros.
-pub fn encode_default_response<'b>(res: crate::Result<()>) -> Result<Response<'b>, ErrorCode> {
+pub fn encode_default_response<'b>(
+    res: crate::Result<()>,
+) -> Result<Response<'b>, ::ixc_message_api::error::HandlerError> {
     match res {
         Ok(_) => Ok(Default::default()),
-        Err(e) => encode_handler_error(e),
+        Err(e) => Err(encode_handler_error(e)),
     }
 }
 
 /// Encode a handler error to the out1 pointer of the message packet.
 /// Used for encoding the response of a message in macros.
-pub fn encode_handler_error<'b, E: HandlerCode>(
+pub fn encode_handler_error<E: HandlerCode + SchemaValue<'static>>(
     err: HandlerError<E>,
-) -> Result<Response<'b>, ErrorCode> {
+) -> ixc_message_api::error::HandlerError {
     let code: u16 = err.code.into();
-    Err(code.into())
+    let mut res = ixc_message_api::error::HandlerError::new(code.into());
+    set_error_message(err, &mut res);
+    res
+}
+
+#[cfg(feature = "std")]
+fn set_error_message<E: HandlerCode + SchemaValue<'static>>(
+    err: HandlerError<E>,
+    res: &mut ixc_message_api::error::HandlerError,
+) {
+    res.message = err.msg;
+}
+
+#[cfg(not(feature = "std"))]
+fn set_error_message<E: HandlerCode + SchemaValue<'static>>(
+    _err: HandlerError<E>,
+    _res: &mut ixc_message_api::error::HandlerError,
+) {
 }
 
 /// Emits an event.
