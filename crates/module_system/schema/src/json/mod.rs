@@ -14,24 +14,28 @@ pub use account_id::AccountIDStringCodec;
 #[derive(Clone)]
 pub struct JSONCodec<'a> {
     account_id_codec: &'a dyn AccountIDStringCodec,
+    schema_resolver: &'a dyn HandlerSchemaResolver,
 }
 
 impl<'a> JSONCodec<'a> {
     /// Create a new JSON codec with the provided account ID codec.
-    pub fn new(account_id_codec: &'a dyn AccountIDStringCodec) -> Self {
+    pub fn new(account_id_codec: &'a dyn AccountIDStringCodec, schema_resolver: &'a dyn HandlerSchemaResolver) -> Self {
         Self {
             account_id_codec,
+            schema_resolver,
         }
     }
 }
 
 use core::fmt::Write;
+use crate::handler::HandlerSchemaResolver;
 
 #[cfg(test)]
 mod tests {
     use crate::testdata::ABitOfEverything;
     use allocator_api2::vec;
     use proptest::proptest;
+    use crate::handler::EmptyHandlerSchemaResolver;
     use crate::json::account_id::DefaultAccountIDStringCodec;
     use crate::json::JSONCodec;
 
@@ -41,7 +45,7 @@ mod tests {
         #[test]
         fn test_roundtrip(value: ABitOfEverything) {
             let mut writer = vec![];
-            let codec = JSONCodec::new(&DefaultAccountIDStringCodec);
+            let codec = JSONCodec::new(&DefaultAccountIDStringCodec, &EmptyHandlerSchemaResolver);
             codec.encode_value(&value, &mut writer).unwrap();
             let res = std::str::from_utf8(&writer).unwrap();
             let decoded = codec.decode_value::<ABitOfEverything>(res, &Default::default()).unwrap();

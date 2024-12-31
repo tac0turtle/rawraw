@@ -12,6 +12,7 @@ use core::fmt::Write;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
 use crate::json::JSONCodec;
+use crate::mem::MemoryManager;
 
 impl JSONCodec<'_> {
     /// Encode the value to a JSON string.
@@ -27,6 +28,7 @@ impl JSONCodec<'_> {
         let mut encoder = Encoder {
             codec: self,
             writer: Writer(writer),
+            memory_manager: MemoryManager::new(),
             num_nested_fields_written: 0,
         };
         value.encode(&mut encoder)?;
@@ -37,6 +39,7 @@ impl JSONCodec<'_> {
 struct Encoder<'a, A: Allocator> {
     codec: &'a JSONCodec<'a>,
     writer: Writer<'a, A>,
+    memory_manager: MemoryManager,
     // this is only used to avoid writing the field name if a nested object is empty
     num_nested_fields_written: usize,
 }
@@ -212,7 +215,44 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
-        todo!()
+        match x {
+            AnyMessage::Empty => {
+                write!(self.writer, "null")?;
+            }
+            AnyMessage::ExecMessage {
+                account,
+                selector,
+                bytes,
+            } => {
+                let schema = self.codec.schema_resolver.schema_for_account(account, &self.memory_manager)
+                    .ok_or(EncodeError::UnknownError)?;
+                let type_map = &schema.type_map;
+                let struct_type = type_map.lookup_type_by_selector(*selector)
+                    .ok_or(EncodeError::UnknownError)?;
+                write!(self.writer, "{{")?;
+                write!(self.writer, "\"account\":")?;
+                self.encode_account_id(*account)?;
+                write!(self.writer, ",")?;
+                write!(self.writer, "\"type\":\"{}\",", struct_type.name)?;
+                todo!();
+                // write!(self.writer, "\"value\":")?;
+                // self.encode_struct_fields(&struct_type.fields, bytes.as_slice())?;
+                write!(self.writer, "}}")?;
+            }
+            AnyMessage::CreateAccount {
+                handler_id,
+                init_data,
+            } => {
+                todo!()
+            }
+            AnyMessage::Migrate {
+                account,
+                new_handler_id,
+            } => {
+                todo!()
+            }
+        }
+        Ok(())
     }
 }
 

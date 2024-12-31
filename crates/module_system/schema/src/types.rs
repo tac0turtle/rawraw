@@ -295,16 +295,24 @@ impl<'a> TypeCollector<'a> {
 
 /// A map of type names to types.
 pub struct TypeMap<'a> {
-    name_to_type: HashMap<&'a str, SchemaType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
-    selector_to_type: HashMap<u64, StructType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
+    pub(crate) name_to_type: HashMap<&'a str, SchemaType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
+    pub(crate) selector_to_type: HashMap<u64, StructType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
 }
 
 impl <'a> TypeMap<'a> {
-    fn new(allocator: &'a dyn Allocator) -> Self {
+    pub(crate) fn new(allocator: &'a dyn Allocator) -> Self {
         Self {
             name_to_type: HashMap::new_in(allocator),
             selector_to_type: HashMap::new_in(allocator),
         }
+    }
+    
+    pub fn lookup_type_by_name(&self, name: &str) -> Option<&SchemaType<'a>> {
+        self.name_to_type.get(name)
+    }
+    
+    pub fn lookup_type_by_selector(&self, selector: u64) -> Option<&StructType<'a>> {
+        self.selector_to_type.get(&selector)
     }
 }
 
