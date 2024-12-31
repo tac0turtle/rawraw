@@ -99,7 +99,7 @@ impl<'a> ValueCodec<'a> for u128 {
 }
 
 impl SchemaValue<'_> for u128 {
-    type Type = UIntNT<16>;
+    type Type = u128;
 }
 
 impl<'a> ValueCodec<'a> for i8 {
@@ -174,7 +174,7 @@ impl<'a> ValueCodec<'a> for i128 {
 }
 
 impl SchemaValue<'_> for i128 {
-    type Type = IntNT<16>;
+    type Type = i128;
 }
 
 impl<'a> ValueCodec<'a> for bool {

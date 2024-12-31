@@ -32,29 +32,21 @@ pub enum Kind {
     Int64 = 9,
     /// An unsigned 64-bit integer.
     Uint64 = 10,
-    /// A signed N-bye integer.
-    IntN,
+    /// A signed 128-bit integer.
+    Int128,
     /// An unsigned N-byte integer.
-    UIntN,
-    /// A decimal number.
-    Decimal,
+    UInt128,
     /// A boolean.
     Bool,
     /// A timestamp with nano-second precision.
     Time,
     /// A duration with nano-second precision.
     Duration,
-    /// A 32-bit floating point number.
-    Float32,
-    /// A 64-bit floating point number.
-    Float64,
     /// An account ID.
     AccountID,
     /// An enumeration value.
     Enum,
     /// A JSON value.
-    JSON,
-    /// A struct value.
     Struct,
     /// A list value.
     List,

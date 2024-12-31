@@ -102,14 +102,19 @@ impl Type for u64 {
 }
 impl ListElementType for u64 {}
 
-/// The `UIntNT` type represents an unsigned N-bit integer.
-pub struct UIntNT<const N: usize>;
-impl<const N: usize> Private for UIntNT<N> {}
-impl<const N: usize> Type for UIntNT<N> {
-    const KIND: Kind = Kind::UIntN;
-    const SIZE_LIMIT: Option<usize> = Some(N);
+// The `UIntNT` type represents an unsigned N-bit integer.
+// pub struct UIntNT<const N: usize>;
+// impl<const N: usize> Private for UIntNT<N> {}
+// impl<const N: usize> Type for UIntNT<N> {
+//     const KIND: Kind = Kind::UIntN;
+//     const SIZE_LIMIT: Option<usize> = Some(N);
+// }
+// impl<const N: usize> ListElementType for UIntNT<N> {}
+impl Private for u128 {}
+impl Type for u128 {
+    const KIND: Kind = Kind::UInt128;
 }
-impl<const N: usize> ListElementType for UIntNT<N> {}
+impl ListElementType for u128 {}
 
 impl Private for i8 {}
 impl Type for i8 {
@@ -135,14 +140,19 @@ impl Type for i64 {
 }
 impl ListElementType for i64 {}
 
-/// The `IntNT` type represents a signed integer represented by N bytes (not bits).
-pub struct IntNT<const N: usize>;
-impl<const N: usize> Private for IntNT<N> {}
-impl<const N: usize> Type for IntNT<N> {
-    const KIND: Kind = Kind::IntN;
-    const SIZE_LIMIT: Option<usize> = Some(N);
+// /// The `IntNT` type represents a signed integer represented by N bytes (not bits).
+// pub struct IntNT<const N: usize>;
+// impl<const N: usize> Private for IntNT<N> {}
+// impl<const N: usize> Type for IntNT<N> {
+//     const KIND: Kind = Kind::Int128;
+//     const SIZE_LIMIT: Option<usize> = Some(N);
+// }
+// impl<const N: usize> ListElementType for IntNT<N> {}
+impl Private for i128 {}
+impl Type for i128 {
+    const KIND: Kind = Kind::Int128;
 }
-impl<const N: usize> ListElementType for IntNT<N> {}
+impl ListElementType for i128 {}
 
 impl Private for bool {}
 impl Type for bool {
@@ -294,6 +304,7 @@ impl<'a> TypeCollector<'a> {
 }
 
 /// A map of type names to types.
+#[derive(Debug, Clone)]
 pub struct TypeMap<'a> {
     pub(crate) name_to_type: HashMap<&'a str, SchemaType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
     pub(crate) selector_to_type: HashMap<u64, StructType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
@@ -306,11 +317,13 @@ impl <'a> TypeMap<'a> {
             selector_to_type: HashMap::new_in(allocator),
         }
     }
-    
+
+    /// Lookup a type by name.
     pub fn lookup_type_by_name(&self, name: &str) -> Option<&SchemaType<'a>> {
         self.name_to_type.get(name)
     }
-    
+
+    /// Lookup a struct type by selector.
     pub fn lookup_type_by_selector(&self, selector: u64) -> Option<&StructType<'a>> {
         self.selector_to_type.get(&selector)
     }

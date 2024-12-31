@@ -230,9 +230,9 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
                 let struct_type = type_map.lookup_type_by_selector(*selector)
                     .ok_or(EncodeError::UnknownError)?;
                 write!(self.writer, "{{")?;
-                write!(self.writer, "\"account\":")?;
-                self.encode_account_id(*account)?;
-                write!(self.writer, ",")?;
+                write!(self.writer, "\"account\":\"")?;
+                self.codec.account_id_codec.encode_str(account, &mut self.writer)?;
+                write!(self.writer, "\",")?;
                 write!(self.writer, "\"type\":\"{}\",", struct_type.name)?;
                 todo!();
                 // write!(self.writer, "\"value\":")?;

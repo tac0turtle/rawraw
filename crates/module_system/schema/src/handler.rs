@@ -72,6 +72,7 @@ impl HandlerSchemaResolver for EmptyHandlerSchemaResolver {
     }
 }
 
+/// Create a type map from a handler schema.
 pub fn type_map_from_schema<'a>(schema: &HandlerSchema<'a>, allocator: &'a dyn Allocator) -> TypeMap<'a> {
     let mut type_map = TypeMap::new(allocator);
     for typ in schema.types.as_slice().iter() {

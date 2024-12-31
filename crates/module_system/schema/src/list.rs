@@ -162,7 +162,7 @@ where
     type Type = ListT<V::Type>;
 }
 
-impl<V: Clone> List<'_, V> {
+impl<V> List<'_, V> {
     /// Return the length of the list.
     pub fn len(&self) -> usize {
         match self {

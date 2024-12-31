@@ -34,6 +34,7 @@ pub mod handler;
 pub mod json;
 pub mod state_object;
 pub mod any;
+pub mod dynamic;
 
 #[cfg(test)]
 mod testdata;
