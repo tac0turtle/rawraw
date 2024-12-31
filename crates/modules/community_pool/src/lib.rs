@@ -1,4 +1,5 @@
 //! CommunityPool is a module that allows users to deposit and spend tokens.
+#![allow(missing_docs)]
 
 /// # Resources
 ///
@@ -30,8 +31,6 @@ pub mod community_pool {
         params: Item<PoolParams>,
         #[state(prefix = 3)]
         admin: Item<AccountID>,
-        #[state(prefix = 4)]
-        spend_hooks: Map<Str, AccountID>, // Optional hooks per denom
     }
 
     /// PoolParams is a struct that represents the parameters of the community pool.
@@ -40,8 +39,6 @@ pub mod community_pool {
     pub struct PoolParams {
         /// SpendEnabled is a boolean that determines whether spending is enabled.
         pub spend_enabled: bool,
-        /// MinProposalAmount is the minimum amount of tokens that can be spent.
-        pub min_proposal_amount: u128,
     }
 
     /// Coin is a struct that represents a coin.
@@ -100,7 +97,6 @@ pub mod community_pool {
                 ctx,
                 PoolParams {
                     spend_enabled: true,
-                    min_proposal_amount: 1000,
                 },
             )?;
             // Set creator as admin
@@ -113,19 +109,6 @@ pub mod community_pool {
         pub fn set_params(&self, ctx: &mut Context, new_params: PoolParams) -> Result<()> {
             ensure!(self.admin.get(ctx)? == ctx.caller(), "not authorized");
             self.params.set(ctx, new_params)?;
-            Ok(())
-        }
-
-        /// SetSpendHook is used to set a spend hook for a specific denom.
-        #[publish]
-        pub fn set_spend_hook(
-            &self,
-            ctx: &mut Context,
-            denom: &str,
-            hook: AccountID,
-        ) -> Result<()> {
-            ensure!(self.admin.get(ctx)? == ctx.caller(), "not authorized");
-            self.spend_hooks.set(ctx, denom, hook)?;
             Ok(())
         }
 
@@ -167,13 +150,6 @@ pub mod community_pool {
             // Verify spend is enabled
             let params = self.params.get(ctx)?;
             ensure!(params.spend_enabled, "spending is disabled");
-            ensure!(amount >= params.min_proposal_amount, "amount below minimum");
-
-            // Check if there's a spend hook and execute it
-            if let Some(hook) = self.spend_hooks.get(ctx, denom)? {
-                let hook_client = <dyn SpendHook>::new_client(hook);
-                hook_client.before_spend(ctx, to, denom, amount, proposal_id)?;
-            }
 
             // Verify sufficient balance and subtract
             self.pool_balance.safe_sub(ctx, denom, amount)?;
@@ -229,34 +205,5 @@ mod tests {
         // Admin can spend
         pool.spend(&mut root, alice_id, "atom", 500, 1).unwrap();
         assert_eq!(pool.get_balance(&root, "atom").unwrap(), 500);
-    }
-
-    #[test]
-    fn test_spend_hooks() {
-        let app = TestApp::default();
-        app.register_handler::<CommunityPool>().unwrap();
-
-        let mut root = app.client_context_for(ROOT_ACCOUNT);
-        let pool = create_account::<CommunityPool>(&mut root, CommunityPoolCreate {}).unwrap();
-
-        // Set up mock spend hook
-        let mut mock_spend_hook = MockSpendHook::new();
-        mock_spend_hook
-            .expect_before_spend()
-            .times(1)
-            .returning(|_, _, _, _, _| Ok(()));
-
-        let mut mock = MockHandler::new();
-        mock.add_handler::<dyn SpendHook>(Box::new(mock_spend_hook));
-        let mock_id = app.add_mock(mock).unwrap();
-
-        // Set spend hook
-        pool.set_spend_hook(&mut root, "atom", mock_id).unwrap();
-
-        // Deposit and spend to trigger hook
-        pool.deposit(&mut root, "atom", 1000).unwrap();
-        let alice = app.new_client_context().unwrap();
-        pool.spend(&mut root, alice.self_account_id(), "atom", 500, 1)
-            .unwrap();
     }
 }
