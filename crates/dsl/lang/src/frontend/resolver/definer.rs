@@ -4,12 +4,12 @@ use crate::frontend::resolver::ids::AstPtr;
 use crate::frontend::resolver::item_ref::ItemPtr;
 use crate::frontend::syntax::IXCLanguage;
 
-pub trait ItemDefiner: AstNode<Language = IXCLanguage> {
+pub trait SymbolDefiner: AstNode<Language = IXCLanguage> {
     fn get_name(&self) -> Option<Name>;
     fn wrap_ptr(ptr: AstPtr<Self>) -> ItemPtr;
 }
 
-impl ItemDefiner for Interface {
+impl SymbolDefiner for Interface {
     fn get_name(&self) -> Option<Name> {
         self.name()
     }
@@ -19,7 +19,7 @@ impl ItemDefiner for Interface {
     }
 }
 
-impl ItemDefiner for Object {
+impl SymbolDefiner for Object {
     fn get_name(&self) -> Option<Name> {
         self.name()
     }
@@ -29,7 +29,7 @@ impl ItemDefiner for Object {
     }
 }
 
-impl ItemDefiner for Struct {
+impl SymbolDefiner for Struct {
     fn get_name(&self) -> Option<Name> {
         None
     }
@@ -39,7 +39,7 @@ impl ItemDefiner for Struct {
     }
 }
 
-impl ItemDefiner for Event {
+impl SymbolDefiner for Event {
     fn get_name(&self) -> Option<Name> {
         self.name()
     }
@@ -49,7 +49,7 @@ impl ItemDefiner for Event {
     }
 }
 
-impl ItemDefiner for InterfaceFn {
+impl SymbolDefiner for InterfaceFn {
     fn get_name(&self) -> Option<Name> {
         self.sig().map(|it| it.name()).flatten()
     }
@@ -59,7 +59,7 @@ impl ItemDefiner for InterfaceFn {
     }
 }
 
-impl ItemDefiner for MapCollection {
+impl SymbolDefiner for MapCollection {
     fn get_name(&self) -> Option<Name> {
         self.name()
     }
@@ -69,7 +69,7 @@ impl ItemDefiner for MapCollection {
     }
 }
 
-impl ItemDefiner for VarCollection {
+impl SymbolDefiner for VarCollection {
     fn get_name(&self) -> Option<Name> {
         self.name()
     }

@@ -1,12 +1,16 @@
 use crate::frontend::ast::{ConcreteNode, File, Interface, InterfaceItem, Item, ParsedAST};
 use crate::frontend::diagnostic::Diagnostic;
-use crate::frontend::resolver::definer::ItemDefiner;
+use crate::frontend::resolver::definer::SymbolDefiner;
 use crate::frontend::resolver::ids::{AstPtr, NodePath};
 use crate::frontend::resolver::item_ref::ItemPtr;
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 use dashmap::DashMap;
 use rowan::ast::AstNode;
 use std::collections::BTreeMap;
+
+pub trait ScopeProvider: AstNode<Language = IXCLanguage> {
+    fn provide_scope(&self, scope: &mut ScopeBuilder);
+}
 
 pub fn resolve_scope(ast: &ParsedAST, path: &NodePath) -> Option<Scope> {
     let registry = init_registry();
@@ -28,7 +32,7 @@ pub fn resolve_name_ref(ast: &ParsedAST, node_path: &NodePath, name_ref: &str) -
             if let Some(item) = scope.names.get(name_ref) {
                 return Some(item.clone());
             }
-            if !scope.clear_parent_scope {
+            if !scope.inherit_parent_scope {
                 let parent = node_path.parent_path(&ast.syntax())?;
                 return resolve_name_ref(ast, &parent, name_ref);
             }
@@ -60,7 +64,7 @@ impl ScopeProviderRegistry {
 pub struct Scope {
     node_path: NodePath,
     names: BTreeMap<String, ItemPtr>,
-    clear_parent_scope: bool,
+    inherit_parent_scope: bool,
 }
 
 impl Scope {
@@ -68,7 +72,7 @@ impl Scope {
         Self {
             node_path,
             names: Default::default(),
-            clear_parent_scope: false,
+            inherit_parent_scope: false,
         }
     }
 }
@@ -80,7 +84,7 @@ pub struct ScopeBuilder {
 }
 
 impl ScopeBuilder {
-    pub fn put_into_scope<N: ItemDefiner>(&mut self, node: N) {
+    pub fn put_into_scope<N: SymbolDefiner>(&mut self, node: N) {
         if let Some(name) = node.get_name().map(|it| it.name()).flatten() {
             self.scope.names.insert(name.text().to_string(), N::wrap_ptr(AstPtr::new(&node)));
         } else {
@@ -88,8 +92,8 @@ impl ScopeBuilder {
         }
     }
 
-    pub fn clear_parent_scope(&mut self) {
-        self.scope.clear_parent_scope = true
+    pub fn inherit_parent_scope(&mut self) {
+        self.scope.inherit_parent_scope = true
     }
 
     pub fn report_diagnostic(&self, diagnostic: Diagnostic) {
