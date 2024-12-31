@@ -1,46 +1,84 @@
+//! Enum types.
+use crate::decoder::{DecodeError, Decoder};
+use crate::field::Field;
 use crate::kind::Kind;
-use crate::types::{ReferenceableType, Type};
+use crate::types::{Type, TypeVisitor};
 use ixc_schema_macros::SchemaValue;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+/// An enum type.
+#[derive(Debug, Clone, Eq, PartialEq, SchemaValue, Default)]
 #[non_exhaustive]
 pub struct EnumType<'a> {
+    /// The name of the enum.
     pub name: &'a str,
-    pub values: &'a [EnumValueDefinition<'a>],
+    /// The variants of the enum.
+    pub variants: &'a [EnumVariantDefinition<'a>],
+    /// The numeric kind of the enum's discriminant.
     pub numeric_kind: Kind,
+    /// Whether the enum is sealed or not.
     pub sealed: bool,
 }
 
+/// A definition of an enum variant.
 #[derive(Debug, Clone, Default, PartialEq, Eq, SchemaValue)]
 #[non_exhaustive]
-pub struct EnumValueDefinition<'a> {
+pub struct EnumVariantDefinition<'a> {
+    /// The name of the variant.
     pub name: &'a str,
-    pub value: i32,
+    /// The discriminant of the variant.
+    pub discriminant: i32,
+    /// The value of the variant, if any. Variants can have zero or one value associated with them.
+    pub value: Option<Field<'a>>,
 }
 
-impl<'a> EnumValueDefinition<'a> {
-    pub const fn new(name: &'a str, value: i32) -> Self {
-        Self { name, value }
+impl<'a> EnumVariantDefinition<'a> {
+    /// Create a new enum variant definition.
+    pub const fn new(name: &'a str, discriminant: i32, value: Option<Field<'a>>) -> Self {
+        Self {
+            name,
+            discriminant,
+            value,
+        }
     }
 }
 
+/// A type which has an enum schema.
 /// # Safety
-/// the function is marked as unsafe to detour users from calling it directly
-pub unsafe trait EnumSchema:
-    ReferenceableType + TryFrom<Self::NumericType> + Into<Self::NumericType> + Clone
-{
+/// This trait is marked as unsafe because it is meant to be implemented by macros.
+pub unsafe trait EnumSchema: Sized {
+    /// The name of the enum.
     const NAME: &'static str;
-    const VALUES: &'static [EnumValueDefinition<'static>];
+    /// The variants of the enum.
+    const VARIANTS: &'static [EnumVariantDefinition<'static>];
+    /// Whether the enum is sealed or not.
     const SEALED: bool;
+    /// The numeric type of the enum's discriminant.
     #[allow(private_bounds)]
     type NumericType: EnumNumericType;
+    /// The enum type definition.
     const ENUM_TYPE: EnumType<'static> = to_enum_type::<Self>();
+
+    /// Visit the enum's variant types.
+    fn visit_variant_types<V: TypeVisitor>(visitor: &mut V);
 }
 
+/// A visitor for decoding enums.
+/// # Safety
+/// This trait is marked as unsafe because it is meant to only be implemented by macros.
+pub unsafe trait EnumDecodeVisitor<'a> {
+    /// Decode a field from the input data.
+    fn decode_variant(
+        &mut self,
+        discriminant: i32,
+        decoder: &mut dyn Decoder<'a>,
+    ) -> Result<(), DecodeError>;
+}
+
+/// Extract the enum type definition from a type which implements [`EnumSchema`].
 pub const fn to_enum_type<E: EnumSchema>() -> EnumType<'static> {
     EnumType {
         name: E::NAME,
-        values: E::VALUES,
+        variants: E::VARIANTS,
         numeric_kind: E::NumericType::KIND,
         sealed: E::SEALED,
     }
@@ -52,19 +90,3 @@ impl EnumNumericType for u16 {}
 impl EnumNumericType for i16 {}
 impl EnumNumericType for u8 {}
 impl EnumNumericType for i8 {}
-
-// TODO
-// fn encode_enum<E: EnumSchema>(x: &E, encoder: &mut dyn Encoder) -> Result<(), EncodeError>
-// where
-//     E::NumericType: Into<i32>,
-// {
-//     encoder.encode_i32(E::into(x.clone()).into())
-// }
-//
-// fn decode_enum<E: EnumSchema>(decoder: &mut dyn Decoder) -> Result<E, DecodeError>
-// where
-//     E::NumericType: From<i32>,
-// {
-//     let x = decoder.decode_enum(&E::ENUM_TYPE)?;
-//     E::try_from(x.into()).map_err(|_| DecodeError::InvalidData)
-// }

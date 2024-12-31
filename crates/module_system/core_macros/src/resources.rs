@@ -16,6 +16,8 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
     // this tracks automatically assigned prefixes for state fields
     // if no prefix is assigned, we use this
     let mut prefix = 0u8;
+    let mut visit_state_objects = vec![];
+    let mut visit_clients = vec![];
     // we iterator over each field in the struct and extract the #[state] and #[client] attributes
     for field in str.fields.iter_mut() {
         let field_name = field.ident.as_ref().unwrap().clone();
@@ -30,6 +32,19 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             field_inits.push(quote! {
                 #field_name: <#ty as ::ixc::core::resource::StateObjectResource>::new(scope.state_scope, #prefix)?
             });
+            let key_names = state.key.iter().map(|s| {
+                quote! { stringify!(#s) }
+            });
+            let value_names = state.value.iter().map(|s| {
+                quote! { stringify!(#s) }
+            });
+            visit_state_objects.push(quote! {
+               ::ixc::core::resource::extract_state_object_descriptor::<#ty, V>(visitor, #prefix,
+                    stringify!(#field_name),
+                    &[#(#key_names),*],
+                    &[#(#value_names),*]
+                );
+            });
             // increment the automatic prefix
             prefix += 1;
             // TODO use the key and value attributes to populate the schema of the state object
@@ -41,8 +56,19 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
             field_inits.push(quote! {
                 #field_name: <#ty as ::ixc::core::handler::Client>::new(::ixc::message_api::AccountID::new(#account_id))
             });
+            visit_clients.push(quote! {
+                visitor.visit_client::<#ty>(stringify!(#field_name), &#account_id.into());
+            });
+        } else if let Some(client_factory) = maybe_extract_attribute::<_, ClientFactoryAttr>(field)?
+        {
+            field_inits.push(quote! {
+                #field_name: ::core::default::Default::default()
+            });
+            visit_clients.push(quote! {
+                instance.#field_name.visit_client_schema(visitor, stringify!(#field_name));
+            });
         } else {
-            bail!("only fields with #[state] or #[client] attributes are supported currently");
+            bail!("only fields with #[state], #[client] or #[client_factory] attributes are supported currently");
         }
     }
     // return the Resources trait implementation
@@ -52,6 +78,13 @@ pub(crate) fn derive_resources(input: DeriveInput) -> manyhow::Result<TokenStrea
                 Ok(Self {
                     #(#field_inits),*
                 })
+            }
+
+            fn visit_resources<'c, V: ::ixc::core::resource::ResourcesVisitor<'c>>(visitor: &mut V) {
+                let scope = ::ixc::core::resource::ResourceScope::default();
+                let instance = unsafe { Self::new(&scope).unwrap() };
+                #(#visit_state_objects)*
+                #(#visit_clients)*
             }
         }
     })
@@ -72,3 +105,8 @@ struct StateAttr {
 #[derive(deluxe::ExtractAttributes, Debug)]
 #[deluxe(attributes(client))]
 struct ClientAttr(u128);
+
+/// The data in a #[client_factory] attribute.
+#[derive(deluxe::ExtractAttributes, Debug)]
+#[deluxe(attributes(client_factory))]
+struct ClientFactoryAttr;

@@ -1,4 +1,5 @@
 use crate::decoder::DecodeError;
+use crate::enums::{EnumDecodeVisitor, EnumType};
 use crate::list::ListDecodeVisitor;
 use crate::mem::MemoryManager;
 use crate::structs::{StructDecodeVisitor, StructType};
@@ -86,7 +87,7 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
 
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
-        visitor.init(size, self.scope)?;
+        visitor.reserve(size, self.scope)?;
         let mut sub = Decoder {
             buf: self.buf,
             scope: self.scope,
@@ -172,6 +173,15 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
             })?;
             Ok(true)
         }
+    }
+
+    fn decode_enum_variant(
+        &mut self,
+        visitor: &mut dyn EnumDecodeVisitor<'a>,
+        _enum_type: &EnumType,
+    ) -> Result<(), DecodeError> {
+        let discriminant = self.decode_i32()?;
+        visitor.decode_variant(discriminant, self)
     }
 }
 
@@ -296,6 +306,14 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
             Ok(false)
         }
     }
+
+    fn decode_enum_variant(
+        &mut self,
+        visitor: &mut dyn EnumDecodeVisitor<'a>,
+        enum_type: &EnumType,
+    ) -> Result<(), DecodeError> {
+        self.outer.decode_enum_variant(visitor, enum_type)
+    }
 }
 
 #[cfg(test)]
@@ -345,12 +363,6 @@ mod tests {
     struct Coin<'b> {
         denom: &'b str,
         amount: u128,
-    }
-
-    impl Drop for Coin<'_> {
-        fn drop(&mut self) {
-            std::println!("drop Coin");
-        }
     }
 
     #[test]

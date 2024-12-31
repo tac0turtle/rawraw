@@ -4,107 +4,119 @@ use crate::error::{ClientError, HandlerError};
 use crate::message::{Message, MessageBase, QueryMessage};
 use crate::result::ClientResult;
 use crate::Context;
-use alloc::string::String;
 use allocator_api2::alloc::Allocator;
-use core::alloc::Layout;
+use ixc_core_macros::message_selector;
 use ixc_message_api::code::{ErrorCode, HandlerCode, SystemCode};
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::gas::GasTracker;
+use ixc_message_api::handler::InvokeParams;
+use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
-use ixc_schema::buffer::WriterFactory;
+use ixc_schema::binary::NativeBinaryCodec;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
+use ixc_schema::structs::StructSchema;
 use ixc_schema::value::OptionalValue;
+use ixc_schema::SchemaValue;
 
 /// Dynamically invokes an account message.
 /// Static account client instances should be preferred wherever possible,
 /// so that static dependency analysis can be performed.
 pub fn dynamic_invoke_msg<'a, 'b, M: Message<'b>>(
-    context: &'a mut Context,
+    context: &mut Context<'a>,
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    unsafe {
-        let mut packet =
-            encode_message_packet(context.account, context.memory_manager(), account, message)?;
+    dynamic_invoke_msg_with_gas_tracker(context, account, message, None)
+}
 
-        let res = context.dynamic_invoke_msg(&mut packet);
-
-        decode_message_response::<M>(context, &packet, res)
-    }
+/// Dynamically invokes a message with a gas tracker which can
+/// be used to limit and track gas consumption of the message.
+pub fn dynamic_invoke_msg_with_gas_tracker<'a, 'b, 'c, M: Message<'b>>(
+    context: &mut Context<'a>,
+    account: AccountID,
+    message: M,
+    gas_tracker: Option<&'c GasTracker>,
+) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
+    let packet = encode_message_packet(context.memory_manager(), account, message)?;
+    let res = dynamic_invoke_msg_packet(context, &packet, gas_tracker);
+    decode_message_response::<M>(context, &res)
 }
 
 /// Dynamically invokes an account query message.
 /// Static account client instances should be preferred wherever possible,
 /// so that static dependency analysis can be performed.
 pub fn dynamic_invoke_query<'a, 'b, M: QueryMessage<'b>>(
-    context: &'a Context,
+    context: &Context<'a>,
     account: AccountID,
     message: M,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    unsafe {
-        let mut packet =
-            encode_message_packet(context.account, context.memory_manager(), account, message)?;
-
-        let res = context.dynamic_invoke_query(&mut packet);
-
-        decode_message_response::<M>(context, &packet, res)
-    }
+    dynamic_invoke_query_with_gas_tracker(context, account, message, None)
 }
 
-unsafe fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
-    caller: AccountID,
+/// Dynamically invokes a query message with a gas tracker which can
+/// be used to limit and track gas consumption of the message.
+pub fn dynamic_invoke_query_with_gas_tracker<'a, 'b, 'c, M: QueryMessage<'b>>(
+    context: &Context<'a>,
+    account: AccountID,
+    message: M,
+    gas_tracker: Option<&'c GasTracker>,
+) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
+    let packet = encode_message_packet(context.memory_manager(), account, message)?;
+    let res = dynamic_invoke_query_packet(context, &packet, gas_tracker);
+    decode_message_response::<M>(context, &res)
+}
+
+/// Dynamically invoke a raw query message packet.
+pub fn dynamic_invoke_query_packet<'a>(
+    ctx: &Context<'a>,
+    msg: &ixc_message_api::message::Message,
+    gas_tracker: Option<&GasTracker>,
+) -> Result<Response<'a>, ErrorCode> {
+    let invoke_params = InvokeParams::new(ctx.mem, gas_tracker);
+    ctx.with_backend(|backend| backend.invoke_query(msg, &invoke_params))
+}
+
+/// Dynamically invoke a raw message packet.
+pub fn dynamic_invoke_msg_packet<'a>(
+    ctx: &mut Context<'a>,
+    msg: &ixc_message_api::message::Message,
+    gas_limit: Option<&GasTracker>,
+) -> Result<Response<'a>, ErrorCode> {
+    let invoke_params = InvokeParams::new(ctx.mem, gas_limit);
+    ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?
+}
+
+fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
     mem: &'a MemoryManager,
     account: AccountID,
     message: M,
-) -> ClientResult<MessagePacket<'a>, M::Error> {
+) -> ClientResult<ixc_message_api::message::Message<'a>, M::Error> {
     // encode the message body
     let cdc = M::Codec::default();
     let msg_body = cdc.encode_value(&message, mem)?;
 
     // create the message packet and fill in call details
-    let mut packet = create_packet(caller, mem, account, M::SELECTOR)?;
-    let header = packet.header_mut();
-    header.in_pointer1.set_slice(msg_body);
-    Ok(packet)
+    Ok(ixc_message_api::message::Message::new(
+        account,
+        Request::new1(M::TYPE_SELECTOR, msg_body.into()),
+    ))
 }
 
-unsafe fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
-    context: &'a Context,
-    packet: &MessagePacket<'a>,
-    res: Result<(), ErrorCode>,
+fn decode_message_response<'a, 'b, M: MessageBase<'b>>(
+    context: &Context<'a>,
+    res: &Result<Response<'a>, ErrorCode>,
 ) -> ClientResult<<M::Response<'a> as OptionalValue<'a>>::Value, M::Error> {
-    let out1 = packet.header().out_pointer1.get(packet);
-
     match res {
-        Ok(_) => {
+        Ok(res) => {
             let cdc = M::Codec::default();
-            let res = M::Response::<'a>::decode_value(&cdc, out1, context.memory_manager())?;
+            let res = M::Response::<'a>::decode_value(&cdc, &res.out1(), context.memory_manager())?;
             Ok(res)
         }
         Err(e) => {
-            let c: u16 = e.into();
+            let c: u16 = (*e).into();
             let code = ErrorCode::<M::Error>::from(c);
-            let msg = String::from_utf8(out1.to_vec())
-                .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
-            Err(ClientError { message: msg, code })
+            Err(ClientError { code })
         }
-    }
-}
-
-/// Create a new message packet with the given account and message selector.
-pub fn create_packet<E: HandlerCode>(
-    self_account_id: AccountID,
-    allocator: &dyn Allocator,
-    account: AccountID,
-    selector: u64,
-) -> ClientResult<MessagePacket<'_>, E> {
-    unsafe {
-        let mut packet = MessagePacket::allocate(allocator, 0)?;
-        let header = packet.header_mut();
-        header.caller = self_account_id;
-        header.account = account;
-        header.message_selector = selector;
-        Ok(packet)
     }
 }
 
@@ -116,24 +128,25 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
         M::Error,
     >,
     allocator: &'b dyn Allocator,
-    message_packet: &'b mut MessagePacket,
-) -> core::result::Result<(), ErrorCode> {
+) -> Result<Response<'b>, ::ixc_message_api::error::HandlerError> {
     match res {
         Ok(value) => {
             if let Some(out1) =
                 <<M as MessageBase<'a>>::Response<'a> as OptionalValue<'a>>::encode_value(
-                    cdc,
-                    &value,
-                    &allocator as &dyn WriterFactory,
-                )?
+                    cdc, &value, allocator,
+                )
+                .map_err(|_| {
+                    ixc_message_api::error::HandlerError::new(ErrorCode::SystemCode(
+                        SystemCode::EncodingError,
+                    ))
+                })?
             {
-                unsafe {
-                    message_packet.header_mut().out_pointer1.set_slice(out1);
-                }
+                Ok(Response::new1(out1.into()))
+            } else {
+                Ok(Response::default())
             }
-            Ok(())
         }
-        Err(e) => encode_handler_error(e, allocator, message_packet),
+        Err(e) => Err(encode_handler_error(e)),
     }
 }
 
@@ -141,35 +154,54 @@ pub fn encode_response<'a, 'b, M: MessageBase<'a>>(
 /// Used for encoding the response of a message in macros.
 pub fn encode_default_response<'b>(
     res: crate::Result<()>,
-    allocator: &'b dyn Allocator,
-    message_packet: &'b mut MessagePacket,
-) -> core::result::Result<(), ErrorCode> {
+) -> Result<Response<'b>, ::ixc_message_api::error::HandlerError> {
     match res {
-        Ok(_) => Ok(()),
-        Err(e) => encode_handler_error(e, allocator, message_packet),
+        Ok(_) => Ok(Default::default()),
+        Err(e) => Err(encode_handler_error(e)),
     }
 }
 
 /// Encode a handler error to the out1 pointer of the message packet.
 /// Used for encoding the response of a message in macros.
-pub fn encode_handler_error<'b, E: HandlerCode>(
+pub fn encode_handler_error<E: HandlerCode + SchemaValue<'static>>(
     err: HandlerError<E>,
-    allocator: &'b dyn Allocator,
-    message_packet: &'b mut MessagePacket,
-) -> core::result::Result<(), ErrorCode> {
-    unsafe {
-        let mem = allocator
-            .allocate(Layout::from_size_align_unchecked(err.msg.len(), 1))
-            .map_err(|_| ErrorCode::SystemCode(SystemCode::EncodingError))?;
-        let out1 = mem.as_ptr() as *mut u8;
-        out1.copy_from_nonoverlapping(err.msg.as_ptr(), err.msg.len());
-        message_packet
-            .header_mut()
-            .out_pointer1
-            .set_slice(core::slice::from_raw_parts(out1, err.msg.len()));
-    }
-    Err(match err.code {
-        None => ErrorCode::SystemCode(SystemCode::Other),
-        Some(c) => ErrorCode::HandlerCode(c.into()),
-    })
+) -> ixc_message_api::error::HandlerError {
+    let code: u16 = err.code.into();
+    let mut res = ixc_message_api::error::HandlerError::new(code.into());
+    set_error_message(err, &mut res);
+    res
 }
+
+#[cfg(feature = "std")]
+fn set_error_message<E: HandlerCode + SchemaValue<'static>>(
+    err: HandlerError<E>,
+    res: &mut ixc_message_api::error::HandlerError,
+) {
+    res.message = err.msg;
+}
+
+#[cfg(not(feature = "std"))]
+fn set_error_message<E: HandlerCode + SchemaValue<'static>>(
+    _err: HandlerError<E>,
+    _res: &mut ixc_message_api::error::HandlerError,
+) {
+}
+
+/// Emits an event.
+pub fn emit_event<'a, E: StructSchema + SchemaValue<'a>>(
+    ctx: &mut Context,
+    event: &E,
+) -> ClientResult<()> {
+    let cdc = NativeBinaryCodec;
+    let event_bytes = cdc.encode_value(event, ctx.memory_manager())?;
+    let req = Request::new2(
+        EMIT_EVENT_SELECTOR,
+        event_bytes.into(),
+        E::TYPE_SELECTOR.into(),
+    );
+    let params = InvokeParams::new(ctx.memory_manager(), None);
+    let _ = ctx.with_backend_mut(|backend| backend.update_state(&req, &params))?;
+    Ok(())
+}
+
+const EMIT_EVENT_SELECTOR: MessageSelector = message_selector!("ixc.events.1.emit");

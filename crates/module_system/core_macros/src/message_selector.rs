@@ -10,6 +10,7 @@ pub(crate) fn message_selector(item: TokenStream) -> TokenStream {
     message_selector_from_str(&input_str.value()).into()
 }
 
+/// Creates the message selector for the given message name.
 pub(crate) fn message_selector_from_str(msg: &str) -> TokenStream2 {
     let mut hasher = Blake2b512::new(); // TODO should we use 256 or 512?
     hasher.update(msg.as_bytes());

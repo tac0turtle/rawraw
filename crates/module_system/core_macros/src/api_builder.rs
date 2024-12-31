@@ -7,8 +7,13 @@ use manyhow::{bail, ensure};
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::punctuated::Punctuated;
-use syn::{parse_quote, Item, Pat, PatType, ReturnType, Signature, Type};
+use syn::{parse_quote, Item, Pat, PatType, PathArguments, ReturnType, Signature, Type};
 
+/// Builder for generating API implementation code.
+///
+/// This struct is responsible for collecting and generating the necessary code
+/// for implementing handler APIs, including message routing, client implementations,
+/// and service definitions.
 #[derive(Default)]
 pub(crate) struct APIBuilder {
     pub(crate) items: Vec<Item>,
@@ -19,6 +24,7 @@ pub(crate) struct APIBuilder {
     client_methods: Vec<TokenStream2>,
     pub(crate) create_msg_name: Option<Ident>,
     pub(crate) create_msg_lifetime: TokenStream2,
+    pub(crate) visit_messages: Vec<TokenStream2>,
 }
 
 impl APIBuilder {
@@ -30,6 +36,7 @@ impl APIBuilder {
                 pub struct #client_ident(::ixc::message_api::AccountID);
             },
         )?;
+        let visit_messages = self.visit_messages.clone();
         push_item(
             &mut self.items,
             quote! {
@@ -38,8 +45,12 @@ impl APIBuilder {
                         Self(account_id)
                     }
 
-                    fn account_id(&self) -> ::ixc::message_api::AccountID {
+                    fn target_account(&self) -> ::ixc::message_api::AccountID {
                         self.0
+                    }
+
+                    fn visit_schema<'a, V: ::ixc::core::handler::APISchemaVisitor<'a>>(visitor: &mut V) {
+                            #(#visit_messages)*
                     }
                 }
             },
@@ -79,11 +90,19 @@ impl APIBuilder {
         )
     }
 
-    // This is probably the function that does most of the work in the whole macro system.
-    // It extracts the data from the function and generates:
-    // - a message struct
-    // - the code for calling it as a message handler
-    // - a client version of the function
+    /// Extracts method data from a function and generates the necessary
+    /// implementation code.
+    ///
+    /// This function is responsible for:
+    /// - Generating message structs
+    /// - Creating message handlers
+    /// - Implementing client versions of functions
+    /// - Setting up routing
+    ///
+    /// # Parameters
+    /// - `handler_ident`: The identifier of the handler
+    /// - `_handler_ty`: The type of the handler
+    /// - `publish_target`: Information about the function to be published
     pub(crate) fn extract_method_data(
         &mut self,
         handler_ident: &Ident,
@@ -117,6 +136,8 @@ impl APIBuilder {
         let mut context_name: Option<Ident> = None;
         // whether or not the function is a query, meaning it has &Context rather than &mut Context
         let mut is_query = false;
+        // the events that can be emitted by the message
+        let mut events = vec![];
         for field in &mut signature.inputs {
             match field {
                 // check that we have a &self receiver
@@ -153,6 +174,7 @@ impl APIBuilder {
                                             if s.ident == "EventBus" {
                                                 fn_call_args
                                                     .push(quote! { &mut Default::default(), });
+                                                events.push(path.path.segments.last().cloned());
                                                 // we continue because we don't want to add the EventBus to the message struct or the client function
                                                 continue;
                                             }
@@ -175,6 +197,7 @@ impl APIBuilder {
                                     if let Some(s) = path.path.segments.first() {
                                         if s.ident == "EventBus" {
                                             fn_call_args.push(quote! { Default::default(), });
+                                            events.push(path.path.segments.last().cloned());
                                             // we continue because we don't want to add the EventBus to the message struct or the client function
                                             continue;
                                         }
@@ -237,7 +260,6 @@ impl APIBuilder {
         )?;
 
         // calculate the message selector
-        let selector = message_selector_from_str(msg_struct_name.to_string().as_str());
         let return_type = match &signature.output {
             ReturnType::Type(_, ty) => ty,
             ReturnType::Default => {
@@ -249,21 +271,56 @@ impl APIBuilder {
                 &mut self.items,
                 quote! {
                     impl < 'a >::ixc::core::message::MessageBase < 'a > for # msg_struct_name # opt_lifetime {
-                        const SELECTOR: ::ixc::message_api::header::MessageSelector = # selector;
                         type Response < 'b > = < # return_type as::ixc::core::message::ExtractResponseTypes >::Response;
                         type Error = < # return_type as::ixc::core::message::ExtractResponseTypes >::Error;
                         type Codec =::ixc::schema::binary::NativeBinaryCodec;
                    }
                 },
             )?;
+
+            let mut event_visit = vec![];
+            let mut event_names = vec![];
+            for event in &events {
+                if let Some(path_seg) = event {
+                    if let PathArguments::AngleBracketed(args) = &path_seg.arguments {
+                        let evt_type = args.args.first().cloned();
+                        event_visit.push(quote! { visitor.visit::<< #evt_type as ::ixc::schema::value::SchemaValue>::Type>(); });
+                        event_names.push(quote! { stringify!(#evt_type) });
+                    } else {
+                        bail!(
+                            "expected event type as a generic argument to EventBus, got {:?}",
+                            event
+                        );
+                    }
+                } else {
+                    bail!(
+                        "expected event type as a generic argument to EventBus, got {:?}",
+                        event
+                    );
+                }
+            }
+
             push_item(
                 &mut self.items,
                 if is_query {
                     quote! { impl < 'a >::ixc::core::message::QueryMessage < 'a > for # msg_struct_name # opt_lifetime {} }
                 } else {
-                    quote! { impl < 'a >::ixc::core::message::Message < 'a > for # msg_struct_name # opt_lifetime {} }
+                    quote! {
+                        impl < 'a >::ixc::core::message::Message < 'a > for # msg_struct_name # opt_lifetime {
+                            fn visit_events<V: ::ixc::schema::types::TypeVisitor>(visitor: &mut V) {
+                                #(#event_visit)*
+                            }
+
+                            const EVENTS: &'static [&'static str] = &[#(#event_names),*];
+                        }
+                    }
                 },
             )?;
+            self.visit_messages.push(if is_query {
+                quote! { ::ixc::core::message::visit_query_descriptor::<#msg_struct_name, V>(visitor); }
+            } else {
+                quote! { ::ixc::core::message::visit_message_descriptor::<#msg_struct_name, V>(visitor); }
+            });
             ensure!(context_name.is_some(), "no context parameter found");
             let context_name = context_name.unwrap();
             let (maybe_mut, new_ctx) = if is_query {
@@ -271,17 +328,22 @@ impl APIBuilder {
             } else {
                 (quote! { mut }, quote! { new_mut })
             };
+            let maybe_caller = if is_query {
+                quote! {}
+            } else {
+                quote! { caller, }
+            };
             let route = quote! {
-            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::MessageBase >::SELECTOR, |h: & Self, packet, cb, a| {
+            ( < # msg_struct_name # opt_underscore_lifetime as::ixc::schema::structs::StructSchema>::TYPE_SELECTOR, |h: & Self, #maybe_caller packet, cb, allocator| {
                 unsafe {
                     let cdc = < # msg_struct_name as::ixc::core::message::MessageBase < '_ > >::Codec::default();
-                    let header = packet.header();
-                    let in1 = header.in_pointer1.get(packet);
+                    let in1 = packet.request().in1().expect_bytes()?;
                     let mem = ::ixc::schema::mem::MemoryManager::new();
-                    let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(header.account, header.caller, header.gas_left, cb, & mem);
+                    let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem)
+                        .map_err(|e| ::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::SystemCode::EncodingError.into()))?;
+                    let # maybe_mut ctx = ::ixc::core::Context::# new_ctx(&packet.target_account(), #maybe_caller cb, &mem);
                     let res = h.# fn_name( & # maybe_mut ctx, # ( # fn_call_args) * );
-                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( & cdc, res, a, packet)
+                    ::ixc::core::low_level::encode_response::< #msg_struct_name > ( &cdc, res, allocator )
                 }
             }),
             };
@@ -302,22 +364,22 @@ impl APIBuilder {
             self.client_methods.push(quote! {
                 # signature {
                     let _msg = # msg_struct_name { # ( # msg_fields_init) * };
-                    let _acct_id =::ixc::core::handler::Client::account_id( self );
+                    let _acct_id =::ixc::core::handler::Client::target_account( self );
                     unsafe { # dynamic_invoke }
                 }
             });
         } else if let PublishedFnType::OnCreate { .. } = &publish_target.ty {
             self.system_routes.push(quote ! {
-                (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, packet, cb, a | {
+                (::ixc::core::account_api::ON_CREATE_SELECTOR, | h: & Self, caller, packet, cb, a | {
                     unsafe {
-                        let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::handler::InitMessage < '_ > >::Codec::default();
-                        let header = packet.header();
-                        let in1 = header.in_pointer1.get(packet);
+                        let cdc = < # msg_struct_name # opt_underscore_lifetime as::ixc::core::message::InitMessage < '_ > >::Codec::default();
+                        let in1 = packet.request().in1().expect_bytes()?;
                         let mem =::ixc::schema::mem::MemoryManager::new();
-                        let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem) ?;
-                        let mut ctx =::ixc::core::Context::new_mut(header.account, header.caller, header.gas_left, cb, & mem);
+                        let # msg_struct_name { # ( # msg_deconstruct) * } =::ixc::schema::codec::decode_value::< # msg_struct_name > ( & cdc, in1, & mem)
+                            .map_err(|e| ::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::SystemCode::EncodingError.into()))?;
+                        let mut ctx =::ixc::core::Context::new_mut(&packet.target_account(), caller, cb, &mem);
                         let res = h.# fn_name( & mut ctx, # (# fn_call_args) * );
-                        ::ixc::core::low_level::encode_default_response(res, a, packet)
+                        ::ixc::core::low_level::encode_default_response(res)
                     }
                     }),}
                 );
@@ -327,6 +389,15 @@ impl APIBuilder {
         Ok(())
     }
 
+    /// Implements the Router trait for a given target.
+    ///
+    /// Generates the implementation of the Router trait which includes:
+    /// - Sorted message routes
+    /// - Sorted query routes
+    /// - Sorted system routes
+    ///
+    /// # Parameters
+    /// - `target`: The type to implement Router for
     pub(crate) fn impl_router(&mut self, target: TokenStream2) -> manyhow::Result<()> {
         let routes = &self.routes;
         let query_routes = &self.query_routes;

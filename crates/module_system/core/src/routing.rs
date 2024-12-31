@@ -1,10 +1,11 @@
 //! Routing system for message packets.
 
 use allocator_api2::alloc::Allocator;
-use ixc_message_api::code::{ErrorCode, SystemCode};
+use ixc_message_api::code::SystemCode::MessageNotHandled;
+use ixc_message_api::error::HandlerError;
 use ixc_message_api::handler::HostBackend;
-use ixc_message_api::header::MessageSelector;
-use ixc_message_api::packet::MessagePacket;
+use ixc_message_api::message::{Message, MessageSelector, Response};
+use ixc_message_api::AccountID;
 
 /// A router for message packets.
 /// # Safety
@@ -26,48 +27,50 @@ where
 /// A route for a message packet.
 pub type Route<T> = (
     u64,
-    fn(
+    for<'a> fn(
         &T,
-        &mut MessagePacket,
+        &AccountID,
+        &Message,
         callbacks: &mut dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, HandlerError>,
 );
 
 /// A route for a message packet.
 pub type QueryRoute<T> = (
     u64,
-    fn(
+    for<'a> fn(
         &T,
-        &mut MessagePacket,
+        &Message,
         callbacks: &dyn HostBackend,
-        allocator: &dyn Allocator,
-    ) -> Result<(), ErrorCode>,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, HandlerError>,
 );
 
 /// Execute a message packet on a router.
-pub fn exec_route<R: Router + ?Sized>(
+pub fn exec_route<'a, R: Router + ?Sized>(
     rtr: &R,
-    packet: &mut MessagePacket,
+    caller: &AccountID,
+    req: &Message,
     callbacks: &mut dyn HostBackend,
-    allocator: &dyn Allocator,
-) -> Result<(), ErrorCode> {
-    match find_route(R::SORTED_MSG_ROUTES, packet.header().message_selector) {
-        Some(rt) => rt(rtr, packet, callbacks, allocator),
-        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+    allocator: &'a dyn Allocator,
+) -> Result<Response<'a>, HandlerError> {
+    match find_route(R::SORTED_MSG_ROUTES, req.request().message_selector()) {
+        Some(rt) => rt(rtr, caller, req, callbacks, allocator),
+        None => Err(HandlerError::new(MessageNotHandled.into())),
     }
 }
 
 /// Execute a query message packet on a router.
-pub fn exec_query_route<R: Router + ?Sized>(
+pub fn exec_query_route<'a, R: Router + ?Sized>(
     rtr: &R,
-    packet: &mut MessagePacket,
+    req: &Message,
     callbacks: &dyn HostBackend,
-    allocator: &dyn Allocator,
-) -> Result<(), ErrorCode> {
-    match find_route(R::SORTED_QUERY_ROUTES, packet.header().message_selector) {
-        Some(rt) => rt(rtr, packet, callbacks, allocator),
-        None => Err(ErrorCode::SystemCode(SystemCode::MessageNotHandled)),
+    allocator: &'a dyn Allocator,
+) -> Result<Response<'a>, HandlerError> {
+    match find_route(R::SORTED_QUERY_ROUTES, req.request().message_selector()) {
+        Some(rt) => rt(rtr, req, callbacks, allocator),
+        None => Err(HandlerError::new(MessageNotHandled.into())),
     }
 }
 

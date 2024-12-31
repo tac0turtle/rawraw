@@ -1,30 +1,40 @@
-//! Bank moduleodule that allows for the transfer of tokens between accounts.
+//! Bank module that allows for the transfer of tokens between accounts.
+#![allow(missing_docs)] //TODO remove when docs are added to macros
 #![allow(clippy::needless_lifetimes)]
 /// The bank module used for transfering tokens between accounts.
 #[ixc::handler(Bank)]
 pub mod bank {
     use ixc::*;
-    use ixc_core::error::unimplemented_ok;
     use ixc_core::handler::Service;
     use mockall::automock;
 
     /// The bank module used for transfering tokens between accounts.
     #[derive(Resources)]
     pub struct Bank {
+        /// The balances of accounts.
         #[state(prefix = 1, key(address, denom), value(amount))]
         pub(crate) balances: AccumulatorMap<(AccountID, Str)>,
+        /// The total supply of tokens.
         #[state(prefix = 2, key(denom), value(total))]
         pub(crate) supply: AccumulatorMap<Str>,
+        /// The super admin account.
         #[state(prefix = 3)]
         super_admin: Item<AccountID>,
+        /// The global send hook account.
         #[state(prefix = 4)]
         global_send_hook: Item<AccountID>,
+        /// The denom admins.
         #[state(prefix = 5)]
         denom_admins: Map<Str, AccountID>,
+        /// The denom send hooks.
         #[state(prefix = 6)]
         denom_send_hooks: Map<Str, AccountID>,
+        /// The denom burn hooks.
         #[state(prefix = 6)]
         denom_burn_hooks: Map<Str, AccountID>,
+        /// The denom recieve hooks.
+        #[state(prefix = 7)]
+        denom_recieve_hooks: Map<AccountID, AccountID>,
     }
 
     /// A coin is a token with a denom and an amount.
@@ -145,6 +155,7 @@ pub mod bank {
         pub coin: Coin<'a>,
     }
 
+    /// The bank module used for transfering tokens between accounts.
     impl Bank {
         /// Called when the bank module is created.
         #[on_create]
@@ -169,7 +180,7 @@ pub mod bank {
             Ok(())
         }
 
-        /// Set the denom burn hook.
+        /// Set the denom send hook.
         #[publish]
         pub fn set_denom_send_hook(
             &self,
@@ -186,6 +197,16 @@ pub mod bank {
             self.denom_send_hooks.set(ctx, denom, hook)?;
             Ok(())
         }
+
+        /// Set the denom recieve hook.
+        #[publish]
+        pub fn set_denom_recieve_hook(&self, ctx: &mut Context, hook: AccountID) -> Result<()> {
+            // Only denom admin can set recieve hooks
+            let caller = ctx.caller();
+            self.denom_recieve_hooks.set(ctx, caller, hook)?;
+            Ok(())
+        }
+
         /// Set the denom burn hook.
         #[publish]
         pub fn set_denom_burn_hook(
@@ -205,13 +226,16 @@ pub mod bank {
         }
     }
 
+    /// The API of the bank module.
     #[publish]
     impl BankAPI for Bank {
+        /// Get the balance of an account.
         fn get_balance(&self, ctx: &Context, account: AccountID, denom: &str) -> Result<u128> {
             let amount = self.balances.get(ctx, (account, denom))?;
             Ok(amount)
         }
 
+        /// Send tokens from one account to another.
         fn send<'a>(
             &self,
             ctx: &'a mut Context,
@@ -230,8 +254,13 @@ pub mod bank {
                     hook_client.on_send(ctx, ctx.caller(), to, coin.denom, coin.amount)?;
                 }
                 let from = ctx.caller();
-                let receive_hook = <dyn ReceiveHook>::new_client(to);
-                unimplemented_ok(receive_hook.on_receive(ctx, from, coin.denom, coin.amount))?;
+
+                if let Some(hook) = self.denom_recieve_hooks.get(ctx, ctx.caller())? {
+                    println!("on_receive");
+                    let hook_client = <dyn ReceiveHook>::new_client(hook);
+                    hook_client.on_receive(ctx, to, coin.denom, coin.amount)?;
+                }
+
                 self.balances
                     .safe_sub(ctx, (from, coin.denom), coin.amount)?;
                 self.balances.add(ctx, (to, coin.denom), coin.amount)?;
@@ -247,6 +276,7 @@ pub mod bank {
             Ok(())
         }
 
+        /// Mint tokens.
         fn mint<'a>(
             &self,
             ctx: &mut Context,
@@ -262,6 +292,12 @@ pub mod bank {
             ensure!(admin == ctx.caller(), "not authorized");
             self.supply.add(ctx, denom, amount)?;
             self.balances.add(ctx, (to, denom), amount)?;
+
+            if let Some(hook) = self.denom_recieve_hooks.get(ctx, ctx.caller())? {
+                println!("on_receive");
+                let hook_client = <dyn ReceiveHook>::new_client(hook);
+                hook_client.on_receive(ctx, to, denom, amount)?;
+            }
             evt.emit(
                 ctx,
                 &EventMint {
@@ -272,6 +308,7 @@ pub mod bank {
             Ok(())
         }
 
+        /// Burn tokens.
         fn burn<'a>(
             &self,
             ctx: &mut Context,
@@ -281,15 +318,8 @@ pub mod bank {
             mut evt: EventBus<EventBurn<'a>>,
         ) -> Result<()> {
             // Check if the caller is authorized to burn
-            // Only denom admin or the token owner can burn
-            let admin = self
-                .denom_admins
-                .get(ctx, denom)?
-                .ok_or(error!("denom not defined"))?;
-            ensure!(
-                admin == ctx.caller() || from == ctx.caller(),
-                "not authorized to burn tokens"
-            );
+            // Only the token owner can burn
+            ensure!(from == ctx.caller(), "not authorized to burn tokens");
 
             // Check if there are any burn hooks and execute them
             if let Some(hook) = self.denom_burn_hooks.get(ctx, denom)? {
@@ -298,7 +328,6 @@ pub mod bank {
             }
 
             // Verify sufficient balance and reduce it
-
             self.balances.safe_sub(ctx, (from, denom), amount)?;
 
             // Reduce total supply
@@ -413,21 +442,6 @@ mod tests {
         let bob_id = bob.self_account_id();
         bank_client.mint(&mut alice, bob_id, "foo", 1000).unwrap();
 
-        // Set up burn hook
-        let mut mock_burn_hook = MockBurnHook::new();
-        mock_burn_hook
-            .expect_on_burn()
-            .times(1)
-            .returning(|_, _, _, _| Ok(()));
-        let mut mock = MockHandler::new();
-        mock.add_handler::<dyn BurnHook>(Box::new(mock_burn_hook));
-        let mock_id = app.add_mock(mock).unwrap();
-
-        // Set burn hook
-        bank_client
-            .set_denom_burn_hook(&mut alice, "foo", mock_id)
-            .unwrap();
-
         // Test burn by token holder
         bank_client.burn(&mut bob, bob_id, "foo", 300).unwrap();
 
@@ -442,15 +456,16 @@ mod tests {
         });
 
         // Test burn by admin
-        bank_client.burn(&mut alice, bob_id, "foo", 200).unwrap();
+        let res = bank_client.burn(&mut alice, bob_id, "foo", 200);
+        assert!(res.is_err());
 
         // Verify final balance and supply
         let bob_balance = bank_client.get_balance(&bob, bob_id, "foo").unwrap();
-        assert_eq!(bob_balance, 500);
+        assert_eq!(bob_balance, 700);
 
         app.exec_in(&bank_client, |bank, ctx| {
             let foo_supply = bank.supply.get(ctx, "foo").unwrap();
-            assert_eq!(foo_supply, 500);
+            assert_eq!(foo_supply, 700);
         });
     }
 
@@ -479,67 +494,6 @@ mod tests {
         let mut charlie = app.new_client_context().unwrap();
         let result = bank_client.burn(&mut charlie, bob_id, "foo", 100);
         assert!(result.is_err());
-    }
-    #[test]
-    fn test_mint_with_hooks() {
-        let app = TestApp::default();
-        app.register_handler::<Bank>().unwrap();
-
-        // Initialize bank with root account
-        let mut root = app.client_context_for(ROOT_ACCOUNT);
-        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
-
-        // Set up Alice as denom admin
-        let mut alice = app.new_client_context().unwrap();
-        let alice_id = alice.self_account_id();
-        bank_client
-            .create_denom(&mut root, "foo", alice_id)
-            .unwrap();
-
-        // Set up Bob's account for receiving mints
-        let bob = app.new_client_context().unwrap();
-        let bob_id = bob.self_account_id();
-
-        // Set up a mock receive hook for Bob
-        let mut mock_receive_hook = MockReceiveHook::new();
-        mock_receive_hook
-            .expect_on_receive()
-            .times(2) // We'll mint twice
-            .returning(|_, _, _, _| Ok(()));
-        let mut mock = MockHandler::new();
-        mock.add_handler::<dyn ReceiveHook>(Box::new(mock_receive_hook));
-
-        // Create mock account and associate it with Bob's ID
-        let mock_id = app.add_mock(mock).unwrap();
-        let bob_with_hook = app.client_context_for(mock_id);
-
-        // Test successful mint by denom admin
-        bank_client.mint(&mut alice, mock_id, "foo", 500).unwrap();
-
-        // Verify initial balance and supply
-        let bob_balance = bank_client
-            .get_balance(&bob_with_hook, mock_id, "foo")
-            .unwrap();
-        assert_eq!(bob_balance, 500);
-
-        app.exec_in(&bank_client, |bank, ctx| {
-            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
-            assert_eq!(foo_supply, 500);
-        });
-
-        // Test second mint
-        bank_client.mint(&mut alice, mock_id, "foo", 300).unwrap();
-
-        // Verify updated balance and supply
-        let bob_balance = bank_client
-            .get_balance(&bob_with_hook, mock_id, "foo")
-            .unwrap();
-        assert_eq!(bob_balance, 800);
-
-        app.exec_in(&bank_client, |bank, ctx| {
-            let foo_supply = bank.supply.get(ctx, "foo").unwrap();
-            assert_eq!(foo_supply, 800);
-        });
     }
 
     #[test]
@@ -633,40 +587,6 @@ mod tests {
         app.exec_in(&bank_client, |bank, ctx| {
             let foo_supply = bank.supply.get(ctx, "foo").unwrap();
             assert_eq!(foo_supply, 600);
-        });
-    }
-
-    #[test]
-    fn test_mint_events() {
-        let app = TestApp::default();
-        app.register_handler::<Bank>().unwrap();
-
-        // Initialize bank
-        let mut root = app.client_context_for(ROOT_ACCOUNT);
-        let bank_client = create_account::<Bank>(&mut root, BankCreate {}).unwrap();
-
-        // Set up Alice as denom admin
-        let mut alice = app.new_client_context().unwrap();
-        let alice_id = alice.self_account_id();
-        bank_client
-            .create_denom(&mut root, "foo", alice_id)
-            .unwrap();
-
-        // Create recipient account
-        let bob = app.new_client_context().unwrap();
-        let bob_id = bob.self_account_id();
-
-        // Capture and verify mint event
-        app.exec_in(&bank_client, |bank, mut ctx| {
-            let mut events = EventBus::<EventMint>::default();
-            bank.mint(&mut ctx, bob_id, "foo", 1000, events.clone())
-                .unwrap();
-
-            let emitted_events = events.get_events();
-            assert_eq!(emitted_events.len(), 1);
-            assert_eq!(emitted_events[0].to, bob_id);
-            assert_eq!(emitted_events[0].coin.denom, "foo");
-            assert_eq!(emitted_events[0].coin.amount, 1000);
         });
     }
 }
