@@ -22,13 +22,14 @@ impl LSPServer {
             if let Single(token) = root.token_at_offset(pos.into()) {
                 if let Some(node) = find_name_or_ref(&token) {
                     let node_path = NodePath::new(&node);
+                    let node_resolved = node_path.resolve(&root);
                     let name_ref = node.text().to_string();
                     let resolved = resolve_name_ref(&ast, &node_path, &name_ref).map(|it| it.node_path());
                     let resolved_syntax = resolved.clone().map(|it| it.resolve(&ast.syntax())).flatten();
                     return Ok(Some(Hover {
                         contents: Scalar(MarkedString::String(format!(
-                            "{:?} {:?} {} {:?} {:?}",
-                            node, node_path, name_ref, resolved, resolved_syntax
+                            "{:?} {:?} {} {:?} {:?} {:?}",
+                            node, node_path, name_ref, node_resolved, resolved, resolved_syntax
                         ))),
                         range: None,
                     }));

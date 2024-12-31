@@ -12,6 +12,7 @@ interface BankAPI {
    }
 
    tx send(key to: AccountID, coins: []Coin) emits(EventTransfer);
+   tx burn(key from: AccountID, coins: []Coin) emits(EventBurn);
 
    query get_balance(account: AccountID, denom: Str) u128;
 }

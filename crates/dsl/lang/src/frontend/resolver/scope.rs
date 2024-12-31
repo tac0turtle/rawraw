@@ -13,7 +13,8 @@ pub fn resolve_scope(ast: &ParsedAST, path: &NodePath) -> Option<Scope> {
     let node = path.resolve(&ast.syntax())?;
     let mut builder = ScopeBuilder {
         path: path.clone(),
-        scope: Scope::default(),
+        scope: Scope::new(path.clone()),
+        root: ast.syntax(),
     };
     let f = registry.providers.get(&node.kind())?;
     f(node, &mut builder);
@@ -27,12 +28,13 @@ pub fn resolve_name_ref(ast: &ParsedAST, node_path: &NodePath, name_ref: &str) -
             if let Some(item) = scope.names.get(name_ref) {
                 return Some(item.clone());
             }
-            if let Some(ref parent) = scope.parent {
-                return resolve_name_ref(ast, parent, name_ref);
+            if !scope.clear_parent_scope {
+                let parent = node_path.parent_path(&ast.syntax())?;
+                return resolve_name_ref(ast, &parent, name_ref);
             }
             return None
         } else {
-            maybe_node_path = node_path.parent_path();
+            maybe_node_path = node_path.parent_path(&ast.syntax());
         }
     }
     None
@@ -54,19 +56,31 @@ impl ScopeProviderRegistry {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Scope {
-    parent: Option<NodePath>,
+    node_path: NodePath,
     names: BTreeMap<String, ItemPtr>,
+    clear_parent_scope: bool,
+}
+
+impl Scope {
+    pub fn new(node_path: NodePath) -> Self {
+        Self {
+            node_path,
+            names: Default::default(),
+            clear_parent_scope: false,
+        }
+    }
 }
 
 pub struct ScopeBuilder {
     path: NodePath,
     scope: Scope,
+    root: SyntaxNode,
 }
 
 impl ScopeBuilder {
-    pub fn provide_symbol_for_children<N: ItemDefiner>(&mut self, node: N) {
+    pub fn put_into_scope<N: ItemDefiner>(&mut self, node: N) {
         if let Some(name) = node.get_name().map(|it| it.name()).flatten() {
             self.scope.names.insert(name.text().to_string(), N::wrap_ptr(AstPtr::new(&node)));
         } else {
@@ -74,10 +88,8 @@ impl ScopeBuilder {
         }
     }
 
-    pub fn inherit_parent_node_scope(&mut self) {
-        if let Some(parent) = self.path.parent_path() {
-            self.scope.parent = Some(parent);
-        }
+    pub fn clear_parent_scope(&mut self) {
+        self.scope.clear_parent_scope = true
     }
 
     pub fn report_diagnostic(&self, diagnostic: Diagnostic) {
@@ -90,25 +102,23 @@ impl ScopeBuilder {
 fn init_registry() -> ScopeProviderRegistry {
     let mut registry = ScopeProviderRegistry::default();
     registry.register_provider::<File>(|node, builder| {
-        builder.inherit_parent_node_scope();
         for item in node.items() {
             match item {
-                Item::Interface(it) => builder.provide_symbol_for_children(it),
-                Item::Object(it) => builder.provide_symbol_for_children(it),
+                Item::Interface(it) => builder.put_into_scope(it),
+                Item::Object(it) => builder.put_into_scope(it),
                 _ => {}
             }
         }
     });
 
     registry.register_provider::<Interface>(|node, builder| {
-        builder.inherit_parent_node_scope();
         for item in node.items() {
             match item {
-                InterfaceItem::InterfaceFn(it) => builder.provide_symbol_for_children(it),
-                InterfaceItem::Struct(it) => builder.provide_symbol_for_children(it),
-                InterfaceItem::Event(it) => builder.provide_symbol_for_children(it),
-                InterfaceItem::MapCollection(it) => builder.provide_symbol_for_children(it),
-                InterfaceItem::VarCollection(it) => builder.provide_symbol_for_children(it),
+                InterfaceItem::InterfaceFn(it) => builder.put_into_scope(it),
+                InterfaceItem::Struct(it) => builder.put_into_scope(it),
+                InterfaceItem::Event(it) => builder.put_into_scope(it),
+                InterfaceItem::MapCollection(it) => builder.put_into_scope(it),
+                InterfaceItem::VarCollection(it) => builder.put_into_scope(it),
             }
         }
     });

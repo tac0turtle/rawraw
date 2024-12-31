@@ -42,10 +42,7 @@ impl LSPServer {
                 }
             }
         }
-        Ok(Some(GotoDefinitionResponse::Scalar(Location {
-            uri: params.text_document.uri.clone(),
-            range: Range::new(Position::new(0, 0), Position::new(0, 0)),
-        })))
+        Ok(None)
     }
 }
 
