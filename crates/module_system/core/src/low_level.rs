@@ -11,6 +11,7 @@ use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
+use ixc_message_api::code::SystemCode::MessageNotHandled;
 use ixc_schema::any::AnyMessage;
 use ixc_schema::binary::NativeBinaryCodec;
 use ixc_schema::codec::Codec;
@@ -88,10 +89,11 @@ pub fn dynamic_invoke_msg_packet<'a>(
     ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?
 }
 
+/// Dynamically invoke a message with an AnyMessage wrapper.
 pub fn invoke_any_message<'a>(ctx: &mut Context<'a>, msg: &AnyMessage<'a>) -> ClientResult<()> {
     match msg {
         AnyMessage::Empty => {Ok(())}
-        AnyMessage::Message { account, selector, bytes } => {
+        AnyMessage::ExecMessage { account, selector, bytes } => {
             let msg = ixc_message_api::message::Message::new(*account, Request::new1(*selector, bytes.as_slice().into()));
             dynamic_invoke_msg_packet(ctx, &msg, None)?;
             Ok(())
@@ -104,6 +106,7 @@ pub fn invoke_any_message<'a>(ctx: &mut Context<'a>, msg: &AnyMessage<'a>) -> Cl
             account_api::migrate(ctx, new_handler_id)?;
             Ok(())
         }
+        _ => Err(ClientError::new(MessageNotHandled.into())),
     }
 }
 

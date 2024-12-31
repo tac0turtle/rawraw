@@ -4,56 +4,52 @@ use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::kind::Kind;
 use crate::list::List;
-use crate::mem::MemoryManager;
-use crate::structs::StructSchema;
 use crate::types::{ListElementType, Type};
 use crate::value::{ListElementValue, ValueCodec};
-use crate::{binary, SchemaValue};
+use crate::SchemaValue;
 use ixc_message_api::AccountID;
 
-/// A message (any struct type) within the scope of an account.
+/// A wrapper around an executable message that can be serialized and executed later.
+/// This API is EXPERIMENTAL and will likely change in the future.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[non_exhaustive]
 pub enum AnyMessage<'a> {
+    /// The default value of AnyMessage.
     #[default]
     Empty,
-    Message {
+    /// Execute a message within the scope of an account based on the provided selector and bytes.
+    ExecMessage {
+        /// The account the message is being sent to.
         account: AccountID,
+        /// The type selector of the message's struct.
         selector: u64,
+        /// The bytes of the message's struct.
         bytes: List<'a, u8>,
     },
+    /// Create an account with the provided handler ID and initialization data.
     CreateAccount {
+        /// The ID of the handler to create the account with.
         handler_id: &'a str,
+        /// The initialization data for the account's handler.
         init_data: List<'a, u8>,
     },
+    /// Migrate an account to a new handler with the provided handler ID.
     Migrate {
+        /// The account to migrate.
         account: AccountID,
+        /// The ID of the new handler to migrate to.
         new_handler_id: &'a str,
     },
 }
 
 impl<'a> AnyMessage<'a> {
     /// Create a new AnyMessage.
-    pub fn new_message(account: AccountID, selector: u64, bytes: List<'a, u8>) -> Self {
-        Self {
+    pub fn new_exec_message(account: AccountID, selector: u64, bytes: List<'a, u8>) -> Self {
+        Self::ExecMessage {
             account,
             selector,
             bytes,
         }
-    }
-
-    /// Decode the message if it matches the given struct type.
-    pub fn decode_message<M: StructSchema + SchemaValue<'a>>(
-        &'a self,
-        mem: &'a MemoryManager,
-    ) -> Result<Option<M>, DecodeError> {
-        // if self.selector != M::TYPE_SELECTOR {
-        //     return Ok(None);
-        // }
-        // let mut res = M::default();
-        // binary::decoder::decode_value(self.bytes.as_slice(), mem, &mut res)
-        //     .map_err(|_| DecodeError::InvalidData)?;
-        // Ok(Some(res))
-        todo!()
     }
 }
 

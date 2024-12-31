@@ -22,19 +22,19 @@ mod delegator {
         }
     }
 
-    #[handler_api]
-    trait ExecAuthorized {
-        fn exec_authorized(&self, ctx: &mut Context, msg: &AnyMessage<'_>) -> Result<()>;
+    // #[handler_api]
+    pub trait ExecAuthorized {
+        fn exec_authorized(&self, ctx: &mut Context, msg: AnyMessage) -> Result<()>;
     }
 
-    impl ExecAuthorized for Delegator {
-        fn exec_authorized(&self, ctx: &mut Context, msg: &AnyMessage<'_>) -> Result<()> {
-            let delegatee = self.delegatee.get(ctx)?;
-            ensure!(ctx.caller() == delegatee, "unauthorized caller");
-            invoke_any_message(ctx, msg)?;
-            Ok(())
-        }
-    }
+    // impl ExecAuthorized for Delegator {
+    //     fn exec_authorized(&self, ctx: &mut Context, msg: &AnyMessage<'_>) -> Result<()> {
+    //         let delegatee = self.delegatee.get(ctx)?;
+    //         ensure!(ctx.caller() == delegatee, "unauthorized caller");
+    //         invoke_any_message(ctx, msg)?;
+    //         Ok(())
+    //     }
+    // }
 }
 
 #[ixc::handler(CallCounter)]
@@ -74,7 +74,6 @@ mod tests {
     use ixc_testing::*;
     use super::delegator::*;
     use super::call_counter::*;
-    use ixc_schema::json::decode_value;
 
     #[test]
     fn test_any_message() {
@@ -85,7 +84,7 @@ mod tests {
         let bob_id = bob.self_account_id();
         let delegator_client = create_account::<Delegator>(&mut bob, DelegatorCreate {}).unwrap();
         let delegator_id = delegator_client.target_account();
-        // let msg = format!(r#"{{"type":"create_account","value":{{"handler_id":"call_counter","init_data":"
+        let msg = format!(r#"{{"type":"create_account","value":{{"handler_id":"call_counter","init_data":""}}}}"#);
         todo!()
     }
 }
