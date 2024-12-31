@@ -3,7 +3,7 @@
 use crate::error::{ClientError, HandlerError};
 use crate::message::{Message, MessageBase, QueryMessage};
 use crate::result::ClientResult;
-use crate::Context;
+use crate::{account_api, Context};
 use allocator_api2::alloc::Allocator;
 use ixc_core_macros::message_selector;
 use ixc_message_api::code::{ErrorCode, HandlerCode};
@@ -11,12 +11,14 @@ use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::InvokeParams;
 use ixc_message_api::message::{MessageSelector, Request, Response};
 use ixc_message_api::AccountID;
+use ixc_schema::any::AnyMessage;
 use ixc_schema::binary::NativeBinaryCodec;
 use ixc_schema::codec::Codec;
 use ixc_schema::mem::MemoryManager;
 use ixc_schema::structs::StructSchema;
 use ixc_schema::value::OptionalValue;
 use ixc_schema::SchemaValue;
+use crate::handler::Client;
 
 /// Dynamically invokes an account message.
 /// Static account client instances should be preferred wherever possible,
@@ -84,6 +86,25 @@ pub fn dynamic_invoke_msg_packet<'a>(
 ) -> Result<Response<'a>, ErrorCode> {
     let invoke_params = InvokeParams::new(ctx.mem, gas_limit);
     ctx.with_backend_mut(|backend| backend.invoke_msg(msg, &invoke_params))?
+}
+
+pub fn invoke_any_message<'a>(ctx: &mut Context<'a>, msg: &AnyMessage<'a>) -> ClientResult<()> {
+    match msg {
+        AnyMessage::Empty => {Ok(())}
+        AnyMessage::Message { account, selector, bytes } => {
+            let msg = ixc_message_api::message::Message::new(*account, Request::new1(*selector, bytes.as_slice().into()));
+            dynamic_invoke_msg_packet(ctx, &msg, None)?;
+            Ok(())
+        }
+        AnyMessage::CreateAccount { handler_id, init_data } => {
+            account_api::create_account_raw(ctx, handler_id, init_data.as_slice())?;
+            Ok(())
+        }
+        AnyMessage::Migrate { account, new_handler_id } => {
+            account_api::migrate(ctx, new_handler_id)?;
+            Ok(())
+        }
+    }
 }
 
 fn encode_message_packet<'a, 'b, M: MessageBase<'b>>(
