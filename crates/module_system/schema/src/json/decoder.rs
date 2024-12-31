@@ -18,20 +18,20 @@ use simple_time::{Duration, Time};
 
 impl JSONCodec<'_> {
     /// Decode the value from the JSON input string.
-    pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
+    pub fn decode_value<'a>(
         &self,
-        input: &'a str,
+        input: &'a [u8],
         memory_manager: &'a MemoryManager,
-    ) -> Result<V, DecodeError> {
-        let value = serde_json::from_str(input).map_err(|_| DecodeError::InvalidData)?;
+        visitor: &mut dyn ValueCodec<'a>,
+    ) -> Result<(), DecodeError> {
+        let value = serde_json::from_slice(input).map_err(|_| DecodeError::InvalidData)?;
         let mut decoder = Decoder {
             codec: self,
             value,
             mem: memory_manager,
         };
-        let mut res = V::default();
-        res.decode(&mut decoder)?;
-        Ok(res)
+        visitor.decode(&mut decoder)?;
+        Ok(())
     }
 }
 

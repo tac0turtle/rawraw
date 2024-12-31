@@ -2,9 +2,8 @@
 use crate::any::AnyMessage;
 use crate::decoder::{DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
-use crate::enums::EnumType;
+use crate::enums::{EnumDecodeVisitor, EnumType};
 use crate::field::Field;
-use crate::handler::HandlerSchemaResolver;
 use crate::kind::Kind;
 use crate::list::{List, ListDecodeVisitor, ListEncodeVisitor};
 use crate::mem::MemoryManager;
@@ -17,10 +16,10 @@ use allocator_api2::boxed::Box;
 use allocator_api2::vec::Vec;
 use hashbrown::{DefaultHashBuilder, HashMap};
 use ixc_message_api::AccountID;
+use log::info;
 use simple_time::{Duration, Time};
 
 /// A dynamic value that can be encoded and decoded.
-#[derive(Debug, Clone)]
 pub enum DynamicValue<'a> {
     /// An unsigned 8-bit integer.
     U8(u8),
@@ -63,29 +62,33 @@ pub enum DynamicValue<'a> {
     /// An any message.
     AnyMessage(AnyMessage<'a>),
     /// A nullable value.
-    Nullable(Option<Box<DynamicValue<'a>, &'a dyn Allocator>>),
+    Nullable(DynamicNullable<'a>),
 }
 
 /// A dynamic struct value.
-#[derive(Debug, Clone)]
 pub struct DynamicStruct<'a> {
     data: HashMap<usize, DynamicValue<'a>, DefaultHashBuilder, &'a dyn Allocator>,
-    fields: List<'a, Field<'a>>,
+    fields: &'a [Field<'a>],
     type_map: &'a TypeMap<'a>,
     allocator: &'a dyn Allocator,
 }
 
 unsafe impl StructEncodeVisitor for DynamicStruct<'_> {
     fn encode_field(&self, index: usize, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
+        log::debug!("encoding struct field {index}");
         if let Some(value) = self.data.get(&index) {
             value.encode(encoder)
         } else {
-            let value = DynamicValue::default_for_field(
-                &self.fields.as_slice()[index],
-                self.type_map,
-                self.allocator,
-            )
-            .map_err(|_| EncodeError::UnknownError)?;
+            let value =
+                DynamicValue::default_for_field(&self.fields[index], self.type_map, self.allocator)
+                    .map_err(|_| {
+                        log::error!(
+                            "failed to to get default value for struct field {}: {:?}",
+                            index,
+                            self.fields[index]
+                        );
+                        EncodeError::UnknownError
+                    })?;
             value.encode(encoder)
         }
     }
@@ -97,7 +100,8 @@ unsafe impl<'a> StructDecodeVisitor<'a> for DynamicStruct<'a> {
         index: usize,
         decoder: &mut dyn Decoder<'a>,
     ) -> Result<(), DecodeError> {
-        let field = &self.fields.as_slice()[index];
+        let field = &self.fields[index];
+        log::debug!("decoding struct field {field:?}");
         let mut value = DynamicValue::default_for_field(field, self.type_map, self.allocator)
             .map_err(|_| DecodeError::UnknownField)?;
         value.decode(decoder)?;
@@ -107,10 +111,10 @@ unsafe impl<'a> StructDecodeVisitor<'a> for DynamicStruct<'a> {
 }
 
 /// A dynamic list value.
-#[derive(Debug, Clone)]
 pub struct DynamicList<'a> {
     data: List<'a, DynamicValue<'a>>,
-    element_default_value: Box<DynamicValue<'a>, &'a dyn Allocator>,
+    element_kind: Kind,
+    ref_type: Option<&'a SchemaType<'a>>,
     type_map: &'a TypeMap<'a>,
     allocator: &'a dyn Allocator,
 }
@@ -125,18 +129,28 @@ impl ListEncodeVisitor for DynamicList<'_> {
     }
 }
 
-impl ListDecodeVisitor<'_> for DynamicList<'_> {
-    fn reserve(&mut self, len: usize, scope: &'_ MemoryManager) -> Result<(), DecodeError> {
+impl<'a> ListDecodeVisitor<'a> for DynamicList<'a> {
+    fn reserve(&mut self, len: usize, scope: &'a MemoryManager) -> Result<(), DecodeError> {
         match &mut self.data {
-            List::Empty => *self.data = List::Owned(Vec::new_in(scope)),
-            List::Borrowed(_) => *self.data = List::Owned(Vec::new_in(scope)),
-            List::Owned(vec) => vec.reserve(len),
+            List::Empty => self.data = List::Owned(Vec::new_in(scope)),
+            List::Borrowed(_) => self.data = List::Owned(Vec::new_in(scope)),
+            List::Owned(ref mut vec) => vec.reserve(len),
         }
         Ok(())
     }
 
-    fn next(&mut self, decoder: &mut dyn Decoder<'_>) -> Result<(), DecodeError> {
+    fn next(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
         if let List::Owned(vec) = &mut self.data {
+            let mut value = DynamicValue::default_for_kind(
+                self.element_kind,
+                self.ref_type,
+                self.type_map,
+                self.allocator,
+            )
+            .map_err(|_| DecodeError::UnknownField)?;
+            value.decode(decoder)?;
+            vec.push(value);
+            Ok(())
         } else {
             // expected owned list
             Err(DecodeError::InvalidData)
@@ -145,11 +159,44 @@ impl ListDecodeVisitor<'_> for DynamicList<'_> {
 }
 
 /// A dynamic enum value.
-#[derive(Debug, Clone)]
 pub struct DynamicEnum<'a> {
     discriminant: i32,
     enum_type: EnumType<'a>,
     value: Option<Box<DynamicValue<'a>, &'a dyn Allocator>>,
+    type_map: &'a TypeMap<'a>,
+    allocator: &'a dyn Allocator,
+}
+
+unsafe impl<'a> EnumDecodeVisitor<'a> for DynamicEnum<'a> {
+    fn decode_variant(
+        &mut self,
+        discriminant: i32,
+        decoder: &mut dyn Decoder<'a>,
+    ) -> Result<(), DecodeError> {
+        self.discriminant = discriminant;
+        let variant = self
+            .enum_type
+            .variants
+            .iter()
+            .find(|v| v.discriminant == discriminant)
+            .ok_or(DecodeError::UnknownField)?;
+        if let Some(value_field) = variant.value {
+            let mut value =
+                DynamicValue::default_for_field(&value_field, self.type_map, self.allocator)
+                    .map_err(|_| DecodeError::InvalidData)?;
+            value.decode(decoder)?;
+            self.value = Some(Box::new_in(value, self.allocator));
+        }
+        Ok(())
+    }
+}
+
+/// A wrapper around a nullable value.
+pub struct DynamicNullable<'a> {
+    value: Option<Box<DynamicValue<'a>, &'a dyn Allocator>>,
+    not_nullable_field: Field<'a>,
+    type_map: &'a TypeMap<'a>,
+    allocator: &'a dyn Allocator,
 }
 
 impl<'a> ValueCodec<'a> for DynamicValue<'a> {
@@ -172,16 +219,36 @@ impl<'a> ValueCodec<'a> for DynamicValue<'a> {
             DynamicValue::Time(x) => *x = decoder.decode_time()?,
             DynamicValue::Duration(x) => *x = decoder.decode_duration()?,
             DynamicValue::Struct(x) => {
-                todo!()
+                let mut visitor = DynamicStruct {
+                    data: HashMap::new_in(x.allocator),
+                    fields: x.fields,
+                    type_map: x.type_map,
+                    allocator: x.allocator,
+                };
+                decoder.decode_struct_fields(&mut visitor, x.fields)?;
+                *x = visitor;
             }
             DynamicValue::Enum(x) => {
-                todo!()
+                let mut visitor = DynamicEnum {
+                    discriminant: 0,
+                    enum_type: x.enum_type.clone(),
+                    type_map: x.type_map,
+                    allocator: x.allocator,
+                    value: None,
+                };
+                decoder.decode_enum_variant(&mut visitor, &x.enum_type)?;
+                *x = visitor;
             }
-            DynamicValue::List(x) => {
-                todo!()
-            }
-            DynamicValue::AnyMessage(x) => {
-                todo!()
+            DynamicValue::List(x) => decoder.decode_list(x)?,
+            DynamicValue::AnyMessage(x) => *x = decoder.decode_any_message()?,
+            DynamicValue::Nullable(x) => {
+                let mut value =
+                    DynamicValue::default_for_field(&x.not_nullable_field, x.type_map, x.allocator)
+                        .map_err(|_| DecodeError::UnknownField)?;
+                let present = decoder.decode_option(&mut value)?;
+                if present {
+                    x.value = Some(Box::new_in(value, x.allocator));
+                }
             }
         };
         Ok(())
@@ -203,7 +270,7 @@ impl<'a> ValueCodec<'a> for DynamicValue<'a> {
             DynamicValue::String(x) => encoder.encode_str(x),
             DynamicValue::Bytes(x) => encoder.encode_bytes(x.as_slice()),
             DynamicValue::AccountID(x) => encoder.encode_account_id(*x),
-            DynamicValue::Struct(x) => encoder.encode_struct_fields(x, x.fields.as_slice()),
+            DynamicValue::Struct(x) => encoder.encode_struct_fields(x, x.fields),
             DynamicValue::Enum(x) => {
                 let value: Option<&dyn ValueCodec> =
                     x.value.as_ref().map(|x| x.as_ref() as &dyn ValueCodec);
@@ -213,6 +280,10 @@ impl<'a> ValueCodec<'a> for DynamicValue<'a> {
             DynamicValue::AnyMessage(x) => encoder.encode_any_message(x),
             DynamicValue::Time(x) => encoder.encode_time(*x),
             DynamicValue::Duration(x) => encoder.encode_duration(*x),
+            DynamicValue::Nullable(x) => {
+                let value = x.value.as_ref().map(|x| x.as_ref() as &dyn ValueCodec);
+                encoder.encode_option(value)
+            }
         }
     }
 }
@@ -223,40 +294,41 @@ impl<'a> DynamicValue<'a> {
         type_map: &'a TypeMap<'a>,
         allocator: &'a dyn Allocator,
     ) -> Result<Self, ()> {
+        let ref_type = field
+            .referenced_type
+            .map(|s| type_map.lookup_type_by_name(s))
+            .flatten();
         if field.nullable {
-            let mut field = field.clone();
-            field.nullable = false;
-            let def_for_field = Self::default_for_field(&field, type_map, allocator)?;
-            Ok(DynamicValue::Nullable(Some(Box::new_in(def_for_field, allocator))))
+            let mut not_nullable_field = field.clone();
+            not_nullable_field.nullable = false;
+            Ok(DynamicValue::Nullable(DynamicNullable {
+                value: None,
+                not_nullable_field,
+                type_map,
+                allocator,
+            }))
         } else {
             match field.kind {
-                Kind::List => {
-                    let element_default_value = Self::default_for_kind(
-                        field.element_kind.unwrap(),
-                        field.referenced_type,
-                        type_map,
-                        allocator,
-                    )?;
-                    Ok(DynamicValue::List(DynamicList {
-                        data: List::Empty,
-                        element_default_value: Box::new_in(element_default_value, allocator),
-                        type_map,
-                        allocator,
-                    }))
-                }
-                _ => Self::default_for_kind(field.kind, field.referenced_type, type_map, allocator),
+                Kind::List => Ok(DynamicValue::List(DynamicList {
+                    data: List::Empty,
+                    element_kind: field.element_kind.ok_or(())?,
+                    ref_type,
+                    type_map,
+                    allocator,
+                })),
+                _ => Self::default_for_kind(field.kind, ref_type, type_map, allocator),
             }
         }
     }
 
     fn default_for_kind(
         kind: Kind,
-        ref_type: Option<&'a str>,
+        ref_type: Option<&'a SchemaType<'a>>,
         type_map: &'a TypeMap<'a>,
         allocator: &'a dyn Allocator,
     ) -> Result<Self, ()> {
         Ok(match kind {
-            Kind::Invalid => DynamicValue::Nullable(None),
+            Kind::Invalid => panic!("invalid kind"),
             Kind::String => DynamicValue::String(""),
             Kind::Bytes => DynamicValue::Bytes(List::Empty),
             Kind::Int8 => DynamicValue::I8(0),
@@ -272,28 +344,78 @@ impl<'a> DynamicValue<'a> {
             Kind::Bool => DynamicValue::Bool(false),
             Kind::Time => DynamicValue::Time(Time::default()),
             Kind::Duration => DynamicValue::Duration(Duration::default()),
-            Kind::AccountID => { DynamicValue::AccountID(AccountID::EMPTY) }
+            Kind::AccountID => DynamicValue::AccountID(AccountID::EMPTY),
+            Kind::AnyMessage => DynamicValue::AnyMessage(AnyMessage::Empty),
             Kind::Struct => {
                 let ref_type = ref_type.ok_or(())?;
-                let struct_type = type_map.lookup_type_by_name(ref_type).ok_or(())?;
-                if let SchemaType::Struct(struct_type) = struct_type {
-                    return Ok(DynamicValue::Struct(DynamicStruct {
+                return if let SchemaType::Struct(struct_type) = ref_type {
+                    Ok(DynamicValue::Struct(DynamicStruct {
                         data: HashMap::new_in(allocator),
-                        fields: List::Borrowed(struct_type.fields),
+                        fields: struct_type.fields,
                         type_map,
                         allocator,
-                    }));
+                    }))
                 } else {
-                    return Err(());
-                }
+                    Err(())
+                };
             }
             Kind::Enum => {
-                todo!()
+                let ref_type = ref_type.ok_or(())?;
+                return if let SchemaType::Enum(enum_type) = ref_type {
+                    Ok(DynamicValue::Enum(DynamicEnum {
+                        discriminant: 0,
+                        enum_type: enum_type.clone(),
+                        type_map,
+                        allocator,
+                        value: None,
+                    }))
+                } else {
+                    Err(())
+                };
             }
             Kind::List => {
+                // lists shouldn't end up here
                 return Err(());
             }
-            Kind::AnyMessage => {}
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handler::EmptyHandlerSchemaResolver;
+    use crate::json;
+    use crate::json::account_id::DefaultAccountIDStringCodec;
+    use crate::structs::StructSchema;
+    use crate::testdata::ABitOfEverything;
+    use crate::types::collect_types;
+    use allocator_api2::vec::Vec;
+    use proptest::proptest;
+
+    proptest! {
+        #[test]
+        fn test_roundtrip(value: ABitOfEverything) {
+            let mem = MemoryManager::new();
+            let type_map = collect_types::<ABitOfEverything>(&mem).unwrap();
+            let cdc = json::JSONCodec::new(&DefaultAccountIDStringCodec, &EmptyHandlerSchemaResolver);
+            let mut encoded = Vec::new_in(&mem);
+            cdc.encode_value(&value, &mut encoded).unwrap();
+            let mut dynamic = DynamicValue::Struct(DynamicStruct {
+                data: HashMap::new_in(&mem),
+                fields: ABitOfEverything::STRUCT_TYPE.fields,
+                type_map: &type_map,
+                allocator: &mem,
+            });
+            cdc.decode_value(encoded.as_slice(), &mem, &mut dynamic)
+                .unwrap();
+            let mut reencoded = Vec::new_in(&mem);
+            cdc.encode_value(&dynamic, &mut reencoded).unwrap();
+            assert_eq!(encoded, reencoded);
+            let mut decoded = ABitOfEverything::default();
+            cdc.decode_value(reencoded.as_slice(), &mem, &mut decoded)
+                .unwrap();
+            assert_eq!(value, decoded);
+        }
     }
 }

@@ -1,3 +1,4 @@
+//! Account ID JSON string encoding and decoding.
 use core::fmt::Write;
 use ixc_message_api::AccountID;
 use crate::decoder::DecodeError;
@@ -14,6 +15,7 @@ pub trait AccountIDStringCodec {
     fn decode_str(&self, s: &str) -> Result<AccountID, DecodeError>;
 }
 
+/// The default account ID string codec which encodes account IDs as hex strings.
 pub struct DefaultAccountIDStringCodec;
 
 impl AccountIDStringCodec for DefaultAccountIDStringCodec {

@@ -7,8 +7,7 @@
 mod decoder;
 mod encoder;
 mod escape;
-mod account_id;
-pub use account_id::AccountIDStringCodec;
+pub mod account_id;
 
 /// A codec for encoding and decoding values using the JSON format.
 #[derive(Clone)]
@@ -29,6 +28,7 @@ impl<'a> JSONCodec<'a> {
 
 use core::fmt::Write;
 use crate::handler::HandlerSchemaResolver;
+use crate::json::account_id::AccountIDStringCodec;
 
 #[cfg(test)]
 mod tests {
@@ -47,8 +47,8 @@ mod tests {
             let mut writer = vec![];
             let codec = JSONCodec::new(&DefaultAccountIDStringCodec, &EmptyHandlerSchemaResolver);
             codec.encode_value(&value, &mut writer).unwrap();
-            let res = std::str::from_utf8(&writer).unwrap();
-            let decoded = codec.decode_value::<ABitOfEverything>(res, &Default::default()).unwrap();
+            let mut decoded = ABitOfEverything::default();
+            codec.decode_value(writer.as_slice(), &Default::default(), &mut decoded).unwrap();
             assert_eq!(value, decoded);
         }
     }

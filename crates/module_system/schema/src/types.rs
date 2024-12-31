@@ -50,7 +50,7 @@ pub const fn to_field<T: Type>() -> Field<'static> {
         name: "",
         kind: T::KIND,
         nullable: T::NULLABLE,
-        element_kind: None,
+        element_kind: T::ELEMENT_KIND,
         referenced_type: None,
     };
     if let Some(t) = T::SCHEMA_TYPE {
@@ -304,7 +304,6 @@ impl<'a> TypeCollector<'a> {
 }
 
 /// A map of type names to types.
-#[derive(Debug, Clone)]
 pub struct TypeMap<'a> {
     pub(crate) name_to_type: HashMap<&'a str, SchemaType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
     pub(crate) selector_to_type: HashMap<u64, StructType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
