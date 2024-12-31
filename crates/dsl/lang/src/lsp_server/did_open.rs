@@ -3,7 +3,7 @@ use std::borrow::Borrow;
 use crate::lsp_server::server::LSPServer;
 use crate::frontend::diagnostic;
 use crate::frontend::parser;
-use crate::lsp_server::diagnostic::{run_diagnostics, to_lsp_diagnostic};
+use crate::lsp_server::diagnostic::{to_lsp_diagnostic};
 use crate::lsp_server::line_col;
 
 impl LSPServer {
@@ -14,7 +14,7 @@ impl LSPServer {
         }
 
         self.files.update(params.text_document.uri.as_str(), params.text_document.text.as_str());
-        let lsp_diags = run_diagnostics(params.text_document.text.as_str());
+        let lsp_diags = self.run_diagnostics(params.text_document.uri.as_str());
 
         self.client.publish_diagnostics(params.text_document.uri, lsp_diags, None).await;
     }

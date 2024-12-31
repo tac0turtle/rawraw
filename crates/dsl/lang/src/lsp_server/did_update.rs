@@ -1,6 +1,5 @@
 use crate::lsp_server::server::LSPServer;
 use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, DidOpenTextDocumentParams, MessageType, Position, Range, Url};
-use crate::lsp_server::diagnostic::run_diagnostics;
 
 impl LSPServer {
     pub async fn on_did_update(&self, uri: Url, text: String) {
@@ -10,7 +9,7 @@ impl LSPServer {
         };
         self.files.update(uri.clone().as_str(), text.as_str());
 
-        let lsp_diags = run_diagnostics(text.as_str());
+        let lsp_diags = self.run_diagnostics(uri.as_str());
 
         self.client
             .publish_diagnostics(uri, lsp_diags, None)

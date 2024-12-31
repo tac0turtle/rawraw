@@ -5,6 +5,7 @@ use crate::frontend::resolver::scope::resolve_scope;
 use crate::frontend::resolver::symbol::SymbolId;
 use comemo::Tracked;
 use rowan::ast::AstNode;
+use crate::frontend::diagnostic::Diagnostic;
 
 #[comemo::memoize]
 pub fn resolve_name_ref(sources: Tracked<FileSources>, node_id: NodeId) -> Option<SymbolId> {

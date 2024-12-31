@@ -1,4 +1,7 @@
 use std::io::Read;
+use comemo::Tracked;
+use rowan::GreenNode;
+use crate::files::FileSources;
 use crate::frontend;
 use crate::frontend::ast::ParsedAST;
 
@@ -11,13 +14,18 @@ pub mod resolver;
 // mod type_checker;
 // mod checker;
 
-pub fn compile(src: &str) -> ParsedAST {
-    parser::parse(src)
+pub fn compile(files: Tracked<FileSources>, filename: &str) -> ParsedAST {
+    let src = files.get(filename).unwrap();
+    let mut ast = parser::parse(&src);
+    if let Err(diagnostics) = resolver::resolve(files, filename) {
+        ast.diagnostics.extend(diagnostics);
+    }
+    ast
 }
 
 pub fn compile_cli(filename: &str) {
     if let Some(input) = read_file(filename) {
-        let ast = frontend::compile(input.as_str());
+        let ast = parser::parse(input.as_str());
         for diag in &ast.diagnostics {
             diag.print_report(&input);
         }
