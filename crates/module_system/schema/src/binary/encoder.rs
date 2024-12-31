@@ -1,8 +1,11 @@
 #![allow(unused)]
 
+use crate::any;
+use crate::any::AnyMessage;
 use crate::buffer::{Writer, WriterFactory};
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
+use crate::field::Field;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::SchemaValue;
@@ -10,8 +13,6 @@ use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use crate::any::AnyMessage;
-use crate::field::Field;
 
 pub fn encode_value<'a>(
     value: &dyn ValueCodec,
@@ -149,7 +150,38 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
     }
 
     fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
-        todo!()
+        match x {
+            AnyMessage::Empty => {
+                self.encode_u8(any::EMPTY_PREFIX)?;
+            }
+            AnyMessage::ExecMessage {
+                account,
+                selector,
+                bytes,
+            } => {
+                self.encode_bytes(bytes.as_slice())?;
+                self.encode_u64(*selector)?;
+                self.encode_account_id(*account)?;
+                self.encode_u8(any::EXEC_MESSAGE_PREFIX)?;
+            }
+            AnyMessage::CreateAccount {
+                handler_id,
+                init_data,
+            } => {
+                self.encode_bytes(init_data.as_slice())?;
+                self.encode_str(handler_id)?;
+                self.encode_u8(any::CREATE_ACCOUNT_PREFIX)?;
+            }
+            AnyMessage::Migrate {
+                account,
+                new_handler_id,
+            } => {
+                self.encode_str(new_handler_id)?;
+                self.encode_account_id(*account)?;
+                self.encode_u8(any::MIGRATE_PREFIX)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -277,7 +309,34 @@ impl crate::encoder::Encoder for EncodeSizer {
     }
 
     fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
-        todo!()
+        self.size += 1; // for the discriminant byte
+        match x {
+            AnyMessage::Empty => {}
+            AnyMessage::ExecMessage {
+                account,
+                selector,
+                bytes,
+            } => {
+                self.encode_account_id(*account)?;
+                self.encode_u64(*selector)?;
+                self.encode_bytes(bytes.as_slice())?;
+            }
+            AnyMessage::CreateAccount {
+                handler_id,
+                init_data,
+            } => {
+                self.encode_str(handler_id)?;
+                self.encode_bytes(init_data.as_slice())?;
+            }
+            AnyMessage::Migrate {
+                account,
+                new_handler_id,
+            } => {
+                self.encode_account_id(*account)?;
+                self.encode_str(new_handler_id)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -393,7 +452,7 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
     }
 
     fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
-        todo!()
+        self.outer.encode_any_message(x)
     }
 }
 
@@ -512,7 +571,7 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
     }
 
     fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
-        todo!()
+        self.outer.encode_any_message(x)
     }
 }
 

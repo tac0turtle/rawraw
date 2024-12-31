@@ -77,3 +77,8 @@ impl<'a> Type for AnyMessageT {
 
 impl<'a> ListElementType for AnyMessageT {}
 impl<'a> ListElementValue<'a> for AnyMessage<'a> {}
+
+pub(crate) const EMPTY_PREFIX: u8 = 0;
+pub(crate) const EXEC_MESSAGE_PREFIX: u8 = 1;
+pub(crate) const CREATE_ACCOUNT_PREFIX: u8 = 2;
+pub(crate) const MIGRATE_PREFIX: u8 = 3;

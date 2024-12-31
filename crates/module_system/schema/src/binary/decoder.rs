@@ -1,15 +1,16 @@
+use crate::any;
+use crate::any::AnyMessage;
 use crate::decoder::DecodeError;
 use crate::enums::{EnumDecodeVisitor, EnumType};
-use crate::list::ListDecodeVisitor;
+use crate::field::Field;
+use crate::list::{List, ListDecodeVisitor};
 use crate::mem::MemoryManager;
-use crate::structs::{StructDecodeVisitor, StructType};
+use crate::structs::StructDecodeVisitor;
 use crate::value::ValueCodec;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
-use crate::any::AnyMessage;
-use crate::field::Field;
 
 pub fn decode_value<'a>(
     input: &'a [u8],
@@ -187,7 +188,36 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     }
 
     fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError> {
-        todo!()
+        match self.decode_u8()? {
+            any::EMPTY_PREFIX => Ok(AnyMessage::Empty),
+            any::EXEC_MESSAGE_PREFIX => {
+                let account = self.decode_account_id()?;
+                let selector = self.decode_u64()?;
+                let bytes = self.decode_borrowed_bytes()?;
+                Ok(AnyMessage::ExecMessage {
+                    account,
+                    selector,
+                    bytes: List::Borrowed(bytes),
+                })
+            }
+            any::CREATE_ACCOUNT_PREFIX => {
+                let handler_id = self.decode_borrowed_str()?;
+                let init_data = self.decode_borrowed_bytes()?;
+                Ok(AnyMessage::CreateAccount {
+                    handler_id,
+                    init_data: List::Borrowed(init_data),
+                })
+            }
+            any::MIGRATE_PREFIX => {
+                let account = self.decode_account_id()?;
+                let new_handler_id = self.decode_borrowed_str()?;
+                Ok(AnyMessage::Migrate {
+                    account,
+                    new_handler_id,
+                })
+            }
+            _ => Err(DecodeError::UnknownField),
+        }
     }
 }
 
@@ -322,7 +352,7 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
     }
 
     fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError> {
-        todo!()
+        self.outer.decode_any_message()
     }
 }
 
