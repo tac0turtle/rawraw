@@ -2,4 +2,5 @@
 
 pub mod lsp_server;
 pub mod frontend;
+mod files;
 

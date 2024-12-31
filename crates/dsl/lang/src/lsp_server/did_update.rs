@@ -8,7 +8,7 @@ impl LSPServer {
             self.client.log_message(MessageType::ERROR, format!("file not opened: {uri}")).await;
             return;
         };
-        self.files.insert(uri.clone().into(), text.clone());
+        self.files.update(uri.clone().as_str(), text.as_str());
 
         let lsp_diags = run_diagnostics(text.as_str());
 

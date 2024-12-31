@@ -1,6 +1,7 @@
+use std::collections::BTreeMap;
 use rowan::ast::AstNode;
 use crate::frontend::ast::*;
-use crate::frontend::resolver::symbol::SymbolDefiner;
+use crate::frontend::resolver::symbol::{SymbolDefiner, SymbolId};
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode};
 
 pub trait HasMembers: AstNode<Language = IXCLanguage> {
@@ -15,7 +16,9 @@ pub fn as_has_members(syntax_node: SyntaxNode) -> Option<Box<dyn HasMembers>> {
     }
 }
 
-pub struct MemberSet {}
+pub struct MemberSet {
+    members: BTreeMap<String, SymbolId>,
+}
 
 impl MemberSet {
     pub fn add<N: SymbolDefiner>(&mut self, node: N) {

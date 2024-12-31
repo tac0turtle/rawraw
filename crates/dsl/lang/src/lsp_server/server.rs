@@ -2,10 +2,11 @@ use dashmap::DashMap;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
+use crate::files::FileSources;
 
 pub struct LSPServer {
     pub client: Client,
-    pub files: DashMap<String, String>,
+    pub files: FileSources,
 }
 
 #[tower_lsp::async_trait]
@@ -97,7 +98,7 @@ impl LanguageServer for LSPServer {
         &self,
         params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
-        self.on_goto_definition(params).await
+        Ok(self.on_goto_definition(params).await)
     }
 }
 

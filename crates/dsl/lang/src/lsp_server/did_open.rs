@@ -13,7 +13,7 @@ impl LSPServer {
             return;
         }
 
-        self.files.insert(params.text_document.uri.clone().into(), params.text_document.text.clone());
+        self.files.update(params.text_document.uri.as_str(), params.text_document.text.as_str());
         let lsp_diags = run_diagnostics(params.text_document.text.as_str());
 
         self.client.publish_diagnostics(params.text_document.uri, lsp_diags, None).await;

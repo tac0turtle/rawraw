@@ -1,7 +1,7 @@
 pub mod symbol;
 pub mod scope;
-pub mod ids;
-pub mod item_ref;
+pub mod node_id;
+pub mod resolve;
 mod file;
 mod interface;
 mod members;

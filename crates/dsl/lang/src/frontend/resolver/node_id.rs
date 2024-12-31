@@ -1,24 +1,50 @@
+use comemo::Tracked;
 use crate::frontend::syntax::{IXCLanguage, SyntaxKind, SyntaxNode, SyntaxNodePtr};
 use rowan::ast::AstNode;
+use crate::files::FileSources;
+// #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+// pub struct AstPtr<N: AstNode + ?Sized> {
+//     _marker: std::marker::PhantomData<fn(N)>,
+//     pub path: NodePath,
+// }
+//
+// impl<N: AstNode<Language = IXCLanguage>> AstPtr<N> {
+//     pub fn new(node: &N) -> Self {
+//         let path = NodePath::new(node.syntax());
+//         AstPtr {
+//             _marker: Default::default(),
+//             path,
+//         }
+//     }
+//
+//     pub fn resolve(&self, node: &SyntaxNode) -> Option<N> {
+//         let node = self.path.resolve(node)?;
+//         N::cast(node)
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AstPtr<N: AstNode + ?Sized> {
-    _marker: std::marker::PhantomData<fn(N)>,
-    pub path: NodePath,
+pub struct NodeId { // TODO intern
+    pub filename: String, // TODO intern
+    pub node_path: NodePath,
 }
 
-impl<N: AstNode<Language = IXCLanguage>> AstPtr<N> {
-    pub fn new(node: &N) -> Self {
-        let path = NodePath::new(node.syntax());
-        AstPtr {
-            _marker: Default::default(),
-            path,
+impl NodeId {
+    pub fn new(filename: &str, node_path: NodePath) -> Self {
+        Self {
+            filename: filename.to_string(),
+            node_path,
         }
     }
 
-    pub fn resolve(&self, node: &SyntaxNode) -> Option<N> {
-        let node = self.path.resolve(node)?;
-        N::cast(node)
+    pub fn resolve(&self, sources: Tracked<FileSources>) -> Option<SyntaxNode> {
+        let src = sources.get(self.filename.as_str())?;
+        let ast = crate::frontend::parser::parse(&src);
+        self.node_path.resolve(&ast.syntax())
+    }
+    
+    pub fn parent(&self) -> Option<NodeId> {
+        self.node_path.parent_path().map(|it| NodeId::new(self.filename.as_str(), it))
     }
 }
 
@@ -26,7 +52,6 @@ impl<N: AstNode<Language = IXCLanguage>> AstPtr<N> {
 pub struct NodePath(
     // TODO: replace with a Vec<usize> when we can fix that implementation because it is more stable with respect to formatting changes
     Vec<(SyntaxKind, usize)>
-    // SyntaxNodePtr
 );
 
 impl NodePath {
