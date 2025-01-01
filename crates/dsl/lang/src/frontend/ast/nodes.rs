@@ -206,7 +206,7 @@ impl rowan::ast::AstNode for Impl {
 }
 impl Impl {
     #[inline]
-    pub fn name(&self) -> Option<Name> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         rowan::ast::support::child(&self.syntax)
     }
     #[inline]
@@ -1035,7 +1035,7 @@ impl rowan::ast::AstNode for ImplFor {
 }
 impl ImplFor {
     #[inline]
-    pub fn name(&self) -> Option<Name> {
+    pub fn name_ref(&self) -> Option<NameRef> {
         rowan::ast::support::child(&self.syntax)
     }
 }

@@ -1,4 +1,4 @@
-use crate::frontend::ast::{File, Interface};
+use crate::frontend::ast::{File, Interface, NameRef};
 use crate::frontend::resolver::members::{HasMembers, MemberSet};
 use crate::frontend::resolver::node_id::{NodeId, NodePath};
 use crate::frontend::resolver::symbol::{PrimitiveSymbol, SymbolDefiner, SymbolId};
@@ -7,6 +7,7 @@ use rowan::ast::AstNode;
 use std::collections::BTreeMap;
 use comemo::Tracked;
 use crate::files::FileSources;
+use crate::frontend::resolver::resolve::resolve_name_ref;
 
 pub trait ScopeProvider: AstNode<Language = IXCLanguage> {
     fn provide_scope(&self, scope: &mut ScopeBuilder);
@@ -23,7 +24,7 @@ pub fn as_scope_provider(syntax_node: SyntaxNode) -> Option<Box<dyn ScopeProvide
 #[comemo::memoize]
 pub fn resolve_scope(files: Tracked<FileSources>, node_id: &NodeId) -> Option<Scope> {
     let node = node_id.resolve(files)?;
-    let mut builder = ScopeBuilder::new(node_id.filename.as_str(), node.clone());
+    let mut builder = ScopeBuilder::new(files, node_id.filename.as_str(), node.clone());
     let provider = as_scope_provider(node)?;
     provider.provide_scope(&mut builder);
     Some(builder.scope)
@@ -98,16 +99,18 @@ impl Scope {
     }
 }
 
-pub struct ScopeBuilder {
+pub struct ScopeBuilder<'a> {
     node: SyntaxNode,
     scope: Scope,
+    files: Tracked<'a, FileSources>,
 }
 
-impl ScopeBuilder {
-    pub(crate) fn new(filename: &str, node: SyntaxNode) -> Self {
+impl <'a> ScopeBuilder<'a> {
+    pub(crate) fn new(files: Tracked<'a, FileSources>, filename: &str, node: SyntaxNode) -> Self {
         Self {
             node: node.clone(),
             scope: Scope::new(NodeId::new(filename, NodePath::new(&node))),
+            files,
         }
     }
 
@@ -140,6 +143,20 @@ impl ScopeBuilder {
     
     pub fn define_primitive(&mut self, name: &str, symbol: PrimitiveSymbol) {
         self.scope.names.insert(name.to_string(), SymbolId::Primitive(symbol));
+    }
+    
+    pub fn resolve_name_ref(&self, name_ref: &NameRef) -> Option<SymbolId> {
+        resolve_name_ref(self.files, NodeId::new(self.scope.node_id.filename.as_str(), NodePath::new(&name_ref.syntax())))
+    }
+    
+    pub fn resolve_scope(&self, node_id: &NodeId) -> Option<Scope> {
+        resolve_scope(self.files, node_id)
+    }
+    
+    pub fn add_scope(&mut self, scope: &Scope) {
+        for (name, symbol) in scope.names.iter() {
+            self.scope.names.insert(name.clone(), symbol.clone());
+        }
     }
 }
 

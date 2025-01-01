@@ -5,7 +5,13 @@ use crate::frontend::resolver::scope::{ScopeBuilder, ScopeProvider};
 impl ScopeProvider for Interface {
     fn provide_scope(&self, scope: &mut ScopeBuilder) {
         scope.inherit_parent_scope();
-        scope.put_members_into_scope(self);
+        for item in self.items() {
+            match item {
+                InterfaceItem::Struct(it) => scope.put_into_scope(it),
+                InterfaceItem::Event(it) => scope.put_into_scope(it),
+                _ => {} // other items don't go into scope locally
+            }
+        }
     }
 }
     

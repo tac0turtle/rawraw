@@ -13,6 +13,7 @@ mod file;
 mod interface;
 mod members;
 mod struct_;
+mod impl_;
 
 #[comemo::memoize]
 pub fn resolve(sources: Tracked<FileSources>, filename: &str) -> Result<(), Vec<Diagnostic>> {

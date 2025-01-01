@@ -103,7 +103,7 @@ impl<'a> SymbolBuilder<'a> {
         self.symbol(
             SymbolKind::OBJECT,
             node.syntax(),
-            node.name(),
+            node.name_ref(),
             Some(children),
         )
     }

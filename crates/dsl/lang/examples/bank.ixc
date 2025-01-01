@@ -9,6 +9,7 @@ interface BankAPI {
        to: AccountID,
        denom: Str,
        amount: u128,
+
    }
 
    event EventBurn {
@@ -18,13 +19,13 @@ interface BankAPI {
    }
 
    tx send(key to: AccountID, coins: []Coin) emits(EventTransfer);
-   tx burn(key from: AccountID, coins: []Coin) emits(EventBurn);
+   tx burn(coins: []Coin) emits(EventBurn);
 
    query get_balance(account: AccountID, denom: Str) u128;
 }
 
 interface BlockInfoAPI {
-    query block_time() Time;
+    query block_time() u64;
 }
 
 object Bank {

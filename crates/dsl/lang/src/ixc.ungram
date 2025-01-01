@@ -58,8 +58,8 @@ Client = 'client' name:Name ':' types:ClientTypes ';'
 ClientTypes = types:ClientType*
 ClientType = typ:Type ','
 
-Impl = 'impl' name:Name for:ImplFor '{' items:ImplItem* '}'
-ImplFor = 'for' name:Name
+Impl = 'impl' name_ref:NameRef for:ImplFor '{' items:ImplItem* '}'
+ImplFor = 'for' name_ref:NameRef
 ImplItem = ImplFn | MapCollection | VarCollection
 ImplFn = sig:FnSignature block:FnBlock
 FnBlock = '{' statements:Stmt* '}'

@@ -4,7 +4,7 @@ use crate::frontend::resolver::symbol::SymbolDefiner;
 
 impl SymbolDefiner for Struct {
     fn get_name(&self) -> Option<Name> {
-        None
+        self.name()
     }
 }
 
