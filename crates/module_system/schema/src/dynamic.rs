@@ -73,6 +73,17 @@ pub struct DynamicStruct<'a> {
     allocator: &'a dyn Allocator,
 }
 
+impl <'a> DynamicStruct<'a> {
+    pub fn new(fields: &'a [Field<'a>], type_map: &'a TypeMap<'a>, allocator: &'a dyn Allocator) -> Self {
+        Self {
+            data: HashMap::new_in(allocator),
+            fields,
+            type_map,
+            allocator,
+        }
+    }
+}
+
 unsafe impl StructEncodeVisitor for DynamicStruct<'_> {
     fn encode_field(&self, index: usize, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         log::debug!("encoding struct field {index}");

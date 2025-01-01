@@ -1,3 +1,4 @@
+use alloc::collections::BinaryHeap;
 use crate::any::AnyMessage;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
@@ -11,6 +12,9 @@ use base64::prelude::*;
 use core::fmt::Write;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::binary::NativeBinaryCodec;
+use crate::codec::Codec;
+use crate::dynamic::{DynamicStruct, DynamicValue};
 use crate::json::JSONCodec;
 use crate::mem::MemoryManager;
 
@@ -234,9 +238,20 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
                 self.codec.account_id_codec.encode_str(account, &mut self.writer)?;
                 write!(self.writer, "\",")?;
                 write!(self.writer, "\"type\":\"{}\",", struct_type.name)?;
-                todo!();
-                // write!(self.writer, "\"value\":")?;
-                // self.encode_struct_fields(&struct_type.fields, bytes.as_slice())?;
+                let mut dynamic_struct = DynamicValue::Struct(DynamicStruct::new(&struct_type.fields, type_map, &self.memory_manager));
+                let binary_cdc = NativeBinaryCodec;
+                binary_cdc.decode_value(bytes.as_slice(), &self.memory_manager, &mut dynamic_struct)
+                    .map_err(|_| {
+                        log::error!("failed to decode dynamic struct");
+                        EncodeError::UnknownError
+                    })?;
+                write!(self.writer, "\"value\":")?;
+                if let DynamicValue::Struct(dynamic_struct) = dynamic_struct {
+                    self.encode_struct_fields(&dynamic_struct, struct_type.fields)?;
+                } else {
+                    log::error!("failed to decode dynamic struct");
+                    return Err(EncodeError::UnknownError);
+                }
                 write!(self.writer, "}}")?;
             }
             AnyMessage::CreateAccount {
