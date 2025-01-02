@@ -167,7 +167,13 @@ pub mod bank {
         /// Create a new denom.
         #[publish]
         pub fn create_denom(&self, ctx: &mut Context, denom: &str, admin: AccountID) -> Result<()> {
-            ensure!(self.super_admin.get(ctx)? == ctx.caller(), "not authorized");
+            // Check if denom already exists
+            let v = self.denom_admins.get(ctx, denom)?;
+            if v.is_some() {
+                return Err(error!("denom already exists"));
+            }
+
+            // Set the denom admin
             self.denom_admins.set(ctx, denom, admin)?;
             Ok(())
         }
