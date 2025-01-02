@@ -8,31 +8,26 @@ use allocator_api2::alloc::Allocator;
 use ixc_account_manager::id_generator::IDGenerator;
 use ixc_account_manager::state_handler::StateHandler;
 use ixc_account_manager::AccountManager;
-use ixc_message_api::handler::{HostBackend, RawHandler};
-use ixc_message_api::message::{Message, MessageSelector, Request};
+use ixc_message_api::gas::GasTracker;
+use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
+use ixc_message_api::message::{Message, MessageSelector, Request, Response};
 use ixc_message_api::{code::ErrorCode, AccountID};
 use ixc_vm_api::VM;
 
-pub struct BlockReq<T: Transation> {
-    pub height: u64,
-    pub time: u64,
-    pub transactions: Vec<T>,
-}
-
 /// A transaction that can be used to execute a message .
-pub trait Transation {
+pub trait Transaction {
     /// Get the sender of the transaction.
     fn sender(&self) -> AccountID;
     /// Get the recipient of the transaction.
     fn recipient(&self) -> AccountID;
     /// Get the message of the transaction.
-    fn msg(&self) -> &[u8];
-    /// Get the message selector of the transaction.
-    fn selector(&self) -> MessageSelector;
+    fn msg(&self) -> &Message;
+    /// Returns the Gas Limit.
+    fn gas_limit(&self) -> u64;
 }
 
-pub trait BeforeTxApply {
-    fn before_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
+pub trait TxValidator {
+    fn validate_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
         idg: &mut IDG,
@@ -41,22 +36,30 @@ pub trait BeforeTxApply {
     ) -> Result<(), ErrorCode>;
 }
 
-pub trait AfterTxApply {
-    fn after_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
+pub trait AfterTxApplyHandler {
+    fn after_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
         am: &AccountManager<Vm>,
         sh: &SH,
         idg: &mut IDG,
         tx: &Tx,
-        msg_result: &Result<&[u8], ErrorCode>,
+        tx_result: &Result<Response, ErrorCode>,
     ) -> Result<(), ErrorCode>;
 }
 
 pub trait BeginBlocker {
-    fn begin_blocker<Vm: VM, SH: StateHandler>();
+    fn begin_blocker<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
+        am: &AccountManager<Vm>,
+        sh: &mut SH,
+        idg: &mut IDG,
+    );
 }
 
 pub trait EndBlocker {
-    fn end_blocker<Vm: VM, SH: StateHandler>();
+    fn end_blocker<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
+        am: &AccountManager<Vm>,
+        sh: &mut SH,
+        idg: &mut IDG,
+    );
 }
 
 /// A state transition function that can be used to execute transactions and query state.
@@ -75,7 +78,7 @@ pub enum TxFailure {
     PostTx(ErrorCode),
 }
 
-impl<Btx: BeforeTxApply, PTx: AfterTxApply, Bb: BeginBlocker, Eb: EndBlocker>
+impl<Btx: TxValidator, PTx: AfterTxApplyHandler, Bb: BeginBlocker, Eb: EndBlocker>
     STF<Btx, PTx, Bb, Eb>
 {
     pub const ACCOUNT_TO_HANDLER_PREFIX: u8 = 0;
@@ -83,46 +86,40 @@ impl<Btx: BeforeTxApply, PTx: AfterTxApply, Bb: BeginBlocker, Eb: EndBlocker>
         Self(PhantomData, PhantomData, PhantomData, PhantomData)
     }
 
-    pub fn begin_block<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
+    pub fn apply_block<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
-        id_generator: &mut IDG,
+        idg: &mut IDG,
+        block: Vec<&dyn Transaction>,
+        allocator: &dyn Allocator,
     ) {
+        Bb::begin_blocker(am, sh, idg);
+
+        // TODO: when tx fails what do we do
+        for tx in block {
+            Self::apply_tx(am, sh, idg, tx, allocator).unwrap();
+        }
     }
 
-    pub fn end_block() {}
-
-    pub fn apply_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transation>(
+    pub fn apply_tx<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
         id_generator: &mut IDG,
         tx: &Tx,
-        allocator: &dyn Allocator,
-    ) -> Result<Vec<u8>, ErrorCode> {
-        Btx::before_tx_apply(am, sh, id_generator, tx, allocator)?;
-        let mut message_packet = Self::new_message_packet(tx, allocator);
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
+        // before tx execution flow
+        Btx::validate_tx(am, sh, id_generator, tx, allocator)?;
 
         // handle msg
-        am.invoke_msg(sh, id_generator, tx.sender(), allocator)?;
+        let gas_tracker = GasTracker::limited(tx.gas_limit());
+        let invoke_params = InvokeParams::new(allocator, Some(&gas_tracker));
+        let resp = am.invoke_msg(sh, id_generator, tx.sender(), tx.msg(), &invoke_params);
 
-        let resp = Self::response_from_message_packet(&message_packet);
-
+        // after execution of the msg we pass it in to the post handler.
         PTx::after_tx_apply(am, sh, id_generator, tx, &resp)?;
 
-        Ok(todo!("impl"))
-    }
-
-    pub fn new_message_packet<'a>(
-        tx: &impl Transation,
-        alloc: &dyn Allocator,
-    ) -> MessagePacket<'a> {
-        todo!()
-    }
-
-    fn response_from_message_packet<'a>(
-        packet: &'a MessagePacket<'a>,
-    ) -> Result<&'a [u8], ErrorCode> {
-        todo!()
+        resp
     }
 }
 #[cfg(test)]
