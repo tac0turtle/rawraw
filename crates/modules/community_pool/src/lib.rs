@@ -137,6 +137,8 @@ pub mod community_pool {
             let params = self.params.get(ctx)?;
             ensure!(params.spend_enabled, "spending is disabled");
 
+            ensure!(self.admin.get(ctx)? == ctx.caller(), "not authorized");
+
             // Verify sufficient balance and subtract
             self.pool_balance.safe_sub(ctx, denom, amount)?;
 
