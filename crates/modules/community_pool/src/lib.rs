@@ -73,20 +73,6 @@ pub mod community_pool {
         pub proposal_id: u64,
     }
 
-    /// SpendHook is a trait that allows modules to hook into the spending process.
-    #[handler_api]
-    pub trait SpendHook {
-        /// BeforeSpend is called before a spend is executed.
-        fn before_spend<'a>(
-            &self,
-            ctx: &mut Context<'a>,
-            to: AccountID,
-            denom: &str,
-            amount: u128,
-            proposal_id: u64,
-        ) -> Result<()>;
-    }
-
     /// CommunityPool is a module that allows users to deposit and spend tokens.
     impl CommunityPool {
         /// Create is called when the community pool is created.
