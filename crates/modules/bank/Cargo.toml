@@ -7,18 +7,14 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-ixc = { path = "../../module_system/ixc" }
-ixc_core = { path = "../../module_system/core" }
-ixc_schema = { path = "../../module_system/schema", version = "0.0.4", features = [
-    "use_ixc_macro_path",
-] }
-ixc_message_api = { path = "../../module_system/message_api", version = "0.0.4" }
-ixc_collections = { path = "../../module_system/collections", version = "0.0.4" }
+ixc = { workspace = true }
+ixc_core = { workspace = true }
+ixc_schema = { workspace = true }
+ixc_message_api = { workspace = true }
+ixc_collections = { workspace = true }
+ixc_core_macros = { workspace = true }
+ixc_schema_macros = { workspace = true }
 mockall = "0.13.0"
-ixc_core_macros = { path = "../../module_system/core_macros", version = "0.0.4" }
-ixc_schema_macros = { path = "../../module_system/schema_macros", version = "0.0.3", features = [
-    "use_ixc_macro_path",
-] }
 
 [dev-dependencies]
 ixc_testing = { path = "../../module_system/testing" }
