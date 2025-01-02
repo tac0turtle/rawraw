@@ -22,7 +22,6 @@ ixc_schema_macros = { path = "../schema_macros", version = "0.0.3", features = [
 
 [dev-dependencies]
 ixc_testing = { path = "../testing" }
-arrayvec = "0.7.6"
 thiserror = "1.0.63"
 num_enum = "0.7.3"
 mockall = "0.13.0"
