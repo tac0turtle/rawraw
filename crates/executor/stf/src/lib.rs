@@ -2,8 +2,6 @@
 mod info;
 
 use crate::info::Info;
-use std::marker::PhantomData;
-
 use allocator_api2::alloc::Allocator;
 use ixc_account_manager::id_generator::IDGenerator;
 use ixc_account_manager::state_handler::StateHandler;
@@ -13,6 +11,8 @@ use ixc_message_api::handler::{HostBackend, InvokeParams, RawHandler};
 use ixc_message_api::message::{Message, MessageSelector, Request, Response};
 use ixc_message_api::{code::ErrorCode, AccountID};
 use ixc_vm_api::VM;
+use std::marker::PhantomData;
+use std::process::id;
 
 /// A transaction that can be used to execute a message .
 pub trait Transaction {
@@ -32,18 +32,19 @@ pub trait TxValidator {
         sh: &mut SH,
         idg: &mut IDG,
         tx: &Tx,
+        gt: &GasTracker,
         alloc: &dyn Allocator,
     ) -> Result<(), ErrorCode>;
 }
 
 pub trait AfterTxApplyHandler {
-    fn after_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
+    fn after_tx_apply<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
         am: &AccountManager<Vm>,
         sh: &SH,
         idg: &mut IDG,
         tx: &Tx,
-        tx_result: &Result<Response, ErrorCode>,
-    ) -> Result<(), ErrorCode>;
+        tx_result: &TxResult<'a, Tx>,
+    );
 }
 
 pub trait BeginBlocker {
@@ -62,6 +63,12 @@ pub trait EndBlocker {
     );
 }
 
+pub struct TxResult<'a, Tx: Transaction + ?Sized> {
+    pub gas_used: u64,
+    pub response: Result<Response<'a>, ErrorCode>,
+    pub tx: &'a Tx,
+}
+
 /// A state transition function that can be used to execute transactions and query state.
 pub struct STF<BeforeTxApply, PostTxApply, BeginBlocker, EndBlocker>(
     PhantomData<BeforeTxApply>,
@@ -69,14 +76,6 @@ pub struct STF<BeforeTxApply, PostTxApply, BeginBlocker, EndBlocker>(
     PhantomData<BeginBlocker>,
     PhantomData<EndBlocker>,
 );
-
-/// TODO: this would be used to whoever is unwrapping the error to know exactly at which stage the tx execution
-/// failed.
-pub enum TxFailure {
-    BeforeTx(ErrorCode),
-    ApplyTx(ErrorCode),
-    PostTx(ErrorCode),
-}
 
 impl<Btx: TxValidator, PTx: AfterTxApplyHandler, Bb: BeginBlocker, Eb: EndBlocker>
     STF<Btx, PTx, Bb, Eb>
@@ -96,8 +95,9 @@ impl<Btx: TxValidator, PTx: AfterTxApplyHandler, Bb: BeginBlocker, Eb: EndBlocke
         Bb::begin_blocker(am, sh, idg);
 
         // TODO: when tx fails what do we do
+        let mut results = Vec::with_capacity(block.len());
         for tx in block {
-            Self::apply_tx(am, sh, idg, tx, allocator).unwrap();
+            results.push(Self::apply_tx(am, sh, idg, tx, allocator));
         }
     }
 
@@ -105,21 +105,44 @@ impl<Btx: TxValidator, PTx: AfterTxApplyHandler, Bb: BeginBlocker, Eb: EndBlocke
         am: &AccountManager<Vm>,
         sh: &mut SH,
         id_generator: &mut IDG,
+        tx: &'a Tx,
+        allocator: &'a dyn Allocator,
+    ) -> TxResult<'a, Tx> {
+        let gas_tracker = GasTracker::limited(tx.gas_limit());
+
+        let resp = Self::internal_apply_tx(am, sh, id_generator, tx, &gas_tracker, allocator);
+
+        let tx_result = TxResult {
+            gas_used: gas_tracker.consumed.into_inner(),
+            response: resp,
+            tx,
+        };
+
+        // after execution of the msg we pass it in to the post handler.
+        PTx::after_tx_apply(am, sh, id_generator, tx, &tx_result);
+        tx_result
+    }
+
+    fn internal_apply_tx<
+        'a,
+        Vm: VM,
+        SH: StateHandler,
+        IDG: IDGenerator,
+        Tx: Transaction + ?Sized,
+    >(
+        am: &AccountManager<Vm>,
+        sh: &mut SH,
+        id_generator: &mut IDG,
         tx: &Tx,
+        gas_tracker: &GasTracker,
         allocator: &'a dyn Allocator,
     ) -> Result<Response<'a>, ErrorCode> {
         // before tx execution flow
-        Btx::validate_tx(am, sh, id_generator, tx, allocator)?;
+        Btx::validate_tx(am, sh, id_generator, tx, &gas_tracker, allocator)?;
 
         // handle msg
-        let gas_tracker = GasTracker::limited(tx.gas_limit());
         let invoke_params = InvokeParams::new(allocator, Some(&gas_tracker));
-        let resp = am.invoke_msg(sh, id_generator, tx.sender(), tx.msg(), &invoke_params);
-
-        // after execution of the msg we pass it in to the post handler.
-        PTx::after_tx_apply(am, sh, id_generator, tx, &resp)?;
-
-        resp
+        am.invoke_msg(sh, id_generator, tx.sender(), tx.msg(), &invoke_params)
     }
 }
 #[cfg(test)]
