@@ -19,8 +19,8 @@ pub enum ErrorCode<E: HandlerCode = u8> {
 }
 
 /// A trait implemented by all types that can be used as custom handler error codes.
-pub trait HandlerCode: Into<u8> + TryFrom<u8> + Debug + Clone {}
-impl<T: Into<u8> + TryFrom<u8> + Debug + Clone> HandlerCode for T {}
+pub trait HandlerCode: Into<u8> + TryFrom<u8> + Debug + Clone + Copy {}
+impl<T: Into<u8> + TryFrom<u8> + Debug + Clone + Copy> HandlerCode for T {}
 
 /// A known system error code.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, IntoPrimitive, TryFromPrimitive)]
@@ -87,10 +87,16 @@ impl<E: HandlerCode> From<ErrorCode<E>> for u16 {
     }
 }
 
+impl<E: HandlerCode> From<SystemCode> for ErrorCode<E> {
+    fn from(code: SystemCode) -> Self {
+        ErrorCode::SystemCode(code)
+    }
+}
+
 impl<E: HandlerCode> PartialEq<Self> for ErrorCode<E> {
     fn eq(&self, other: &Self) -> bool {
-        let a: u16 = self.clone().into();
-        let b: u16 = other.clone().into();
+        let a: u16 = (*self).into();
+        let b: u16 = (*other).into();
         a == b
     }
 }

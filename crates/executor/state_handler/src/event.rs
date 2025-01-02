@@ -6,6 +6,7 @@ use ixc_message_api::AccountID;
 #[derive(Clone, Debug)]
 pub struct EventData {
     pub data: Vec<u8>,
+    pub type_selector: u64,
     pub sender: AccountID,
 }
 
@@ -31,7 +32,7 @@ impl EventState {
     }
 
     /// Adds an event at the current transaction level
-    pub fn emit_event(&mut self, sender: AccountID, data: Vec<u8>) {
+    pub fn emit_event(&mut self, sender: AccountID, type_selector: u64, data: Vec<u8>) {
         if self.events.is_empty() {
             // If no transaction level exists, create one
             self.events.push(Vec::new());
@@ -41,7 +42,11 @@ impl EventState {
             .events
             .last_mut()
             .expect("Events vector cannot be empty");
-        current_level.push(EventData { data, sender });
+        current_level.push(EventData {
+            data,
+            type_selector,
+            sender,
+        });
     }
 
     /// Reverts the state to a previous snapshot level
@@ -88,15 +93,15 @@ mod tests {
         let snapshot1 = event_state.snapshot();
 
         // Emit some events at level 0
-        event_state.emit_event(AccountID::new(1), create_test_data(b"event1"));
-        event_state.emit_event(AccountID::new(1), create_test_data(b"event2"));
+        event_state.emit_event(AccountID::new(1), 0, create_test_data(b"event1"));
+        event_state.emit_event(AccountID::new(1), 0, create_test_data(b"event2"));
 
         // Take another snapshot - level 1
         let _ = event_state.snapshot();
 
         // Emit events at level 1
-        event_state.emit_event(AccountID::new(2), create_test_data(b"event3"));
-        event_state.emit_event(AccountID::new(2), create_test_data(b"event4"));
+        event_state.emit_event(AccountID::new(2), 0, create_test_data(b"event3"));
+        event_state.emit_event(AccountID::new(2), 0, create_test_data(b"event4"));
 
         // Verify level 1 events
         let current_events = event_state.get_current_events().unwrap();
@@ -108,7 +113,7 @@ mod tests {
         let _ = event_state.snapshot();
 
         // Emit events at level 2
-        event_state.emit_event(AccountID::new(3), create_test_data(b"event5"));
+        event_state.emit_event(AccountID::new(3), 0, create_test_data(b"event5"));
 
         // Revert to snapshot1 (level 0)
         event_state.revert_to_snapshot(snapshot1);
@@ -129,11 +134,11 @@ mod tests {
 
         // First transaction level
         let _ = event_state.snapshot();
-        event_state.emit_event(AccountID::new(1), create_test_data(b"event1"));
+        event_state.emit_event(AccountID::new(1), 0, create_test_data(b"event1"));
 
         // Second transaction level
         let _ = event_state.snapshot();
-        event_state.emit_event(AccountID::new(2), create_test_data(b"event2"));
+        event_state.emit_event(AccountID::new(2), 0, create_test_data(b"event2"));
 
         // Commit second level to first
         event_state.commit();

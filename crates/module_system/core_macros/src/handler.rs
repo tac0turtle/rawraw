@@ -7,6 +7,7 @@ use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::{Attribute, FnArg, ImplItemFn, Item, ItemMod, Signature, Type};
 
+/// HandlerArgs is the argument to the #[handler] attribute.
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
 
@@ -58,11 +59,25 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
             }
         },
     )?;
+
+    let mut visit_trait_schemas = vec![];
+    for publish_trait in publish_traits.iter() {
+        let trait_ident = &publish_trait.ident;
+        visit_trait_schemas.push(quote! {
+            <<dyn #trait_ident as ::ixc::core::handler::Service>::Client as ::ixc::core::handler::Client>::visit_schema(visitor);
+        });
+    }
     push_item(
         items,
         quote! {
             impl ::ixc::core::handler::Handler for #handler {
                 type Init<'a> = #on_create_msg #create_msg_lifetime;
+
+                fn visit_schema<'a, V: ::ixc::core::handler::APISchemaVisitor<'a>>(visitor: &mut V) {
+                    ::ixc::core::message::visit_init_descriptor::<#on_create_msg #create_msg_lifetime, V>(visitor);
+                    <#client_ident as ::ixc::core::handler::Client>::visit_schema(visitor);
+                    #(#visit_trait_schemas)*
+                }
             }
         },
     )?;
@@ -70,7 +85,7 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
     push_item(
         items,
         quote! {
-            impl <'a> ::ixc::core::handler::InitMessage<'a> for #on_create_msg #create_msg_lifetime {
+            impl <'a> ::ixc::core::message::InitMessage<'a> for #on_create_msg #create_msg_lifetime {
                 type Codec = ::ixc::schema::binary::NativeBinaryCodec;
             }
         },
@@ -93,11 +108,15 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
         });
     }
 
+    let not_handled = quote! {
+        Err(::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::SystemCode::MessageNotHandled.into()))
+    };
+
     push_item(
         items,
         quote! {
             impl ::ixc::message_api::handler::RawHandler for #handler {
-                fn handle_msg<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
+                fn handle_msg<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::error::HandlerError> {
                     let sel = message_packet.request().message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_MSG_ROUTES, sel) {
                         return rt(self, caller, message_packet, callbacks, allocator)
@@ -105,10 +124,10 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
 
                     #(#trait_msg_routers)*
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    #not_handled
                 }
 
-                fn handle_query<'a>(&self, message_packet: &::ixc::message_api::message::Message, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
+                fn handle_query<'a>(&self, message_packet: &::ixc::message_api::message::Message, callbacks: &dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::error::HandlerError> {
                     let sel = message_packet.request().message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_QUERY_ROUTES, sel) {
                         return rt(self, message_packet, callbacks, allocator)
@@ -116,16 +135,16 @@ pub(crate) fn handler(attr: TokenStream2, mut item: ItemMod) -> manyhow::Result<
 
                     #(#trait_query_routers)*
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    #not_handled
                 }
 
-                fn handle_system<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::code::ErrorCode> {
+                fn handle_system<'a>(&self, caller: &::ixc::message_api::AccountID, message_packet: &::ixc::message_api::message::Message, callbacks: &mut dyn ::ixc::message_api::handler::HostBackend, allocator: &'a dyn ::ixc::message_api::handler::Allocator) -> ::core::result::Result<::ixc::message_api::message::Response<'a>, ::ixc::message_api::error::HandlerError> {
                     let sel = message_packet.request().message_selector();
                     if let Some(rt) = ::ixc::core::routing::find_route(<#handler as ::ixc::core::routing::Router>::SORTED_SYSTEM_ROUTES, sel) {
                         return rt(self, caller, message_packet, callbacks, allocator)
                     }
 
-                    Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled))
+                    #not_handled
                 }
             }
         },
@@ -271,8 +290,11 @@ pub(crate) struct FromAttr {}
 /// and any other attributes on the function.
 #[derive(Debug)]
 pub(crate) struct PublishedFnInfo {
+    /// The raw signature of the function.
     pub(crate) signature: Signature,
+    /// The attributes of the function.
     pub(crate) attrs: Vec<Attribute>,
+    /// The type of the function.
     pub(crate) ty: PublishedFnType,
 }
 

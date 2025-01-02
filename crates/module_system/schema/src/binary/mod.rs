@@ -2,9 +2,10 @@
 
 use crate::binary::decoder::decode_value;
 use crate::binary::encoder::encode_value;
-use crate::codec::Codec;
+use crate::codec::{Codec, WellKnownCodec};
 use crate::decoder::DecodeError;
 use crate::encoder::EncodeError;
+use crate::encoding::Encoding;
 use crate::mem::MemoryManager;
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
@@ -35,46 +36,16 @@ impl Codec for NativeBinaryCodec {
     }
 }
 
+impl WellKnownCodec for NativeBinaryCodec {
+    const ENCODING: Encoding = Encoding::NativeBinary;
+}
+
 #[cfg(test)]
 mod tests {
     use crate::codec::{decode_value, Codec};
     use crate::mem::MemoryManager;
-    use alloc::string::String;
-    use alloc::vec::Vec;
-    use ixc_schema_macros::SchemaValue;
+    use crate::testdata::ABitOfEverything;
     use proptest::prelude::*;
-    use proptest_derive::Arbitrary;
-
-    #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
-    #[non_exhaustive]
-    struct ABitOfEverything {
-        primitives: Prims,
-        s: String,
-        // t: Time,
-        // d: Duration,
-        v: Vec<u8>,
-        ls: Vec<String>,
-        li: Vec<i32>,
-        lp: Vec<Prims>,
-        os: Option<String>,
-        op: Option<Prims>,
-    }
-
-    #[derive(SchemaValue, Default, Debug, Eq, PartialEq, Arbitrary)]
-    #[non_exhaustive]
-    struct Prims {
-        a_u8: u8,
-        a_u16: u16,
-        a_u32: u32,
-        a_u64: u64,
-        a_u128: u128,
-        a_i8: i8,
-        a_i16: i16,
-        a_i32: i32,
-        a_i64: i64,
-        a_i128: i128,
-        a_bool: bool,
-    }
 
     proptest! {
         #[test]

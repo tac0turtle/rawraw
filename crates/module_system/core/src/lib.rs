@@ -16,10 +16,13 @@ pub mod result;
 pub mod routing;
 mod unique_id;
 
+#[cfg(feature = "std")]
+pub mod schema;
+
 pub use account_api::create_account;
 pub use context::Context;
 pub use events::EventBus;
-pub use handler::Service;
+pub use handler::{ClientFactory, Service};
 pub use result::Result;
 pub use unique_id::new_unique_id;
 
@@ -30,13 +33,13 @@ macro_rules! error {
         $crate::error::HandlerError::new_from_code($code)
     };
     ($code:path, $str:literal, $($arg:tt)*) => {
-        $crate::error::HandlerError::new_fmt_with_code($code, core::format_args!($str, $($arg)*))
+        $crate::error::HandlerError::new_fmt_with_code($code, ::core::format_args!($str, $($arg)*))
     };
     ($str:literal) => {
-        $crate::error::HandlerError::new($str.to_string())
+        $crate::error::HandlerError::new_fmt(::core::format_args!($str))
     };
     ($str:literal, $($arg:tt)*) => {
-        $crate::error::HandlerError::new_fmt(core::format_args!($str, $($arg)*))
+        $crate::error::HandlerError::new_fmt(::core::format_args!($str, $($arg)*))
     };
 }
 

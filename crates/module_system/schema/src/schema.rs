@@ -1,32 +1,37 @@
 //! Schema definition.
+
+// WARNING: this is a terrible hack to make macros work
+// either with ixc_schema or just ixc with the use_ixc_macro_path feature,
+// hopefully some day we find a better solution!
+#[cfg(feature = "use_ixc_macro_path")]
+pub use crate::*;
+
 use crate::enums::EnumType;
-use crate::message::MessageDescriptor;
-use crate::oneof::OneOfType;
-use crate::state_object::StateObjectType;
 use crate::structs::StructType;
+pub use crate::SchemaValue;
+pub use ixc_schema_macros::SchemaValue;
 
 /// A type in a schema.
 #[non_exhaustive]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Default, SchemaValue)]
+#[repr(u8)]
 pub enum SchemaType<'a> {
+    /// An invalid type.
+    #[default]
+    Invalid,
     /// A struct type.
     Struct(StructType<'a>),
     /// An enum type.
     Enum(EnumType<'a>),
-    /// A one-of type.
-    OneOf(OneOfType<'a>),
-    /// A state object type.
-    StateObjectType(StateObjectType<'a>),
 }
 
 impl<'a> SchemaType<'a> {
     /// Get the name of the schema type.
     pub const fn name(&self) -> &'a str {
         match self {
+            SchemaType::Invalid => "",
             SchemaType::Struct(s) => s.name,
             SchemaType::Enum(e) => e.name,
-            SchemaType::OneOf(o) => o.name,
-            SchemaType::StateObjectType(s) => s.name,
         }
     }
 }
@@ -42,27 +47,3 @@ impl Ord for SchemaType<'_> {
         self.name().cmp(other.name())
     }
 }
-
-/// A schema.
-#[non_exhaustive]
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
-pub struct Schema<'a> {
-    types: &'a [SchemaType<'a>],
-    messages: &'a [MessageDescriptor<'a>],
-}
-
-// impl Schema<'static> {
-//     pub const fn add(&self, schema_type: SchemaType<'static>) -> Self {
-//         todo!()
-//     }
-// }
-//
-// pub trait HasSchema {
-//     const SCHEMA: Schema<'static>;
-// }
-
-// WARNING: this is a terrible hack to make macros work
-// either with ixc_schema or just ixc with the use_ixc_macro_path feature,
-// hopefully some day we find a better solution!
-#[cfg(feature = "use_ixc_macro_path")]
-pub(crate) use crate::*;

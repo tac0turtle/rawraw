@@ -4,7 +4,6 @@
 pub mod bank {
     use ixc::*;
     use ixc_core::error::unimplemented_ok;
-    use ixc_core::handler::Service;
     use mockall::automock;
 
     #[derive(Resources)]
@@ -17,15 +16,21 @@ pub mod bank {
         super_admin: Item<AccountID>,
         #[state(prefix = 4)]
         global_send_hook: Item<AccountID>,
-        #[state(prefix = 5)]
+        #[state(prefix = 5, key(denom), value(admin))]
         denom_admins: Map<Str, AccountID>,
-        #[state(prefix = 6)]
+        #[state(prefix = 6, key(denom), value(hook))]
         denom_send_hooks: Map<Str, AccountID>,
-        #[state(prefix = 6)]
+        #[state(prefix = 6, key(denom), value(hook))]
         _denom_burn_hooks: Map<Str, AccountID>,
+        #[client_factory]
+        receive_hook_client_factory: ClientFactory<dyn ReceiveHook>,
+        #[client_factory]
+        burn_hook_client_factory: ClientFactory<dyn BurnHook>,
+        #[client_factory]
+        send_hook_client_factory: ClientFactory<dyn SendHook>,
     }
 
-    #[derive(SchemaValue, Clone, Default)]
+    #[derive(SchemaValue, Clone, Default, Debug, Eq, PartialEq)]
     #[sealed]
     pub struct Coin<'a> {
         pub denom: &'a str,
@@ -97,7 +102,7 @@ pub mod bank {
         ) -> Result<()>;
     }
 
-    #[derive(SchemaValue, Clone, Default)]
+    #[derive(SchemaValue, Clone, Default, Debug, Eq, PartialEq)]
     #[non_exhaustive]
     pub struct EventSend<'a> {
         pub from: AccountID,
@@ -105,7 +110,7 @@ pub mod bank {
         pub coin: Coin<'a>,
     }
 
-    #[derive(SchemaValue, Clone, Default)]
+    #[derive(SchemaValue, Clone, Default, Debug, Eq, PartialEq)]
     #[non_exhaustive]
     pub struct EventMint<'a> {
         pub to: AccountID,
@@ -158,15 +163,15 @@ pub mod bank {
             let global_send = self.global_send_hook.get(ctx)?;
             for coin in amount {
                 if !global_send.is_empty() {
-                    let hook_client = <dyn SendHook>::new_client(global_send);
+                    let hook_client = self.send_hook_client_factory.new_client(global_send);
                     hook_client.on_send(ctx, ctx.caller(), to, coin.denom, coin.amount)?;
                 }
                 if let Some(hook) = self.denom_send_hooks.get(ctx, coin.denom)? {
-                    let hook_client = <dyn SendHook>::new_client(hook);
+                    let hook_client = self.send_hook_client_factory.new_client(hook);
                     hook_client.on_send(ctx, ctx.caller(), to, coin.denom, coin.amount)?;
                 }
                 let from = ctx.caller();
-                let receive_hook = <dyn ReceiveHook>::new_client(to);
+                let receive_hook = self.receive_hook_client_factory.new_client(to);
                 unimplemented_ok(receive_hook.on_receive(ctx, from, coin.denom, coin.amount))?;
                 self.balances
                     .safe_sub(ctx, (from, coin.denom), coin.amount)?;
@@ -226,6 +231,7 @@ pub mod bank {
 mod tests {
     use super::bank::*;
     use ixc_core::account_api::ROOT_ACCOUNT;
+    use ixc_core::handler::Client;
     use ixc_testing::*;
 
     #[test]
@@ -260,6 +266,17 @@ mod tests {
             .create_denom(&mut root, "foo", alice_id)
             .unwrap();
         bank_client.mint(&mut alice, alice_id, "foo", 1000).unwrap();
+        assert_eq!(
+            app.last_message_events()
+                .select::<EventMint>(bank_client.target_account()),
+            vec![EventMint {
+                to: alice_id,
+                coin: Coin {
+                    denom: "foo".into(),
+                    amount: 1000
+                }
+            }]
+        );
 
         // ensure alice has 1000 foo coins
         let alice_balance = bank_client.get_balance(&alice, alice_id, "foo").unwrap();
@@ -277,6 +294,18 @@ mod tests {
                 }],
             )
             .unwrap();
+        assert_eq!(
+            app.last_message_events()
+                .select::<EventSend>(bank_client.target_account()),
+            vec![EventSend {
+                from: alice_id,
+                to: bob.self_account_id(),
+                coin: Coin {
+                    denom: "foo".into(),
+                    amount: 100
+                }
+            }]
+        );
 
         // ensure alice has 900 foo coins and bob has 100 foo coins
         let alice_balance = bank_client
@@ -298,4 +327,6 @@ mod tests {
     }
 }
 
-fn main() {}
+fn main() {
+    ixc_core::schema::print_handler_schema::<bank::Bank>().unwrap();
+}

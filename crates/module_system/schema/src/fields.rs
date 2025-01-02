@@ -1,8 +1,14 @@
+//! Special traits for fields.
+//! This is sort of an internal module which is used
+//! for constructing state object key and value tuples.
 use crate::field::Field;
 use crate::types::{to_field, Type};
 
+/// A trait representing a set of fields.
 pub trait FieldTypes {
+    /// The number of fields in the set.
     const N: usize;
+    /// The definition of the fields in the set.
     const FIELDS: &'static [Field<'static>];
 }
 impl FieldTypes for () {

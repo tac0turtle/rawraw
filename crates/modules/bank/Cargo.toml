@@ -1,0 +1,26 @@
+[package]
+name = "ixc_bank"
+version = "0.1.0"
+edition = "2021"
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ixc = { workspace = true }
+ixc_core = { workspace = true }
+ixc_schema = { workspace = true }
+ixc_message_api = { workspace = true }
+ixc_collections = { workspace = true }
+ixc_core_macros = { workspace = true }
+ixc_schema_macros = { workspace = true }
+mockall = "0.13.0"
+
+[dev-dependencies]
+ixc_testing = { path = "../../module_system/testing" }
+arrayvec = "0.7.6"
+thiserror = "1.0.63"
+num_enum = "0.7.3"
+
+[lints]
+workspace = true

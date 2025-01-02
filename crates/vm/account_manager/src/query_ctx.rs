@@ -1,4 +1,5 @@
 use crate::call_stack::CallStack;
+use crate::gas_stack::GasStack;
 use crate::state_handler::{get_account_handler_id, StateHandler};
 use crate::{AccountManager, ReadOnlyStoreWrapper};
 use allocator_api2::alloc::Allocator;
@@ -16,6 +17,7 @@ pub(crate) struct QueryContext<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_
     account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
     state_handler: &'a ST,
     call_stack: &'b CallStack<CALL_STACK_LIMIT>,
+    gas_stack: &'b GasStack<CALL_STACK_LIMIT>,
 }
 
 impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
@@ -25,11 +27,13 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
         account_manager: &'a AccountManager<'a, CM, CALL_STACK_LIMIT>,
         state_handler: &'a ST,
         call_stack: &'b CallStack<CALL_STACK_LIMIT>,
+        gas_stack: &'b GasStack<CALL_STACK_LIMIT>,
     ) -> Self {
         Self {
             account_manager,
             state_handler,
             call_stack,
+            gas_stack,
         }
     }
 }
@@ -40,7 +44,7 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn invoke_msg<'c>(
         &mut self,
         _message: &Message,
-        _invoke_params: &InvokeParams<'c>,
+        _invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
         Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
@@ -50,8 +54,9 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn invoke_query<'c>(
         &self,
         message: &Message,
-        invoke_params: &InvokeParams<'c>,
+        invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let target_account = message.target_account();
         let allocator = invoke_params.allocator;
 
@@ -59,35 +64,37 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
             return self.handle_system_query(message.request(), allocator);
         }
 
-        let gas = &self.call_stack.gas;
-
         // find the account's handler ID
-        let handler_id =
-            get_account_handler_id(self.state_handler, target_account, gas, allocator)?
-                .ok_or(SystemCode(AccountNotFound))?;
+        let handler_id = get_account_handler_id(
+            self.state_handler,
+            target_account,
+            self.gas_stack.meter(),
+            allocator,
+        )?
+        .ok_or(SystemCode(AccountNotFound))?;
 
         // create a nested execution frame for the target account
-        self.call_stack.push(target_account, None)?;
+        let call_scope = self.call_stack.push(target_account)?;
 
         // run the handler
         let handler = self.account_manager.code_manager.resolve_handler(
-            &ReadOnlyStoreWrapper::wrap(self.state_handler, gas, allocator),
+            &ReadOnlyStoreWrapper::wrap(self.state_handler, self.gas_stack.meter(), allocator),
             handler_id,
             allocator,
         )?;
 
         let res = handler.handle_query(message, self, allocator);
 
-        // pop the call stack
-        self.call_stack.pop();
-
-        res
+        // pop the call & gas stacks
+        call_scope.pop();
+        gas_scope.pop();
+        res.map_err(|e| e.code)
     }
 
     fn update_state<'c>(
         &mut self,
         _req: &Request,
-        _invoke_params: &InvokeParams<'c>,
+        _invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
         Err(SystemCode(
             ixc_message_api::code::SystemCode::VolatileAccessError,
@@ -97,16 +104,26 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize> HostBa
     fn query_state<'c>(
         &self,
         req: &Request,
-        invoke_params: &InvokeParams<'c>,
+        invoke_params: &InvokeParams<'c, '_>,
     ) -> Result<Response<'c>, ErrorCode> {
+        let gas_scope = self.gas_stack.push(invoke_params.gas_tracker)?;
         let active_account = self.call_stack.active_account()?;
-        let gas_meter = &self.call_stack.gas;
-        self.state_handler
-            .handle_query(active_account, req, gas_meter, invoke_params.allocator)
+        let res = self.state_handler.handle_query(
+            active_account,
+            req,
+            self.gas_stack.meter(),
+            invoke_params.allocator,
+        );
+        gas_scope.pop();
+        res
     }
 
     fn consume_gas(&self, gas: u64) -> Result<(), ErrorCode> {
-        self.call_stack.consume_gas(gas)
+        self.gas_stack.meter().consume(gas)
+    }
+
+    fn out_of_gas(&self) -> Result<bool, ErrorCode> {
+        Ok(self.gas_stack.meter().out_of_gas())
     }
 }
 
@@ -135,9 +152,13 @@ impl<'b, 'a: 'b, CM: VM, ST: StateHandler, const CALL_STACK_LIMIT: usize>
         let account_id = req.in1().expect_account_id()?;
 
         // look up the handler ID
-        let gas = &self.call_stack.gas;
-        let handler_id = get_account_handler_id(self.state_handler, account_id, gas, allocator)?
-            .ok_or(SystemCode(AccountNotFound))?;
+        let handler_id = get_account_handler_id(
+            self.state_handler,
+            account_id,
+            self.gas_stack.meter(),
+            allocator,
+        )?
+        .ok_or(SystemCode(AccountNotFound))?;
 
         // copy the handler ID to the out pointer
 

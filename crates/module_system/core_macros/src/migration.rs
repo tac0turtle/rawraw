@@ -7,6 +7,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{FnArg, ImplItemFn, Type};
 
+/// Collects the information from the #[on_migrate] attribute.
 pub(crate) fn collect_on_migrate_info(
     item_fn: &mut ImplItemFn,
     attr: OnMigrateAttr,
@@ -91,7 +92,7 @@ pub(crate) fn build_on_migrate_handler(
             cases.push(quote! {
                 <#from as ::ixc::core::handler::HandlerResources>::NAME => {
                     let old_handler = <#from as ::ixc::core::resource::Resources>::new(&scope)
-                        .map_err(|_| ::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::InvalidHandler))?;
+                        .map_err(|_| ::ixc::message_api::error::HandlerError::new(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::InvalidHandler)))?;
                     h.#fn_name(&mut ctx, &old_handler)
                 },
             });
@@ -107,7 +108,7 @@ pub(crate) fn build_on_migrate_handler(
                         let scope: ::ixc::core::resource::ResourceScope<'_> = ::core::default::Default::default();
                         let res = match old_handler_id {
                             #(#cases)*
-                            _ => return Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled)),
+                            _ => return Err(::ixc::message_api::code::ErrorCode::SystemCode(::ixc::message_api::code::SystemCode::MessageNotHandled).into()),
                         };
                         ::ixc::core::low_level::encode_default_response(res)
                     }

@@ -2,7 +2,6 @@
 
 use crate::code::{ErrorCode, SystemCode};
 use crate::AccountID;
-use alloc::string::String;
 
 /// A message.
 #[non_exhaustive]
@@ -21,11 +20,11 @@ pub type MessageSelector = u64;
 #[non_exhaustive]
 #[repr(C)]
 pub struct Request<'a> {
-    /// The message selector.
-    message_selector: MessageSelector,
-    /// The inputs to the message.
-    /// There can be up to three inputs.
-    inputs: [Param<'a>; 3],
+    // this struct is packed in this order so that we have the largest and most aligned items first
+    // and then smaller and less aligned items last
+    inputs_values: [ParamValue<'a>; 3], // size 16 * 3, aligned to 16 bytes
+    message_selector: MessageSelector,  // size 8, aligned to 8 bytes
+    inputs_types: [ParamType; 3],       // size 3, aligned to 1 byte
 }
 
 /// A message response.
@@ -33,27 +32,49 @@ pub struct Request<'a> {
 #[derive(Default)]
 #[repr(C)]
 pub struct Response<'a> {
-    /// The outputs of the message.
-    /// There can be up to two outputs.
-    outputs: [Param<'a>; 2],
+    outputs_values: [ParamValue<'a>; 2], // size 16 * 2, aligned to 16 bytes
+    outputs_types: [ParamType; 2],       // size 2, aligned to 1 byte
 }
 
 /// A message response.
 #[derive(Default)]
-#[non_exhaustive]
-#[repr(C, u8)]
-pub enum Param<'a> {
+pub struct Param<'a> {
+    value: ParamValue<'a>,
+    typ: ParamType,
+}
+
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+enum ParamType {
     /// An empty response.
     #[default]
     Empty,
     /// A slice parameter.
-    Slice(&'a [u8]),
+    Slice,
     /// A String parameter.
-    String(&'a str),
+    String,
     /// A u128 parameter.
-    U128(u128),
+    U128,
+    /// A u64 parameter.
+    U64,
     /// An account ID parameter.
-    AccountID(AccountID),
+    AccountID,
+}
+
+#[derive(Clone, Copy)]
+union ParamValue<'a> {
+    empty: (),
+    slice: &'a [u8],
+    string: &'a str,
+    u128: u128,
+    u64: u64,
+    account_id: AccountID,
+}
+
+impl Default for ParamValue<'_> {
+    fn default() -> Self {
+        Self { empty: () }
+    }
 }
 
 impl<'a> Message<'a> {
@@ -81,36 +102,17 @@ impl<'a> Request<'a> {
     pub fn new(message_selector: MessageSelector) -> Self {
         Self {
             message_selector,
-            inputs: Default::default(),
+            inputs_values: Default::default(),
+            inputs_types: Default::default(),
         }
-    }
-
-    pub fn new1_g(message_selector: MessageSelector, in1: impl Into<Param<'a>>) -> Self {
-        Self::new1(message_selector, in1.into())
-    }
-
-    pub fn new2_g(
-        message_selector: MessageSelector,
-        in1: impl Into<Param<'a>>,
-        in2: impl Into<Param<'a>>,
-    ) -> Self {
-        Self::new2(message_selector, in1.into(), in2.into())
-    }
-
-    pub fn new3_g(
-        message_selector: MessageSelector,
-        in1: impl Into<Param<'a>>,
-        in2: impl Into<Param<'a>>,
-        in3: impl Into<Param<'a>>,
-    ) -> Self {
-        Self::new3(message_selector, in1.into(), in2.into(), in3.into())
     }
 
     /// Create a new request with one input.
     pub fn new1(message_selector: MessageSelector, in1: Param<'a>) -> Self {
         Self {
             message_selector,
-            inputs: [in1, Param::Empty, Param::Empty],
+            inputs_values: [in1.value, ParamValue::default(), ParamValue::default()],
+            inputs_types: [in1.typ, ParamType::Empty, ParamType::Empty],
         }
     }
 
@@ -118,7 +120,8 @@ impl<'a> Request<'a> {
     pub fn new2(message_selector: MessageSelector, in1: Param<'a>, in2: Param<'a>) -> Self {
         Self {
             message_selector,
-            inputs: [in1, in2, Param::Empty],
+            inputs_values: [in1.value, in2.value, ParamValue::default()],
+            inputs_types: [in1.typ, in2.typ, ParamType::Empty],
         }
     }
 
@@ -131,7 +134,8 @@ impl<'a> Request<'a> {
     ) -> Self {
         Self {
             message_selector,
-            inputs: [in1, in2, in3],
+            inputs_values: [in1.value, in2.value, in3.value],
+            inputs_types: [in1.typ, in2.typ, in3.typ],
         }
     }
 
@@ -141,50 +145,26 @@ impl<'a> Request<'a> {
     }
 
     /// Get the first input parameter.
-    pub fn in1(&self) -> &Param<'a> {
-        &self.inputs[0]
+    pub fn in1(&self) -> Param<'a> {
+        Param {
+            typ: self.inputs_types[0],
+            value: self.inputs_values[0],
+        }
     }
 
     /// Get the second input parameter.
-    pub fn in2(&self) -> &Param<'a> {
-        &self.inputs[1]
+    pub fn in2(&self) -> Param<'a> {
+        Param {
+            typ: self.inputs_types[1],
+            value: self.inputs_values[1],
+        }
     }
 
     /// Get the third input parameter.
-    pub fn in3(&self) -> &Param<'a> {
-        &self.inputs[2]
-    }
-
-    pub fn borrow_in1<'b, T>(&'b self) -> Result<Option<T>, ErrorCode>
-    where
-        'a: 'b,
-        T: TryFrom<&'b Param<'a>, Error = ErrorCode>,
-    {
-        match &self.inputs[0] {
-            Param::Empty => Ok(None),
-            other => T::try_from(other).map(Some),
-        }
-    }
-
-    pub fn borrow_in2<'b, T>(&'b self) -> Result<Option<T>, ErrorCode>
-    where
-        'a: 'b,
-        T: TryFrom<&'b Param<'a>, Error = ErrorCode>,
-    {
-        match &self.inputs[1] {
-            Param::Empty => Ok(None),
-            other => T::try_from(other).map(Some),
-        }
-    }
-
-    pub fn borrow_in3<'b, T>(&'b self) -> Result<Option<T>, ErrorCode>
-    where
-        'a: 'b,
-        T: TryFrom<&'b Param<'a>, Error = ErrorCode>,
-    {
-        match &self.inputs[2] {
-            Param::Empty => Ok(None),
-            other => T::try_from(other).map(Some),
+    pub fn in3(&self) -> Param<'a> {
+        Param {
+            typ: self.inputs_types[2],
+            value: self.inputs_values[2],
         }
     }
 }
@@ -198,207 +178,156 @@ impl<'a> Response<'a> {
     /// Create a new response with one output.
     pub fn new1(out1: Param<'a>) -> Self {
         Self {
-            outputs: [out1, Param::Empty],
+            outputs_values: [out1.value, ParamValue::default()],
+            outputs_types: [out1.typ, ParamType::Empty],
         }
     }
 
     /// Create a new response with two outputs.
     pub fn new2(out1: Param<'a>, out2: Param<'a>) -> Self {
         Self {
-            outputs: [out1, out2],
+            outputs_values: [out1.value, out2.value],
+            outputs_types: [out1.typ, out2.typ],
         }
     }
 
     /// Get the first output parameter.
-    pub fn out1(&self) -> &Param<'a> {
-        &self.outputs[0]
+    pub fn out1(&self) -> Param<'a> {
+        Param {
+            typ: self.outputs_types[0],
+            value: self.outputs_values[0],
+        }
     }
 
     /// Get the second output parameter.
-    pub fn out2(&self) -> &Param<'a> {
-        &self.outputs[1]
+    pub fn out2(&self) -> Param<'a> {
+        Param {
+            typ: self.outputs_types[1],
+            value: self.outputs_values[1],
+        }
     }
 }
 
 impl<'a> Param<'a> {
     /// Expect the parameter to be a slice or return an encoding error.
     pub fn expect_bytes(&self) -> Result<&'a [u8], ErrorCode> {
-        match self {
-            Param::Slice(slice) => Ok(slice),
+        match self.typ {
+            ParamType::Slice => unsafe { Ok(self.value.slice) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 
     /// Expect the parameter to be a string or return an encoding error.
     pub fn expect_string(&self) -> Result<&'a str, ErrorCode> {
-        match self {
-            Param::String(string) => Ok(string),
+        match self.typ {
+            ParamType::String => unsafe { Ok(self.value.string) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 
     /// Expect the parameter to be a u128 or return an encoding error.
     pub fn expect_u128(&self) -> Result<u128, ErrorCode> {
-        match self {
-            Param::U128(u128) => Ok(*u128),
+        match self.typ {
+            ParamType::U128 => unsafe { Ok(self.value.u128) },
+            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+        }
+    }
+
+    /// Expect the parameter to be a u64 or return an encoding error.
+    pub fn expect_u64(&self) -> Result<u64, ErrorCode> {
+        match self.typ {
+            ParamType::U64 => unsafe { Ok(self.value.u64) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 
     /// Expect the parameter to be an account ID or return an encoding error.
     pub fn expect_account_id(&self) -> Result<AccountID, ErrorCode> {
-        match self {
-            Param::AccountID(account_id) => Ok(*account_id),
+        match self.typ {
+            ParamType::AccountID => unsafe { Ok(self.value.account_id) },
             _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
         }
     }
 
+    /// Returns true if the parameter is empty.
     pub fn is_empty(&self) -> bool {
-        matches!(self, Param::Empty)
+        self.typ == ParamType::Empty
     }
-}
 
-impl<'a> TryFrom<&'a Param<'a>> for &'a AccountID {
-    type Error = ErrorCode;
+    /// Returns the paremeter as a slice if it is a slice.
+    pub fn as_slice(&self) -> Option<&'a [u8]> {
+        match self.typ {
+            ParamType::Slice => unsafe { Some(self.value.slice) },
+            _ => None,
+        }
+    }
 
-    fn try_from(value: &'a Param<'a>) -> Result<Self, Self::Error> {
-        match value {
-            Param::AccountID(account_id) => Ok(account_id),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
+    /// Returns the parameter as a string if it is a string.
+    pub fn as_string(&self) -> Option<&'a str> {
+        match self.typ {
+            ParamType::String => unsafe { Some(self.value.string) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as a u128 if it is a u128.
+    pub fn as_u128(&self) -> Option<u128> {
+        match self.typ {
+            ParamType::U128 => unsafe { Some(self.value.u128) },
+            _ => None,
+        }
+    }
+
+    /// Returns the parameter as an account ID if it is an account ID.
+    pub fn as_account_id(&self) -> Option<AccountID> {
+        match self.typ {
+            ParamType::AccountID => unsafe { Some(self.value.account_id) },
+            _ => None,
         }
     }
 }
-
-impl<'a> TryFrom<&'a Param<'a>> for &'a [u8] {
-    type Error = ErrorCode;
-    fn try_from(value: &'a Param<'a>) -> Result<Self, Self::Error> {
-        match value {
-            Param::Slice(slice) => Ok(slice),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
-        }
-    }
-}
-
-impl<'a> TryFrom<&'a Param<'a>> for &'a str {
-    type Error = ErrorCode;
-    fn try_from(value: &'a Param<'a>) -> Result<Self, Self::Error> {
-        match value {
-            Param::String(s) => Ok(s),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
-        }
-    }
-}
-
-impl<'a> TryFrom<&'a Param<'a>> for u128 {
-    type Error = ErrorCode;
-    fn try_from(value: &'a Param<'a>) -> Result<Self, Self::Error> {
-        match value {
-            Param::U128(num) => Ok(*num),
-            _ => Err(ErrorCode::SystemCode(SystemCode::EncodingError)),
-        }
-    }
-}
-
 
 impl<'a> From<&'a [u8]> for Param<'a> {
     fn from(slice: &'a [u8]) -> Self {
-        Param::Slice(slice)
+        Param {
+            typ: ParamType::Slice,
+            value: ParamValue { slice },
+        }
     }
 }
 
 impl<'a> From<&'a str> for Param<'a> {
     fn from(string: &'a str) -> Self {
-        Param::String(string)
+        Param {
+            typ: ParamType::String,
+            value: ParamValue { string },
+        }
     }
 }
 
 impl From<u128> for Param<'_> {
     fn from(u128: u128) -> Self {
-        Param::U128(u128)
+        Param {
+            typ: ParamType::U128,
+            value: ParamValue { u128 },
+        }
+    }
+}
+
+impl From<u64> for Param<'_> {
+    fn from(u64: u64) -> Self {
+        Param {
+            typ: ParamType::U64,
+            value: ParamValue { u64 },
+        }
     }
 }
 
 impl From<AccountID> for Param<'_> {
     fn from(account_id: AccountID) -> Self {
-        Param::AccountID(account_id)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_borrow_in1() {
-        // Create a request with the first param as a byte slice.
-        let input_bytes = b"hello";
-        let req = Request::new1_g(MessageSelector::default(), input_bytes.as_slice());
-
-        // Borrow the first param as &[u8].
-        let got = req
-            .borrow_in1::<&[u8]>()
-            .expect("Failed to borrow_in1")
-            .expect("Expected param not to be empty");
-
-        assert_eq!(got, input_bytes);
-    }
-
-    #[test]
-    fn test_borrow_in2() {
-        // Create a request with two params: first is a string, second is a u128.
-        let input_str = "world";
-        let input_num = 123u128;
-        let req = Request::new2_g(MessageSelector::default(), input_str, input_num);
-
-        // Borrow the second param as a u128.
-        let got_second = req
-            .borrow_in2::<u128>()
-            .expect("Failed to borrow_in2")
-            .expect("Expected second param not to be empty");
-
-        assert_eq!(got_second, input_num);
-
-        // (Optional) Borrow the first param as a &str to verify it's still correct.
-        let got_first = req
-            .borrow_in1::<&str>()
-            .expect("Failed to borrow_in1")
-            .expect("Expected first param not to be empty");
-        assert_eq!(got_first, input_str);
-    }
-
-    #[test]
-    fn test_borrow_in3() {
-        // Create a request with three params: &str, &[u8], AccountID.
-        let input_str = "test_str";
-        let input_bytes = b"test_bytes";
-        let input_account = AccountID::new(999);
-
-        let req = Request::new3_g(
-            MessageSelector::default(),
-            input_str,
-            input_bytes.as_slice(),
-            input_account,
-        );
-
-        // Borrow the third param as an AccountID.
-        let got_third = req
-            .borrow_in3::<&AccountID>()
-            .expect("Failed to borrow_in3")
-            .expect("Expected third param not to be empty");
-
-        assert_eq!(got_third.to_bytes(), input_account.to_bytes());
-
-        // (Optional) check first and second too:
-        let got_first = req
-            .borrow_in1::<&str>()
-            .expect("Failed to borrow_in1")
-            .expect("Expected first param not to be empty");
-        assert_eq!(got_first, input_str);
-
-        let got_second = req
-            .borrow_in2::<&[u8]>()
-            .expect("Failed to borrow_in2")
-            .expect("Expected second param not to be empty");
-        assert_eq!(got_second, input_bytes);
+        Param {
+            typ: ParamType::AccountID,
+            value: ParamValue { account_id },
+        }
     }
 }
