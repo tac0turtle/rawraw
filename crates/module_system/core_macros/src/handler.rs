@@ -7,6 +7,7 @@ use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::{Attribute, FnArg, ImplItemFn, Item, ItemMod, Signature, Type};
 
+/// HandlerArgs is the argument to the #[handler] attribute.
 #[derive(deluxe::ParseMetaItem)]
 struct HandlerArgs(Ident);
 
@@ -289,8 +290,11 @@ pub(crate) struct FromAttr {}
 /// and any other attributes on the function.
 #[derive(Debug)]
 pub(crate) struct PublishedFnInfo {
+    /// The raw signature of the function.
     pub(crate) signature: Signature,
+    /// The attributes of the function.
     pub(crate) attrs: Vec<Attribute>,
+    /// The type of the function.
     pub(crate) ty: PublishedFnType,
 }
 

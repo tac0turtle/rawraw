@@ -10,13 +10,11 @@ members = [
     "crates/module_system/message_api",
     "crates/module_system/testing",
     "crates/module_system/util/simple_time",
-    #    "codecs/proto",
-    #    "codecs/evm",
-    #    "vm/wasmtime",
     "crates/vm/api",
     "crates/vm/account_manager",
     "example",
     "crates/executor/state_handler",
+    "crates/modules/bank",
 ]
 
 [workspace.package]
@@ -26,6 +24,17 @@ rust-version = "1.81.0"
 
 [workspace.dependencies]
 allocator-api2 = "0.2.18"
+ixc = { path = "./crates/module_system/ixc" }
+ixc_core = { path = "./crates/module_system/core" }
+ixc_schema = { path = "./crates/module_system/schema", version = "0.0.4", features = [
+    "use_ixc_macro_path",
+] }
+ixc_message_api = { path = "./crates/module_system/message_api", version = "0.0.4" }
+ixc_collections = { path = "./crates/module_system/collections", version = "0.0.4" }
+ixc_core_macros = { path = "./crates/module_system/core_macros", version = "0.0.4" }
+ixc_schema_macros = { path = "./crates/module_system/schema_macros", version = "0.0.3", features = [
+    "use_ixc_macro_path",
+] }
 
 [workspace.lints.rust]
 missing_docs = "deny"

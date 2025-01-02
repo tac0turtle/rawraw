@@ -9,6 +9,11 @@ use quote::{format_ident, quote};
 use syn::punctuated::Punctuated;
 use syn::{parse_quote, Item, Pat, PatType, PathArguments, ReturnType, Signature, Type};
 
+/// Builder for generating API implementation code.
+///
+/// This struct is responsible for collecting and generating the necessary code
+/// for implementing handler APIs, including message routing, client implementations,
+/// and service definitions.
 #[derive(Default)]
 pub(crate) struct APIBuilder {
     pub(crate) items: Vec<Item>,
@@ -85,11 +90,19 @@ impl APIBuilder {
         )
     }
 
-    // This is probably the function that does most of the work in the whole macro system.
-    // It extracts the data from the function and generates:
-    // - a message struct
-    // - the code for calling it as a message handler
-    // - a client version of the function
+    /// Extracts method data from a function and generates the necessary
+    /// implementation code.
+    ///
+    /// This function is responsible for:
+    /// - Generating message structs
+    /// - Creating message handlers
+    /// - Implementing client versions of functions
+    /// - Setting up routing
+    ///
+    /// # Parameters
+    /// - `handler_ident`: The identifier of the handler
+    /// - `_handler_ty`: The type of the handler
+    /// - `publish_target`: Information about the function to be published
     pub(crate) fn extract_method_data(
         &mut self,
         handler_ident: &Ident,
@@ -376,6 +389,15 @@ impl APIBuilder {
         Ok(())
     }
 
+    /// Implements the Router trait for a given target.
+    ///
+    /// Generates the implementation of the Router trait which includes:
+    /// - Sorted message routes
+    /// - Sorted query routes
+    /// - Sorted system routes
+    ///
+    /// # Parameters
+    /// - `target`: The type to implement Router for
     pub(crate) fn impl_router(&mut self, target: TokenStream2) -> manyhow::Result<()> {
         let routes = &self.routes;
         let query_routes = &self.query_routes;
