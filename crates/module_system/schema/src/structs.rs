@@ -54,15 +54,18 @@ pub struct StructType<'a> {
     /// Sealed indicates whether new fields can be added to the struct.
     /// If sealed is true, the struct is considered sealed and new fields cannot be added.
     pub sealed: bool,
+    /// The type selector of the struct, used to decode it when packed as an AnyMessage.
+    pub type_selector: u64,
 }
 
 impl<'a> StructType<'a> {
     /// Create a new struct type.
-    pub const fn new(name: &'a str, fields: &'a [Field<'a>], sealed: bool) -> Self {
+    pub const fn new(name: &'a str, fields: &'a [Field<'a>], sealed: bool, type_selector: u64) -> Self {
         Self {
             name,
             fields,
             sealed,
+            type_selector,
         }
     }
 }

@@ -11,7 +11,7 @@ use crate::enums::EnumSchema;
 use crate::field::Field;
 use crate::kind::Kind;
 use crate::schema::SchemaType;
-use crate::structs::StructSchema;
+use crate::structs::{StructSchema, StructType};
 use crate::SchemaValue;
 use allocator_api2::alloc::Allocator;
 use allocator_api2::vec::Vec;
@@ -50,7 +50,7 @@ pub const fn to_field<T: Type>() -> Field<'static> {
         name: "",
         kind: T::KIND,
         nullable: T::NULLABLE,
-        element_kind: None,
+        element_kind: T::ELEMENT_KIND,
         referenced_type: None,
     };
     if let Some(t) = T::SCHEMA_TYPE {
@@ -102,14 +102,19 @@ impl Type for u64 {
 }
 impl ListElementType for u64 {}
 
-/// The `UIntNT` type represents an unsigned N-bit integer.
-pub struct UIntNT<const N: usize>;
-impl<const N: usize> Private for UIntNT<N> {}
-impl<const N: usize> Type for UIntNT<N> {
-    const KIND: Kind = Kind::UIntN;
-    const SIZE_LIMIT: Option<usize> = Some(N);
+// The `UIntNT` type represents an unsigned N-bit integer.
+// pub struct UIntNT<const N: usize>;
+// impl<const N: usize> Private for UIntNT<N> {}
+// impl<const N: usize> Type for UIntNT<N> {
+//     const KIND: Kind = Kind::UIntN;
+//     const SIZE_LIMIT: Option<usize> = Some(N);
+// }
+// impl<const N: usize> ListElementType for UIntNT<N> {}
+impl Private for u128 {}
+impl Type for u128 {
+    const KIND: Kind = Kind::UInt128;
 }
-impl<const N: usize> ListElementType for UIntNT<N> {}
+impl ListElementType for u128 {}
 
 impl Private for i8 {}
 impl Type for i8 {
@@ -135,14 +140,19 @@ impl Type for i64 {
 }
 impl ListElementType for i64 {}
 
-/// The `IntNT` type represents a signed integer represented by N bytes (not bits).
-pub struct IntNT<const N: usize>;
-impl<const N: usize> Private for IntNT<N> {}
-impl<const N: usize> Type for IntNT<N> {
-    const KIND: Kind = Kind::IntN;
-    const SIZE_LIMIT: Option<usize> = Some(N);
+// /// The `IntNT` type represents a signed integer represented by N bytes (not bits).
+// pub struct IntNT<const N: usize>;
+// impl<const N: usize> Private for IntNT<N> {}
+// impl<const N: usize> Type for IntNT<N> {
+//     const KIND: Kind = Kind::Int128;
+//     const SIZE_LIMIT: Option<usize> = Some(N);
+// }
+// impl<const N: usize> ListElementType for IntNT<N> {}
+impl Private for i128 {}
+impl Type for i128 {
+    const KIND: Kind = Kind::Int128;
 }
-impl<const N: usize> ListElementType for IntNT<N> {}
+impl ListElementType for i128 {}
 
 impl Private for bool {}
 impl Type for bool {
@@ -259,12 +269,24 @@ pub struct TypeCollector<'a> {
 impl TypeVisitor for TypeCollector<'_> {
     fn visit<T: Type>(&mut self) {
         if let Some(t) = T::SCHEMA_TYPE {
-            if let Some(existing) = self.types.get(t.name()) {
+            if let Some(existing) = self.types.name_to_type.get(t.name()) {
                 if existing != &t {
                     self.errors.push(t.name());
                 }
             } else {
-                self.types.insert(t.name(), t);
+                self.types.name_to_type.insert(t.name(), t);
+            }
+            if let Some(SchemaType::Struct(struct_type)) = T::SCHEMA_TYPE {
+                if let Some(existing) = self.types.selector_to_type.get(&struct_type.type_selector)
+                {
+                    if existing != &struct_type {
+                        self.errors.push(struct_type.name);
+                    }
+                } else {
+                    self.types
+                        .selector_to_type
+                        .insert(struct_type.type_selector, struct_type);
+                }
             }
         }
         T::visit_referenced_types(self);
@@ -275,14 +297,36 @@ impl<'a> TypeCollector<'a> {
     /// Create a new type collector.
     pub fn new(allocator: &'a dyn Allocator) -> Self {
         Self {
-            types: HashMap::new_in(allocator),
+            types: TypeMap::new(allocator),
             errors: Vec::new_in(allocator),
         }
     }
 }
 
 /// A map of type names to types.
-pub type TypeMap<'a> = HashMap<&'a str, SchemaType<'static>, DefaultHashBuilder, &'a dyn Allocator>;
+pub struct TypeMap<'a> {
+    pub(crate) name_to_type: HashMap<&'a str, SchemaType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
+    pub(crate) selector_to_type: HashMap<u64, StructType<'a>, DefaultHashBuilder, &'a dyn Allocator>,
+}
+
+impl <'a> TypeMap<'a> {
+    pub(crate) fn new(allocator: &'a dyn Allocator) -> Self {
+        Self {
+            name_to_type: HashMap::new_in(allocator),
+            selector_to_type: HashMap::new_in(allocator),
+        }
+    }
+
+    /// Lookup a type by name.
+    pub fn lookup_type_by_name(&self, name: &str) -> Option<&SchemaType<'a>> {
+        self.name_to_type.get(name)
+    }
+
+    /// Lookup a struct type by selector.
+    pub fn lookup_type_by_selector(&self, selector: u64) -> Option<&StructType<'a>> {
+        self.selector_to_type.get(&selector)
+    }
+}
 
 /// Collect this type plus all of the types it references directly or transitively.
 #[cfg(feature = "std")]

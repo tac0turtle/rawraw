@@ -1,34 +1,49 @@
+use alloc::collections::BinaryHeap;
+use crate::any::AnyMessage;
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
+use crate::field::Field;
 use crate::json::escape::escape_json;
 use crate::list::ListEncodeVisitor;
-use crate::structs::{StructEncodeVisitor, StructType};
+use crate::structs::StructEncodeVisitor;
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
 use base64::prelude::*;
 use core::fmt::Write;
 use ixc_message_api::AccountID;
 use simple_time::{Duration, Time};
+use crate::binary::NativeBinaryCodec;
+use crate::codec::Codec;
+use crate::dynamic::{DynamicStruct, DynamicValue};
+use crate::json::JSONCodec;
+use crate::mem::MemoryManager;
 
-/// Encode the value to a JSON string.
-/// This method is intended to be deterministic and performant, so that it is suitable
-/// for signature verification.
-/// It avoids any intermediate allocations and simply writes its output to the provided buffer
-/// which can be configured with a custom allocator.
-pub fn encode_value<A: Allocator>(
-    value: &dyn ValueCodec,
-    writer: &mut allocator_api2::vec::Vec<u8, A>,
-) -> Result<(), EncodeError> {
-    let mut encoder = Encoder {
-        writer: Writer(writer),
-        num_nested_fields_written: 0,
-    };
-    value.encode(&mut encoder)?;
-    Ok(())
+impl JSONCodec<'_> {
+    /// Encode the value to a JSON string.
+    /// This method is intended to be deterministic and performant, so that it is suitable
+    /// for signature verification.
+    /// It avoids any intermediate allocations and simply writes its output to the provided buffer
+    /// which can be configured with a custom allocator.
+    pub fn encode_value<A: Allocator>(
+        &self,
+        value: &dyn ValueCodec,
+        writer: &mut allocator_api2::vec::Vec<u8, A>,
+    ) -> Result<(), EncodeError> {
+        let mut encoder = Encoder {
+            codec: self,
+            writer: Writer(writer),
+            memory_manager: MemoryManager::new(),
+            num_nested_fields_written: 0,
+        };
+        value.encode(&mut encoder)?;
+        Ok(())
+    }
 }
 
 struct Encoder<'a, A: Allocator> {
+    codec: &'a JSONCodec<'a>,
     writer: Writer<'a, A>,
+    memory_manager: MemoryManager,
     // this is only used to avoid writing the field name if a nested object is empty
     num_nested_fields_written: usize,
 }
@@ -99,7 +114,24 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
-        write!(self.writer, "\"{}\"", BASE64_STANDARD.encode(x))
+        write!(self.writer, "\"")?;
+        
+        // calculate the number of bytes needed to encode the string
+        let num_bytes_needed = x.len() * 4 / 3 + 4;
+        // resize the buffer to accommodate the encoded string
+        let cur_buf_len = self.writer.0.len();
+        let proposed_buf_len = cur_buf_len + num_bytes_needed;
+        self.writer.0.resize(proposed_buf_len, 0);
+        // get a mutable slice of the buffer
+        let mut writeable_buf = &mut self.writer.0[cur_buf_len..];
+        let written = BASE64_STANDARD
+            .encode_slice(x, &mut writeable_buf)
+            .map_err(|_| EncodeError::UnknownError)?;
+        // resize the buffer back to the correct size (original + encoded bytes)
+        let real_new_buf_len = cur_buf_len + written;
+        self.writer.0.truncate(real_new_buf_len);
+        
+        write!(self.writer, "\"")
     }
 
     fn encode_list(&mut self, visitor: &dyn ListEncodeVisitor) -> Result<(), EncodeError> {
@@ -114,15 +146,15 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
         write!(self.writer, "]")
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         write!(self.writer, "{{")?;
         let mut first = true;
         let mut pos;
-        for (i, field) in struct_type.fields.iter().enumerate() {
+        for (i, field) in fields.iter().enumerate() {
             pos = self.writer.0.len();
             if !first {
                 write!(self.writer, ",")?;
@@ -152,8 +184,10 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
     }
 
     fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError> {
-        let id: u128 = x.into();
-        self.encode_u128(id)
+        write!(self.writer, "\"")?;
+        self.codec.account_id_codec.encode_str(&x, &mut self.writer)?;
+        write!(self.writer, "\"")?;
+        Ok(())
     }
 
     fn encode_enum_variant(
@@ -182,6 +216,58 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
 
     fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
         todo!()
+    }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        match x {
+            AnyMessage::Empty => {
+                write!(self.writer, "null")?;
+            }
+            AnyMessage::ExecMessage {
+                account,
+                selector,
+                bytes,
+            } => {
+                let schema = self.codec.schema_resolver.schema_for_account(account, &self.memory_manager)
+                    .ok_or(EncodeError::UnknownError)?;
+                let type_map = &schema.type_map;
+                let struct_type = type_map.lookup_type_by_selector(*selector)
+                    .ok_or(EncodeError::UnknownError)?;
+                write!(self.writer, "{{")?;
+                write!(self.writer, "\"account\":\"")?;
+                self.codec.account_id_codec.encode_str(account, &mut self.writer)?;
+                write!(self.writer, "\",")?;
+                write!(self.writer, "\"type\":\"{}\",", struct_type.name)?;
+                let mut dynamic_struct = DynamicValue::Struct(DynamicStruct::new(&struct_type.fields, type_map, &self.memory_manager));
+                let binary_cdc = NativeBinaryCodec;
+                binary_cdc.decode_value(bytes.as_slice(), &self.memory_manager, &mut dynamic_struct)
+                    .map_err(|_| {
+                        log::error!("failed to decode dynamic struct");
+                        EncodeError::UnknownError
+                    })?;
+                write!(self.writer, "\"value\":")?;
+                if let DynamicValue::Struct(dynamic_struct) = dynamic_struct {
+                    self.encode_struct_fields(&dynamic_struct, struct_type.fields)?;
+                } else {
+                    log::error!("failed to decode dynamic struct");
+                    return Err(EncodeError::UnknownError);
+                }
+                write!(self.writer, "}}")?;
+            }
+            AnyMessage::CreateAccount {
+                handler_id,
+                init_data,
+            } => {
+                todo!()
+            }
+            AnyMessage::Migrate {
+                account,
+                new_handler_id,
+            } => {
+                todo!()
+            }
+        }
+        Ok(())
     }
 }
 
@@ -296,13 +382,13 @@ impl<A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
         self.outer.encode_list(visitor)
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         let cur_fields_written = self.outer.num_nested_fields_written;
-        self.outer.encode_struct(visitor, struct_type)?;
+        self.outer.encode_struct_fields(visitor, fields)?;
         // if we've written no fields, then we need to tell the parent writer to truncate the field name
         if self.outer.num_nested_fields_written == cur_fields_written {
             self.mark_not_present()?;
@@ -342,6 +428,10 @@ impl<A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
     }
 
     fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
+        todo!()
+    }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
         todo!()
     }
 }

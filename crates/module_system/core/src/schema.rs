@@ -99,9 +99,10 @@ pub fn extract_handler_schema<H: Handler>(
             .to_string());
     }
     let mut types = Vec::new_in(allocator);
-    for (_, ty) in visitor.type_collector.types.drain() {
-        types.push(ty);
-    }
+    // for (_, ty) in visitor.type_collector.types.drain() {
+    //     types.push(ty);
+    // }
+    todo!();
     let mut res = HandlerSchema::default();
     res.types = List::Owned(types);
     res.messages = List::Owned(visitor.messages);

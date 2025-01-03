@@ -1,8 +1,11 @@
 #![allow(unused)]
 
+use crate::any;
+use crate::any::AnyMessage;
 use crate::buffer::{Writer, WriterFactory};
 use crate::encoder::EncodeError;
 use crate::enums::EnumType;
+use crate::field::Field;
 use crate::list::ListEncodeVisitor;
 use crate::structs::{StructEncodeVisitor, StructType};
 use crate::value::SchemaValue;
@@ -63,17 +66,17 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
         Ok(())
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
-        let mut i = struct_type.fields.len();
+        let mut i = fields.len();
         let mut sub = Encoder {
             writer: self.writer,
         };
         let mut inner = InnerEncoder::<W> { outer: &mut sub };
-        for f in struct_type.fields.iter().rev() {
+        for f in fields.iter().rev() {
             i -= 1;
             visitor.encode_field(i, &mut inner)?;
         }
@@ -145,6 +148,41 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
         }
         self.encode_i32(discriminant)
     }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        match x {
+            AnyMessage::Empty => {
+                self.encode_u8(any::EMPTY_PREFIX)?;
+            }
+            AnyMessage::ExecMessage {
+                account,
+                selector,
+                bytes,
+            } => {
+                self.encode_bytes(bytes.as_slice())?;
+                self.encode_u64(*selector)?;
+                self.encode_account_id(*account)?;
+                self.encode_u8(any::EXEC_MESSAGE_PREFIX)?;
+            }
+            AnyMessage::CreateAccount {
+                handler_id,
+                init_data,
+            } => {
+                self.encode_bytes(init_data.as_slice())?;
+                self.encode_str(handler_id)?;
+                self.encode_u8(any::CREATE_ACCOUNT_PREFIX)?;
+            }
+            AnyMessage::Migrate {
+                account,
+                new_handler_id,
+            } => {
+                self.encode_str(new_handler_id)?;
+                self.encode_account_id(*account)?;
+                self.encode_u8(any::MIGRATE_PREFIX)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 pub(crate) struct EncodeSizer {
@@ -185,13 +223,13 @@ impl crate::encoder::Encoder for EncodeSizer {
         Ok(())
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         let mut sub = InnerEncodeSizer { outer: self };
-        for (i, f) in struct_type.fields.iter().enumerate() {
+        for (i, f) in fields.iter().enumerate() {
             visitor.encode_field(i, &mut sub)?;
         }
         Ok(())
@@ -269,6 +307,37 @@ impl crate::encoder::Encoder for EncodeSizer {
         }
         self.encode_i32(discriminant)
     }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        self.size += 1; // for the discriminant byte
+        match x {
+            AnyMessage::Empty => {}
+            AnyMessage::ExecMessage {
+                account,
+                selector,
+                bytes,
+            } => {
+                self.encode_account_id(*account)?;
+                self.encode_u64(*selector)?;
+                self.encode_bytes(bytes.as_slice())?;
+            }
+            AnyMessage::CreateAccount {
+                handler_id,
+                init_data,
+            } => {
+                self.encode_str(handler_id)?;
+                self.encode_bytes(init_data.as_slice())?;
+            }
+            AnyMessage::Migrate {
+                account,
+                new_handler_id,
+            } => {
+                self.encode_account_id(*account)?;
+                self.encode_str(new_handler_id)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 pub(crate) struct InnerEncoder<'b, 'a: 'b, W> {
@@ -305,13 +374,13 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         self.outer.encode_u32(size)
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         let end_pos = self.outer.writer.pos(); // this is a reverse writer so we start at the end
-        self.outer.encode_struct(visitor, struct_type)?;
+        self.outer.encode_struct_fields(visitor, fields)?;
         let start_pos = self.outer.writer.pos(); // now we know the start position
         let size = (end_pos - start_pos) as u32;
         self.outer.encode_u32(size)
@@ -381,6 +450,10 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
         self.outer
             .encode_enum_variant(discriminant, enum_type, value)
     }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        self.outer.encode_any_message(x)
+    }
 }
 
 pub(crate) struct InnerEncodeSizer<'a> {
@@ -417,13 +490,13 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
         self.outer.encode_list(visitor)
     }
 
-    fn encode_struct(
+    fn encode_struct_fields(
         &mut self,
         visitor: &dyn StructEncodeVisitor,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), EncodeError> {
         self.outer.size += 4;
-        self.outer.encode_struct(visitor, struct_type)
+        self.outer.encode_struct_fields(visitor, fields)
     }
 
     fn encode_account_id(&mut self, x: AccountID) -> Result<(), EncodeError> {
@@ -495,6 +568,10 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
     ) -> Result<(), EncodeError> {
         self.outer
             .encode_enum_variant(discriminant, enum_type, value)
+    }
+
+    fn encode_any_message(&mut self, x: &AnyMessage) -> Result<(), EncodeError> {
+        self.outer.encode_any_message(x)
     }
 }
 

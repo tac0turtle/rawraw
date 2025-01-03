@@ -162,7 +162,7 @@ where
     type Type = ListT<V::Type>;
 }
 
-impl<V: Clone> List<'_, V> {
+impl<V> List<'_, V> {
     /// Return the length of the list.
     pub fn len(&self) -> usize {
         match self {
@@ -178,6 +178,15 @@ impl<V: Clone> List<'_, V> {
             List::Empty => true,
             List::Borrowed(v) => v.is_empty(),
             List::Owned(v) => v.is_empty(),
+        }
+    }
+
+    /// Return the list value as a slice.
+    pub fn as_slice(&self) -> &[V] {
+        match self {
+            List::Empty => &[],
+            List::Borrowed(v) => v,
+            List::Owned(v) => v.as_slice(),
         }
     }
 }

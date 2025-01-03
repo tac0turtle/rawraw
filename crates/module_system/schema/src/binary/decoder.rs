@@ -1,8 +1,11 @@
+use crate::any;
+use crate::any::AnyMessage;
 use crate::decoder::DecodeError;
 use crate::enums::{EnumDecodeVisitor, EnumType};
-use crate::list::ListDecodeVisitor;
+use crate::field::Field;
+use crate::list::{List, ListDecodeVisitor};
 use crate::mem::MemoryManager;
-use crate::structs::{StructDecodeVisitor, StructType};
+use crate::structs::StructDecodeVisitor;
 use crate::value::ValueCodec;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -69,17 +72,17 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)
     }
 
-    fn decode_struct(
+    fn decode_struct_fields(
         &mut self,
         visitor: &mut dyn StructDecodeVisitor<'a>,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), DecodeError> {
         let mut sub = Decoder {
             buf: self.buf,
             scope: self.scope,
         };
         let mut inner = InnerDecoder { outer: &mut sub };
-        for (i, _) in struct_type.fields.iter().enumerate() {
+        for (i, _) in fields.iter().enumerate() {
             visitor.decode_field(i, &mut inner)?;
         }
         Ok(())
@@ -183,6 +186,39 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         let discriminant = self.decode_i32()?;
         visitor.decode_variant(discriminant, self)
     }
+
+    fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError> {
+        match self.decode_u8()? {
+            any::EMPTY_PREFIX => Ok(AnyMessage::Empty),
+            any::EXEC_MESSAGE_PREFIX => {
+                let account = self.decode_account_id()?;
+                let selector = self.decode_u64()?;
+                let bytes = self.decode_borrowed_bytes()?;
+                Ok(AnyMessage::ExecMessage {
+                    account,
+                    selector,
+                    bytes: List::Borrowed(bytes),
+                })
+            }
+            any::CREATE_ACCOUNT_PREFIX => {
+                let handler_id = self.decode_borrowed_str()?;
+                let init_data = self.decode_borrowed_bytes()?;
+                Ok(AnyMessage::CreateAccount {
+                    handler_id,
+                    init_data: List::Borrowed(init_data),
+                })
+            }
+            any::MIGRATE_PREFIX => {
+                let account = self.decode_account_id()?;
+                let new_handler_id = self.decode_borrowed_str()?;
+                Ok(AnyMessage::Migrate {
+                    account,
+                    new_handler_id,
+                })
+            }
+            _ => Err(DecodeError::UnknownField),
+        }
+    }
 }
 
 struct InnerDecoder<'b, 'a: 'b> {
@@ -217,10 +253,10 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         String::from_utf8(bz.to_vec()).map_err(|_| DecodeError::InvalidData)
     }
 
-    fn decode_struct(
+    fn decode_struct_fields(
         &mut self,
         visitor: &mut dyn StructDecodeVisitor<'a>,
-        struct_type: &StructType,
+        fields: &[Field],
     ) -> Result<(), DecodeError> {
         let size = self.decode_u32()? as usize;
         let bz = self.outer.read_bytes(size)?;
@@ -228,7 +264,7 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
             buf: bz,
             scope: self.outer.scope,
         };
-        sub.decode_struct(visitor, struct_type)
+        sub.decode_struct_fields(visitor, fields)
     }
 
     fn decode_list(&mut self, visitor: &mut dyn ListDecodeVisitor<'a>) -> Result<(), DecodeError> {
@@ -313,6 +349,10 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         enum_type: &EnumType,
     ) -> Result<(), DecodeError> {
         self.outer.decode_enum_variant(visitor, enum_type)
+    }
+
+    fn decode_any_message(&mut self) -> Result<AnyMessage<'a>, DecodeError> {
+        self.outer.decode_any_message()
     }
 }
 

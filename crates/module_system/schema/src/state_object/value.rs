@@ -6,7 +6,6 @@ use crate::decoder::{decode_one, DecodeError, Decoder};
 use crate::encoder::{EncodeError, Encoder};
 use crate::fields::FieldTypes;
 use crate::mem::MemoryManager;
-use crate::state_object::field_types::unnamed_struct_type;
 use crate::state_object::value_field::ObjectFieldValue;
 use crate::structs::StructType;
 use crate::value::SchemaValue;
@@ -48,8 +47,6 @@ pub trait ObjectValue {
     type In<'a>;
     /// The type that is used in function return values.
     type Out<'a>;
-    /// The associated "pseudo-struct" type for the object value.
-    const PSEUDO_TYPE: StructType<'static>;
 
     /// Encode each part of the value in reverse order.
     fn encode_reverse(value: &Self::In<'_>, encoder: &mut dyn Encoder) -> Result<(), EncodeError>;
@@ -65,7 +62,6 @@ impl ObjectValue for () {
     type FieldTypes<'a> = ();
     type In<'a> = ();
     type Out<'a> = ();
-    const PSEUDO_TYPE: StructType<'static> = unnamed_struct_type::<Self::FieldTypes<'static>>();
 
     fn encode_reverse(value: &Self::In<'_>, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         Ok(())
@@ -83,7 +79,6 @@ impl<A: ObjectFieldValue> ObjectValue for A {
     type FieldTypes<'a> = (<<A as ObjectFieldValue>::In<'a> as SchemaValue<'a>>::Type,);
     type In<'a> = A::In<'a>;
     type Out<'a> = A::Out<'a>;
-    const PSEUDO_TYPE: StructType<'static> = unnamed_struct_type::<Self::FieldTypes<'static>>();
 
     fn encode_reverse(value: &Self::In<'_>, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         value.encode(encoder)
@@ -101,7 +96,6 @@ impl<A: ObjectFieldValue> ObjectValue for (A,) {
     type FieldTypes<'a> = (<<A as ObjectFieldValue>::In<'a> as SchemaValue<'a>>::Type,);
     type In<'a> = (A::In<'a>,);
     type Out<'a> = (A::Out<'a>,);
-    const PSEUDO_TYPE: StructType<'static> = unnamed_struct_type::<Self::FieldTypes<'static>>();
 
     fn encode_reverse(value: &Self::In<'_>, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         value.0.encode(encoder)
@@ -122,7 +116,6 @@ impl<A: ObjectFieldValue, B: ObjectFieldValue> ObjectValue for (A, B) {
     );
     type In<'a> = (A::In<'a>, B::In<'a>);
     type Out<'a> = (A::Out<'a>, B::Out<'a>);
-    const PSEUDO_TYPE: StructType<'static> = unnamed_struct_type::<Self::FieldTypes<'static>>();
 
     fn encode_reverse(value: &Self::In<'_>, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         // encoding always happens in reverse order
@@ -146,7 +139,6 @@ impl<A: ObjectFieldValue, B: ObjectFieldValue, C: ObjectFieldValue> ObjectValue 
     );
     type In<'a> = (A::In<'a>, B::In<'a>, C::In<'a>);
     type Out<'a> = (A::Out<'a>, B::Out<'a>, C::Out<'a>);
-    const PSEUDO_TYPE: StructType<'static> = unnamed_struct_type::<Self::FieldTypes<'static>>();
 
     fn encode_reverse(value: &Self::In<'_>, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         // encoding always happens in reverse order
@@ -178,7 +170,6 @@ impl<A: ObjectFieldValue, B: ObjectFieldValue, C: ObjectFieldValue, D: ObjectFie
     );
     type In<'a> = (A::In<'a>, B::In<'a>, C::In<'a>, D::In<'a>);
     type Out<'a> = (A::Out<'a>, B::Out<'a>, C::Out<'a>, D::Out<'a>);
-    const PSEUDO_TYPE: StructType<'static> = unnamed_struct_type::<Self::FieldTypes<'static>>();
 
     fn encode_reverse(value: &Self::In<'_>, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
         // encoding always happens in reverse order
