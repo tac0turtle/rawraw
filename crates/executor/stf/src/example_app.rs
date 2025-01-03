@@ -1,11 +1,11 @@
 use std::marker::PhantomData;
 
 // --------------------------------------------------------------------------
-// 1. Import the STF traits and structures (adjust to your real module paths).
+// 1. Bring in the STF traits and structures (update the imports to your module paths).
 // --------------------------------------------------------------------------
-use crate::Stf;
 use crate::{
-    AfterTxApplyHandler, BeginBlocker, BlockRequest, EndBlocker, Transaction, TxResult, TxValidator,
+    AfterTxApplyHandler, BeginBlocker, BlockRequest, EndBlocker, Stf, Transaction, TxResult,
+    TxValidator,
 };
 
 use allocator_api2::alloc::Allocator;
@@ -19,20 +19,17 @@ use ixc_vm_api::VM;
 // --------------------------------------------------------------------------
 // 2. Implement a simple Transaction
 // --------------------------------------------------------------------------
-struct MyTransaction<'a> {
+/// A basic transaction that carries a sender, recipient, a message payload, and a gas limit.
+pub struct MyTransaction<'a> {
     sender: AccountID,
     recipient: AccountID,
     msg: Message<'a>,
     gas_limit: u64,
 }
 
-impl Transaction for MyTransaction {
+impl<'a> Transaction for MyTransaction<'a> {
     fn sender(&self) -> AccountID {
         self.sender.clone()
-    }
-
-    fn recipient(&self) -> AccountID {
-        self.recipient.clone()
     }
 
     fn msg(&self) -> &Message {
@@ -47,40 +44,32 @@ impl Transaction for MyTransaction {
 // --------------------------------------------------------------------------
 // 3. Implement a simple BlockRequest
 // --------------------------------------------------------------------------
-struct MyBlockRequest<'a> {
-    // For simplicity, store transactions in a Vec. They could come from anywhere (e.g., network).
+/// A block request that stores a batch of transactions in a `Vec`.
+pub struct MyBlockRequest<'a> {
     transactions: Vec<MyTransaction<'a>>,
 }
 
-impl BlockRequest for MyBlockRequest {
-    fn txs_len(&self) -> u64 {
-        self.transactions.len() as u64
-    }
-
-    // Return each transaction as a reference to something that implements `Transaction`.
-    fn txs(&self) -> Vec<&dyn Transaction> {
-        self.transactions
-            .iter()
-            .map(|tx| tx as &dyn Transaction)
-            .collect()
+impl<'a> BlockRequest<MyTransaction<'a>> for MyBlockRequest<'a> {
+    fn txs(&self) -> &[MyTransaction<'a>] {
+        self.transactions.as_slice()
     }
 }
 
 // --------------------------------------------------------------------------
 // 4. Implement a TxValidator (pretend to validate signatures, funds, etc.)
 // --------------------------------------------------------------------------
-struct MyTxValidator;
+pub struct MyTxValidator;
 
-impl TxValidator for MyTxValidator {
-    fn validate_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
+impl<'a> TxValidator<MyTransaction<'a>> for MyTxValidator {
+    fn validate_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         _am: &AccountManager<Vm>,
         _sh: &mut SH,
         _idg: &mut IDG,
-        tx: &Tx,
+        tx: &MyTransaction<'a>,
         _gt: &GasTracker,
         _alloc: &dyn Allocator,
     ) -> Result<(), ErrorCode> {
-        // For example, reject if gas limit is 0.
+        // For example, reject if gas limit is zero.
         if tx.gas_limit() == 0 {
             return Err(ErrorCode::Unknown(0));
         }
@@ -92,46 +81,41 @@ impl TxValidator for MyTxValidator {
 // --------------------------------------------------------------------------
 // 5. Implement an AfterTxApplyHandler
 // --------------------------------------------------------------------------
-struct MyAfterTxApply;
+pub struct MyAfterTxApply;
 
-impl AfterTxApplyHandler for MyAfterTxApply {
-    fn after_tx_apply<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
+impl<'a> AfterTxApplyHandler<MyTransaction<'a>> for MyAfterTxApply {
+    fn after_tx_apply<'x, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         _am: &AccountManager<Vm>,
         _sh: &SH,
         _idg: &mut IDG,
-        tx: &Tx,
-        tx_result: &TxResult<'a, Tx>,
+        tx: &MyTransaction<'a>,
+        tx_result: &TxResult<'x, MyTransaction<'a>>,
     ) {
-        // do logging or event emission etc.
+        // Here you could log the result, emit events, etc.
     }
 }
 
 // --------------------------------------------------------------------------
 // 6. Implement a BeginBlocker
 // --------------------------------------------------------------------------
-struct MyBeginBlocker;
+pub struct MyBeginBlocker;
 
-impl<BR: BlockRequest> BeginBlocker<BR> for MyBeginBlocker {
+impl<'a> BeginBlocker<MyTransaction<'a>, MyBlockRequest<'a>> for MyBeginBlocker {
     fn begin_blocker<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         _am: &AccountManager<Vm>,
         _sh: &mut SH,
         _idg: &mut IDG,
-        block_request: &BR,
+        block_request: &MyBlockRequest<'a>,
         _allocator: &dyn Allocator,
     ) {
-        // For example, we might log something or distribute block rewards.
-        // We'll just do a simple print here.
-        println!(
-            "BeginBlocker: starting new block with {} txs.",
-            block_request.txs_len()
-        );
+        println!("[BeginBlocker] BeginBlock called");
     }
 }
 
 // --------------------------------------------------------------------------
 // 7. Implement an EndBlocker
 // --------------------------------------------------------------------------
-struct MyEndBlocker;
+pub struct MyEndBlocker;
 
 impl EndBlocker for MyEndBlocker {
     fn end_blocker<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
@@ -140,15 +124,43 @@ impl EndBlocker for MyEndBlocker {
         _idg: &mut IDG,
         _allocator: &dyn Allocator,
     ) {
-        // Post-block logic (e.g., finalize block, distribute staking rewards, etc.)
-        println!("EndBlocker: finishing block.");
+        // Post-block logic (e.g., finalize block, distribute rewards, etc.)
+        println!("[EndBlocker] Finishing block.");
     }
 }
 
 // --------------------------------------------------------------------------
-// 8. Putting it all together in main()
+// 8. Putting it all together
 // --------------------------------------------------------------------------
+/// Create our STF with the chosen transaction, block request, validator, hooks, etc.
+pub type App<'a> = Stf<
+    MyTransaction<'a>,  // Tx
+    MyBlockRequest<'a>, // BlockRequest
+    MyTxValidator,      // TxValidator
+    MyAfterTxApply,     // AfterTxApplyHandler
+    MyBeginBlocker,     // BeginBlocker
+    MyEndBlocker,
+>;
 
-const STF: Stf<MyBlockRequest, MyTxValidator, MyAfterTxApply, MyBeginBlocker, MyEndBlocker> =
-    Stf::new();
-fn main() {}
+#[cfg(test)]
+mod tests {
+    use ixc_account_manager::AccountManager;
+    use super::App;
+    use ixc_account_manager::native_vm::NativeVMImpl;
+
+    #[test]
+    fn test() {
+        /*
+        let vm = NativeVMImpl::default();
+        let am = AccountManager::new(&vm);
+        let sh =
+
+        App::apply_block(
+            &vm,
+            sh,
+
+        )
+
+         */
+    }
+}

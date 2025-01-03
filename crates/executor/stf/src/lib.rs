@@ -39,8 +39,6 @@ use std::marker::PhantomData;
 pub trait Transaction {
     /// Gets the sender of the transaction.
     fn sender(&self) -> AccountID;
-    /// Gets the recipient of the transaction.
-    fn recipient(&self) -> AccountID;
     /// Gets the message of the transaction.
     fn msg(&self) -> &Message;
     /// Returns the Gas Limit allocated for this transaction.
@@ -51,7 +49,7 @@ pub trait Transaction {
 ///
 /// Typically, this could involve checking signatures, ensuring the sender
 /// has enough balance, verifying nonce or replay protection, etc.
-pub trait TxValidator {
+pub trait TxValidator<Tx: Transaction> {
     /// Validates a transaction. Returns an `ErrorCode` if invalid.
     ///
     /// - `am`: Reference to the `AccountManager`.
@@ -60,7 +58,7 @@ pub trait TxValidator {
     /// - `tx`: The transaction to validate.
     /// - `gt`: A `GasTracker` used to account for gas usage.
     /// - `alloc`: A reference to a dynamic allocator for memory management.
-    fn validate_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
+    fn validate_tx<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
         idg: &mut IDG,
@@ -75,7 +73,7 @@ pub trait TxValidator {
 /// This can be used to perform cleanup, logging, or other side effects that
 /// only occur after the transaction has been executed (e.g., updating block
 /// explorers, event emission, etc.).
-pub trait AfterTxApplyHandler {
+pub trait AfterTxApplyHandler<Tx: Transaction> {
     /// Hook that is called after the transaction has been applied.
     ///
     /// - `am`: Reference to the `AccountManager`.
@@ -83,7 +81,7 @@ pub trait AfterTxApplyHandler {
     /// - `idg`: Reference to the `IDGenerator`.
     /// - `tx`: The transaction that was applied.
     /// - `tx_result`: The result of the transaction application (including gas used, response, etc.).
-    fn after_tx_apply<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
+    fn after_tx_apply<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &SH,
         idg: &mut IDG,
@@ -97,7 +95,7 @@ pub trait AfterTxApplyHandler {
 ///
 /// This can be used to, for example, distribute block rewards, update timestamps,
 /// or perform other per-block initialization tasks.
-pub trait BeginBlocker<BR: BlockRequest> {
+pub trait BeginBlocker<Tx: Transaction, BR: BlockRequest<Tx>> {
     /// Called before any transactions of the block are processed.
     ///
     /// - `am`: Reference to the `AccountManager`.
@@ -139,7 +137,7 @@ pub trait EndBlocker {
 /// - `gas_used`: The total gas consumed by this transaction.
 /// - `response`: The outcome of the transaction, either `Response` or an `ErrorCode`.
 /// - `tx`: A reference to the original transaction.
-pub struct TxResult<'a, Tx: Transaction + ?Sized> {
+pub struct TxResult<'a, Tx: Transaction> {
     pub gas_used: u64,
     pub response: Result<Response<'a>, ErrorCode>,
     pub tx: &'a Tx,
@@ -149,11 +147,9 @@ pub struct TxResult<'a, Tx: Transaction + ?Sized> {
 ///
 /// A block request typically contains multiple transactions to be processed
 /// as a batch. For example, in a blockchain, a block might contain many Txs.
-pub trait BlockRequest {
-    /// Returns the number of transactions in this request.
-    fn txs_len(&self) -> u64;
+pub trait BlockRequest<Tx: Transaction> {
     /// Returns the transactions in this request as a vector of references.
-    fn txs(&self) -> Vec<&dyn Transaction>;
+    fn txs(&self) -> &[Tx];
 }
 
 /// A State Transition Function (STF) that coordinates how blocks and transactions
@@ -165,34 +161,27 @@ pub trait BlockRequest {
 /// - `PostTxApply`: An `AfterTxApplyHandler` for post-processing after Tx is applied.
 /// - `BeginBlocker`: The block initialization trait.
 /// - `EndBlocker`: The block finalization trait.
-pub struct Stf<BlockRequest, TxValidator, PostTxApply, BeginBlocker, EndBlocker>(
-    PhantomData<BlockRequest>,
-    PhantomData<TxValidator>,
-    PhantomData<PostTxApply>,
-    PhantomData<BeginBlocker>,
-    PhantomData<EndBlocker>,
+pub struct Stf<Tx, BlockRequest, TxValidator, PostTxApply, BeginBlocker, EndBlocker>(
+    PhantomData<(
+        Tx,
+        BlockRequest,
+        TxValidator,
+        PostTxApply,
+        BeginBlocker,
+        EndBlocker,
+    )>,
 );
 
 /// Implementation of the State Transition Function for a given set of traits.
-impl<Br, Txv, Ptx, Bb, Eb> Stf<Br, Txv, Ptx, Bb, Eb>
+impl<Tx, Br, Txv, Ptx, Bb, Eb> Stf<Tx, Br, Txv, Ptx, Bb, Eb>
 where
-    Br: BlockRequest,
-    Bb: BeginBlocker<Br>,
-    Txv: TxValidator,
-    Ptx: AfterTxApplyHandler,
+    Tx: Transaction,
+    Br: BlockRequest<Tx>,
+    Bb: BeginBlocker<Tx, Br>,
+    Txv: TxValidator<Tx>,
+    Ptx: AfterTxApplyHandler<Tx>,
     Eb: EndBlocker,
 {
-    /// Creates a new `Stf` with the provided type parameters.
-    pub const fn new() -> Self {
-        Self(
-            PhantomData,
-            PhantomData,
-            PhantomData,
-            PhantomData,
-            PhantomData,
-        )
-    }
-
     /// Applies an entire block by:
     /// 1. Calling the `begin_blocker`.
     /// 2. Iterating over each transaction and applying it.
@@ -219,12 +208,8 @@ where
 
         // Prepare a container for transaction results.
         // We allocate enough capacity based on the number of Txs in the block.
-        let mut results = Vec::with_capacity(
-            block
-                .txs_len()
-                .try_into()
-                .expect("too many transactions in block"),
-        );
+        let txs = block.txs();
+        let mut results = Vec::with_capacity(txs.len());
 
         // Process each transaction in the block and store the result.
         for tx in block.txs() {
@@ -244,7 +229,7 @@ where
     /// - `allocator`: A memory allocator reference.
     ///
     /// Returns a `TxResult` containing the outcome of the validation.
-    pub fn validate_tx<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
+    pub fn validate_tx<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
         idg: &mut IDG,
@@ -274,7 +259,7 @@ where
     /// - `allocator`: A memory allocator reference.
     ///
     /// Returns a `TxResult` containing the outcome of the transaction.
-    pub fn apply_tx<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator, Tx: Transaction + ?Sized>(
+    pub fn apply_tx<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
         id_generator: &mut IDG,
@@ -310,13 +295,7 @@ where
     /// - `allocator`: A memory allocator reference.
     ///
     /// Returns a `Result` containing either a `Response` or an `ErrorCode`.
-    fn internal_apply_tx<
-        'a,
-        Vm: VM,
-        SH: StateHandler,
-        IDG: IDGenerator,
-        Tx: Transaction + ?Sized,
-    >(
+    fn internal_apply_tx<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
         id_generator: &mut IDG,
@@ -330,6 +309,39 @@ where
         // If validation succeeds, invoke the message (execute it on the VM).
         let invoke_params = InvokeParams::new(allocator, Some(gas_tracker));
         am.invoke_msg(sh, id_generator, tx.sender(), tx.msg(), &invoke_params)
+    }
+
+    pub fn sudo<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
+        am: &AccountManager<Vm>,
+        sh: &mut SH,
+        id_generator: &mut IDG,
+        sender: AccountID,
+        msg: &Message,
+        gas_limit: Option<u64>,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let gt = match gas_limit {
+            Some(gt) => GasTracker::limited(gt),
+            None => GasTracker::unlimited(),
+        };
+
+        let invoke_params = InvokeParams::new(allocator, Some(&gt));
+        am.invoke_msg(sh, id_generator, sender, msg, &invoke_params)
+    }
+
+    pub fn query<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
+        am: &AccountManager<Vm>,
+        sh: &SH,
+        msg: &Message,
+        gas_limit: Option<u64>,
+        allocator: &'a dyn Allocator,
+    ) -> Result<Response<'a>, ErrorCode> {
+        let gt = match gas_limit {
+            Some(gt) => GasTracker::limited(gt),
+            None => GasTracker::unlimited(),
+        };
+        let invoke_params = InvokeParams::new(allocator, Some(&gt));
+        am.invoke_query(sh, msg, &invoke_params)
     }
 }
 
