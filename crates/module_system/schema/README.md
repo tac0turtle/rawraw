@@ -37,8 +37,7 @@ through different implementations of the [`encoder::Encoder`] and [`decoder::Dec
 Unlike Serde, these traits are object safe and dynamic dispatch is used wherever possible
 so that code size does not expand due to [Rust's mono-morphization of generics](https://rustwasm.github.io/book/reference/code-size.html#use-trait-objects-instead-of-generic-type-parameters)
 
-Currently only a simple [native binary encoding](binary::NativeBinaryCodec) is supported but
-protobuf, JSON, and encodings to other popular VM formats are planned in the future.
+Currently only a simple [native binary encoding](binary::NativeBinaryCodec) and JSON are supported.
 
 ## Memory Management
 
