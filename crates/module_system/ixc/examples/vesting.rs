@@ -163,8 +163,6 @@ mod tests {
     use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
     use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;
-    use simple_time::{Duration, Time};
-    use std::ops::{AddAssign, SubAssign};
     use std::sync::{Arc, RwLock};
 
     #[test]
