@@ -64,10 +64,6 @@ pub trait Decoder<'a> {
         visitor: &mut dyn EnumDecodeVisitor<'a>,
         enum_type: &EnumType,
     ) -> Result<(), DecodeError>;
-    /// Decode time.
-    fn decode_time(&mut self) -> Result<simple_time::Time, DecodeError>;
-    /// Decode duration.
-    fn decode_duration(&mut self) -> Result<simple_time::Duration, DecodeError>;
 
     /// Get the memory manager.
     fn mem_manager(&self) -> &'a MemoryManager;

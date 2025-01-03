@@ -247,44 +247,6 @@ impl KeyFieldValue for bool {
     }
 }
 
-impl KeyFieldValue for simple_time::Time {
-    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
-        // TODO we only need 12 bytes max
-        <i128 as KeyFieldValue>::encode(&key.unix_nanos(), writer)
-    }
-
-    fn decode<'a>(
-        reader: &mut &'a [u8],
-        memory_manager: &'a MemoryManager,
-    ) -> Result<Self::Out<'a>, DecodeError> {
-        <i128 as KeyFieldValue>::decode(reader, memory_manager)
-            .map(simple_time::Time::from_unix_nanos)
-    }
-
-    fn out_size(key: &Self::In<'_>) -> usize {
-        12
-    }
-}
-
-impl KeyFieldValue for simple_time::Duration {
-    fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
-        // TODO we only need 12 bytes max
-        <i128 as KeyFieldValue>::encode(&key.nanos(), writer)
-    }
-
-    fn decode<'a>(
-        reader: &mut &'a [u8],
-        memory_manager: &'a MemoryManager,
-    ) -> Result<Self::Out<'a>, DecodeError> {
-        <i128 as KeyFieldValue>::decode(reader, memory_manager)
-            .map(simple_time::Duration::from_nanos)
-    }
-
-    fn out_size(key: &Self::In<'_>) -> usize {
-        12
-    }
-}
-
 impl KeyFieldValue for ixc_message_api::AccountID {
     fn encode(key: &Self::In<'_>, writer: &mut ReverseSliceWriter) -> Result<(), EncodeError> {
         let id: u128 = (*key).into();

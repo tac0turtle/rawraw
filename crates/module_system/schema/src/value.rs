@@ -224,36 +224,6 @@ impl SchemaValue<'_> for alloc::string::String {
     type Type = StrT;
 }
 
-impl<'a> ValueCodec<'a> for simple_time::Time {
-    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
-        *self = decoder.decode_time()?;
-        Ok(())
-    }
-
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-        encoder.encode_time(*self)
-    }
-}
-
-impl SchemaValue<'_> for simple_time::Time {
-    type Type = TimeT;
-}
-
-impl<'a> ValueCodec<'a> for simple_time::Duration {
-    fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
-        *self = decoder.decode_duration()?;
-        Ok(())
-    }
-
-    fn encode(&self, encoder: &mut dyn Encoder) -> Result<(), EncodeError> {
-        encoder.encode_duration(*self)
-    }
-}
-
-impl SchemaValue<'_> for simple_time::Duration {
-    type Type = DurationT;
-}
-
 impl<'a, V: SchemaValue<'a>> ValueCodec<'a> for Option<V> {
     fn decode(&mut self, decoder: &mut dyn Decoder<'a>) -> Result<(), DecodeError> {
         let mut value = V::default();
@@ -470,5 +440,3 @@ impl ListElementValue<'_> for alloc::string::String {}
 impl<'a> ListElementValue<'a> for &'a [u8] {}
 #[cfg(feature = "std")]
 impl ListElementValue<'_> for alloc::vec::Vec<u8> {}
-impl ListElementValue<'_> for simple_time::Time {}
-impl ListElementValue<'_> for simple_time::Duration {}

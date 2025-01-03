@@ -11,7 +11,6 @@ use base64::Engine;
 use core::str::FromStr;
 use ixc_message_api::alloc_util::{copy_bytes, copy_str};
 use ixc_message_api::AccountID;
-use simple_time::{Duration, Time};
 
 /// Decode the value from the JSON input string.
 pub fn decode_value<'a, V: ValueCodec<'a> + Default>(
@@ -200,14 +199,6 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
             }
             _ => Err(DecodeError::InvalidData),
         }
-    }
-
-    fn decode_time(&mut self) -> Result<Time, DecodeError> {
-        todo!()
-    }
-
-    fn decode_duration(&mut self) -> Result<Duration, DecodeError> {
-        todo!()
     }
 
     fn mem_manager(&self) -> &'a MemoryManager {
