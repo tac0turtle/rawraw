@@ -15,7 +15,7 @@ mod vesting {
         #[state]
         pub(crate) beneficiary: Item<AccountID>,
         #[state]
-        pub(crate) unlock_time: Item<Time>,
+        pub(crate) unlock_time: Item<i64>, // i64 is the unix timestamp
         #[client(65536)]
         bank_client: <dyn BankAPI as Service>::Client,
         #[client(65537)]
@@ -28,7 +28,7 @@ mod vesting {
             &self,
             ctx: &mut Context,
             beneficiary: AccountID,
-            unlock_time: Time,
+            unlock_time: i64,
         ) -> Result<()> {
             self.beneficiary.set(ctx, beneficiary)?;
             self.unlock_time.set(ctx, unlock_time)?;
@@ -101,7 +101,7 @@ mod vesting {
     #[handler_api]
     #[automock]
     pub trait BlockInfoAPI {
-        fn get_block_time<'a>(&self, ctx: &Context<'a>) -> Result<Time>;
+        fn get_block_time<'a>(&self, ctx: &Context<'a>) -> Result<i64>;
     }
 
     #[publish]

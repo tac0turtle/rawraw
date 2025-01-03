@@ -14,8 +14,6 @@ pub use ixc_collections::{Accumulator, AccumulatorMap, Item, Map};
 pub use ixc_message_api::AccountID;
 #[doc(inline)]
 pub use ixc_schema::{Bytes, Str};
-#[doc(inline)]
-pub use simple_time::{Duration, Time};
 
 pub use ixc_core as core;
 pub use ixc_message_api as message_api;

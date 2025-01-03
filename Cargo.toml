@@ -9,7 +9,6 @@ members = [
     "crates/module_system/schema_macros",
     "crates/module_system/message_api",
     "crates/module_system/testing",
-    "crates/module_system/util/simple_time",
     "crates/vm/api",
     "crates/vm/account_manager",
     "example",

@@ -7,7 +7,6 @@ use crate::value::ValueCodec;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ixc_message_api::AccountID;
-use simple_time::{Duration, Time};
 
 pub fn decode_value<'a>(
     input: &'a [u8],
@@ -150,14 +149,6 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         Ok(bz.to_vec())
     }
 
-    fn decode_time(&mut self) -> Result<Time, DecodeError> {
-        Ok(Time::from_unix_nanos(self.decode_i128()?))
-    }
-
-    fn decode_duration(&mut self) -> Result<Duration, DecodeError> {
-        Ok(Duration::from_nanos(self.decode_i128()?))
-    }
-
     fn decode_i16(&mut self) -> Result<i16, DecodeError> {
         let bz = self.read_bytes(2)?;
         Ok(i16::from_le_bytes(bz.try_into().unwrap()))
@@ -283,14 +274,6 @@ impl<'b, 'a: 'b> crate::decoder::Decoder<'a> for InnerDecoder<'b, 'a> {
         let size = self.decode_u32()? as usize;
         let bz = self.outer.read_bytes(size)?;
         Ok(bz.to_vec())
-    }
-
-    fn decode_time(&mut self) -> Result<Time, DecodeError> {
-        self.outer.decode_time()
-    }
-
-    fn decode_duration(&mut self) -> Result<Duration, DecodeError> {
-        self.outer.decode_duration()
     }
 
     fn decode_i16(&mut self) -> Result<i16, DecodeError> {

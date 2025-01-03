@@ -8,7 +8,6 @@ use allocator_api2::alloc::Allocator;
 use base64::prelude::*;
 use core::fmt::Write;
 use ixc_message_api::AccountID;
-use simple_time::{Duration, Time};
 
 /// Encode the value to a JSON string.
 /// This method is intended to be deterministic and performant, so that it is suitable
@@ -175,14 +174,6 @@ impl<A: Allocator> crate::encoder::Encoder for Encoder<'_, A> {
             write!(self.writer, "\"{}\"", variant.name)
         }
     }
-
-    fn encode_time(&mut self, _x: Time) -> Result<(), EncodeError> {
-        todo!()
-    }
-
-    fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
-        todo!()
-    }
 }
 
 struct FieldEncoder<'a, 'b, A: Allocator> {
@@ -335,13 +326,5 @@ impl<A: Allocator> crate::encoder::Encoder for FieldEncoder<'_, '_, A> {
         }
         self.outer
             .encode_enum_variant(discriminant, enum_type, value)
-    }
-
-    fn encode_time(&mut self, _x: Time) -> Result<(), EncodeError> {
-        todo!()
-    }
-
-    fn encode_duration(&mut self, _x: Duration) -> Result<(), EncodeError> {
-        todo!()
     }
 }

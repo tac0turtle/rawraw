@@ -56,10 +56,6 @@ pub trait Encoder {
         enum_type: &EnumType,
         value: Option<&dyn ValueCodec>,
     ) -> Result<(), EncodeError>;
-    /// Encode time.
-    fn encode_time(&mut self, x: simple_time::Time) -> Result<(), EncodeError>;
-    /// Encode duration.
-    fn encode_duration(&mut self, x: simple_time::Duration) -> Result<(), EncodeError>;
 }
 
 /// An encoding error.

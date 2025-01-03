@@ -9,7 +9,6 @@ use crate::value::SchemaValue;
 use crate::value::ValueCodec;
 use allocator_api2::alloc::Allocator;
 use ixc_message_api::AccountID;
-use simple_time::{Duration, Time};
 
 pub fn encode_value<'a>(
     value: &dyn ValueCodec,
@@ -114,16 +113,6 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
         self.writer.write(x)
-    }
-
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        /// TODO find a more efficient way to encode time
-        self.encode_i128(x.unix_nanos())
-    }
-
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        /// TODO find a more efficient way to encode duration
-        self.encode_i128(x.nanos())
     }
 
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
@@ -242,14 +231,6 @@ impl crate::encoder::Encoder for EncodeSizer {
         Ok(())
     }
 
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        self.encode_i128(x.unix_nanos())
-    }
-
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        self.encode_i128(x.nanos())
-    }
-
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
         if let Some(visitor) = visitor {
             visitor.encode(self)
@@ -352,14 +333,6 @@ impl<'b, 'a: 'b, W: Writer> crate::encoder::Encoder for InnerEncoder<'a, 'b, W> 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
         self.outer.encode_bytes(x)?;
         self.encode_u32(x.len() as u32)
-    }
-
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        self.outer.encode_time(x)
-    }
-
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        self.outer.encode_duration(x)
     }
 
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {
@@ -469,14 +442,6 @@ impl crate::encoder::Encoder for InnerEncodeSizer<'_> {
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
         self.outer.size += 4;
         self.outer.encode_bytes(x)
-    }
-
-    fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        self.outer.encode_time(x)
-    }
-
-    fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        self.outer.encode_duration(x)
     }
 
     fn encode_option(&mut self, visitor: Option<&dyn ValueCodec>) -> Result<(), EncodeError> {

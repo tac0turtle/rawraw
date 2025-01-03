@@ -74,14 +74,7 @@ impl ObjectFieldValue for Bytes {
     type In<'a> = &'a [u8];
     type Out<'a> = &'a [u8];
 }
-impl ObjectFieldValue for simple_time::Time {
-    type In<'a> = simple_time::Time;
-    type Out<'a> = simple_time::Time;
-}
-impl ObjectFieldValue for simple_time::Duration {
-    type In<'a> = simple_time::Duration;
-    type Out<'a> = simple_time::Duration;
-}
+
 impl ObjectFieldValue for ixc_message_api::AccountID {
     type In<'a> = ixc_message_api::AccountID;
     type Out<'a> = ixc_message_api::AccountID;
