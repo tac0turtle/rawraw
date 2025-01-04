@@ -157,15 +157,15 @@ mod vesting {
 
 #[cfg(test)]
 mod tests {
+
     use super::vesting::*;
+    use chrono::{Days, Duration, Utc};
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_core::handler::{Client, Service};
     use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
     use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;
-    use simple_time::{Duration, Time};
-    use std::ops::{AddAssign, SubAssign};
-    use std::sync::{Arc, RwLock};
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn test_unlock() {
@@ -194,11 +194,13 @@ mod tests {
 
         // initialize block info mock
         let mut block_mock = MockBlockInfoAPI::new();
-        let cur_time = Arc::new(RwLock::new(Time::default()));
-        let cur_time_copy = cur_time.clone();
+        let curr_time = Utc::now();
+        let time_state = Arc::new(Mutex::new(curr_time.timestamp()));
+        let time_state_clone = time_state.clone();
         block_mock
             .expect_get_block_time()
-            .returning(move |_| Ok(cur_time_copy.read().unwrap().clone()));
+            .returning(move |_| Ok(*time_state_clone.lock().unwrap()));
+
         let block_info_id = app
             .add_mock(MockHandler::of::<dyn BlockInfoAPI>(Box::new(block_mock)))
             .unwrap();
@@ -212,18 +214,19 @@ mod tests {
 
         // initialize the vesting account
         let beneficiary = app.new_client_account().unwrap();
-        let unlock_time = Time::default().add(Duration::DAY * 5);
+        let unlock_time = curr_time + Duration::days(5);
+        let unix_timestamp = unlock_time.timestamp();
         let vesting_acct = create_account::<FixedVesting>(
             &mut root,
             FixedVestingCreate {
                 beneficiary,
-                unlock_time,
+                unlock_time: unix_timestamp,
             },
         )
         .unwrap();
 
-        // try to unlock before the initial deposit but after the unlock time (we're time traveling)
-        cur_time.write().unwrap().add_assign(Duration::DAY * 6);
+        let curr_time2 = curr_time.checked_add_days(Days::new(6)).unwrap();
+        *time_state.lock().unwrap() = curr_time2.timestamp();
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
         assert_eq!(
@@ -257,13 +260,15 @@ mod tests {
             );
         });
 
+        let curr_time3 = curr_time.checked_sub_days(Days::new(6)).unwrap();
+        *time_state.lock().unwrap() = curr_time3.timestamp();
         // try unlocking before the unlock time
-        cur_time.write().unwrap().sub_assign(Duration::DAY * 6);
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().code, HandlerCode(UnlockError::NotTimeYet));
         // try unlocking after the unlock time
-        cur_time.write().unwrap().add_assign(Duration::DAY * 6);
+        let curr_time4 = curr_time.checked_add_days(Days::new(6)).unwrap();
+        *time_state.lock().unwrap() = curr_time4.timestamp();
         vesting_acct.unlock(&mut root).unwrap();
         // TODO check for unlock event
         // since the unlock succeeded, if we try to unlock again we should get account not found,

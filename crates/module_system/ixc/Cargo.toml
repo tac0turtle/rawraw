@@ -25,6 +25,7 @@ arrayvec = "0.7.6"
 thiserror = "1.0.63"
 num_enum = "0.7.3"
 mockall = "0.13.0"
+chrono = "0.4"
 
 [lib]
 doctest = false
