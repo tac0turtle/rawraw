@@ -66,6 +66,8 @@ pub enum EncodeError {
     UnknownError,
     /// The output buffer is out of space.
     OutOfSpace,
+    /// The value is too large to encode.
+    InvalidData,
 }
 
 impl Display for EncodeError {
@@ -73,6 +75,7 @@ impl Display for EncodeError {
         match self {
             EncodeError::UnknownError => write!(f, "unknown error"),
             EncodeError::OutOfSpace => write!(f, "out of space"),
+            EncodeError::InvalidData => write!(f, "invalid data"),
         }
     }
 }
