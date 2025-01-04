@@ -44,7 +44,7 @@ mod vesting {
             eb: &mut EventBus<UnlockEvent>,
         ) -> Result<(), UnlockError> {
             println!(
-                "unlocking, {:?}, {:?}",
+                "unlocking, block time: {:?}, unlock time: {:?}",
                 self.block_client.get_block_time(ctx)?,
                 self.unlock_time.get(ctx)?
             );
@@ -162,13 +162,15 @@ mod vesting {
 
 #[cfg(test)]
 mod tests {
+
     use super::vesting::*;
-    use chrono::{DateTime, Days, Duration, Utc};
+    use chrono::{Days, Duration, Utc};
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_core::handler::{Client, Service};
     use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
     use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;
+    use mockall::Sequence;
 
     #[test]
     fn test_unlock() {
@@ -198,9 +200,27 @@ mod tests {
         // initialize block info mock
         let mut block_mock = MockBlockInfoAPI::new();
         let curr_time = Utc::now();
+        let curr_time2 = curr_time.checked_add_days(Days::new(6)).unwrap();
+        let curr_time3 = curr_time.checked_sub_days(Days::new(6)).unwrap();
+        let mut seq = Sequence::new();
         block_mock
             .expect_get_block_time()
-            .returning(move |_| Ok(curr_time.timestamp()));
+            .times(1)
+            .returning(move |_| Ok(curr_time.timestamp()))
+            .in_sequence(&mut seq);
+
+        block_mock
+            .expect_get_block_time()
+            .times(1)
+            .returning(move |_| Ok(curr_time2.timestamp()))
+            .in_sequence(&mut seq);
+
+        block_mock
+            .expect_get_block_time()
+            .times(1)
+            .returning(move |_| Ok(curr_time3.timestamp()))
+            .in_sequence(&mut seq);
+
         let block_info_id = app
             .add_mock(MockHandler::of::<dyn BlockInfoAPI>(Box::new(block_mock)))
             .unwrap();
@@ -223,23 +243,6 @@ mod tests {
                 unlock_time: unix_timestamp,
             },
         )
-        .unwrap();
-
-        // try to unlock before the initial deposit but after the unlock time (we're time traveling)
-        let curr_time2 = curr_time.checked_add_days(Days::new(6)).unwrap();
-        let mut block_mock2 = MockBlockInfoAPI::new();
-        block_mock2
-            .expect_get_block_time()
-            .returning(move |_| Ok(curr_time2.timestamp()));
-        let block_info_id2 = app
-            .add_mock(MockHandler::of::<dyn BlockInfoAPI>(Box::new(block_mock2)))
-            .unwrap();
-
-        // register vesting account handler
-        app.register_handler_with_bindings::<FixedVesting>(&[
-            ("bank", bank_id),
-            ("block_info", block_info_id2),
-        ])
         .unwrap();
 
         let res = vesting_acct.unlock(&mut root);
@@ -276,7 +279,6 @@ mod tests {
         });
 
         // try unlocking before the unlock time
-        let curr_time = curr_time - Duration::days(6);
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().code, HandlerCode(UnlockError::NotTimeYet));
