@@ -43,11 +43,6 @@ mod vesting {
             ctx: &mut Context,
             eb: &mut EventBus<UnlockEvent>,
         ) -> Result<(), UnlockError> {
-            println!(
-                "unlocking, block time: {:?}, unlock time: {:?}",
-                self.block_client.get_block_time(ctx)?,
-                self.unlock_time.get(ctx)?
-            );
             if self.unlock_time.get(ctx)? > self.block_client.get_block_time(ctx)? {
                 bail!(UnlockError::NotTimeYet);
             }
@@ -170,7 +165,7 @@ mod tests {
     use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
     use ixc_message_api::code::SystemCode::AccountNotFound;
     use ixc_testing::*;
-    use mockall::Sequence;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn test_unlock() {
@@ -200,26 +195,11 @@ mod tests {
         // initialize block info mock
         let mut block_mock = MockBlockInfoAPI::new();
         let curr_time = Utc::now();
-        let curr_time2 = curr_time.checked_add_days(Days::new(6)).unwrap();
-        let curr_time3 = curr_time.checked_sub_days(Days::new(6)).unwrap();
-        let mut seq = Sequence::new();
+        let time_state = Arc::new(Mutex::new(curr_time.timestamp()));
+        let time_state_clone = time_state.clone();
         block_mock
             .expect_get_block_time()
-            .times(1)
-            .returning(move |_| Ok(curr_time.timestamp()))
-            .in_sequence(&mut seq);
-
-        block_mock
-            .expect_get_block_time()
-            .times(1)
-            .returning(move |_| Ok(curr_time2.timestamp()))
-            .in_sequence(&mut seq);
-
-        block_mock
-            .expect_get_block_time()
-            .times(1)
-            .returning(move |_| Ok(curr_time3.timestamp()))
-            .in_sequence(&mut seq);
+            .returning(move |_| Ok(*time_state_clone.lock().unwrap()));
 
         let block_info_id = app
             .add_mock(MockHandler::of::<dyn BlockInfoAPI>(Box::new(block_mock)))
@@ -245,6 +225,8 @@ mod tests {
         )
         .unwrap();
 
+        let curr_time2 = curr_time.checked_add_days(Days::new(6)).unwrap();
+        *time_state.lock().unwrap() = curr_time2.timestamp();
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
         assert_eq!(
@@ -278,12 +260,15 @@ mod tests {
             );
         });
 
+        let curr_time3 = curr_time.checked_sub_days(Days::new(6)).unwrap();
+        *time_state.lock().unwrap() = curr_time3.timestamp();
         // try unlocking before the unlock time
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().code, HandlerCode(UnlockError::NotTimeYet));
         // try unlocking after the unlock time
-        // let _curr_time = curr_time + Duration::days(6);
+        let curr_time4 = curr_time.checked_add_days(Days::new(6)).unwrap();
+        *time_state.lock().unwrap() = curr_time4.timestamp();
         vesting_acct.unlock(&mut root).unwrap();
         // TODO check for unlock event
         // since the unlock succeeded, if we try to unlock again we should get account not found,
