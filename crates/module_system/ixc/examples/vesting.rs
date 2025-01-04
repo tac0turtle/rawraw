@@ -43,6 +43,11 @@ mod vesting {
             ctx: &mut Context,
             eb: &mut EventBus<UnlockEvent>,
         ) -> Result<(), UnlockError> {
+            println!(
+                "unlocking, {:?}, {:?}",
+                self.block_client.get_block_time(ctx)?,
+                self.unlock_time.get(ctx)?
+            );
             if self.unlock_time.get(ctx)? > self.block_client.get_block_time(ctx)? {
                 bail!(UnlockError::NotTimeYet);
             }
@@ -158,7 +163,7 @@ mod vesting {
 #[cfg(test)]
 mod tests {
     use super::vesting::*;
-    use chrono::{Duration, Utc};
+    use chrono::{DateTime, Days, Duration, Utc};
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_core::handler::{Client, Service};
     use ixc_message_api::code::ErrorCode::{HandlerCode, SystemCode};
@@ -221,7 +226,22 @@ mod tests {
         .unwrap();
 
         // try to unlock before the initial deposit but after the unlock time (we're time traveling)
-        let curr_time = curr_time + Duration::days(6);
+        let curr_time2 = curr_time.checked_add_days(Days::new(6)).unwrap();
+        let mut block_mock2 = MockBlockInfoAPI::new();
+        block_mock2
+            .expect_get_block_time()
+            .returning(move |_| Ok(curr_time2.timestamp()));
+        let block_info_id2 = app
+            .add_mock(MockHandler::of::<dyn BlockInfoAPI>(Box::new(block_mock2)))
+            .unwrap();
+
+        // register vesting account handler
+        app.register_handler_with_bindings::<FixedVesting>(&[
+            ("bank", bank_id),
+            ("block_info", block_info_id2),
+        ])
+        .unwrap();
+
         let res = vesting_acct.unlock(&mut root);
         assert!(res.is_err());
         assert_eq!(
