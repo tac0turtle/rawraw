@@ -51,10 +51,20 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         let bz = self.read_bytes(8)?;
         Ok(u64::from_le_bytes(bz.try_into().unwrap()))
     }
-
     fn decode_u128(&mut self) -> Result<u128, DecodeError> {
-        let bz = self.read_bytes(16)?;
-        Ok(u128::from_le_bytes(bz.try_into().unwrap()))
+        // Read length prefix
+        let len = self.read_bytes(1)?[0] as usize;
+        if len > 16 {
+            return Err(DecodeError::InvalidData);
+        }
+
+        // Read the significant bytes
+
+        let mut bytes = [0u8; 16];
+        let bz = self.read_bytes(len)?;
+        bytes[..len].copy_from_slice(bz);
+
+        Ok(u128::from_le_bytes(bytes))
     }
 
     fn decode_borrowed_str(&mut self) -> Result<&'a str, DecodeError> {
@@ -134,8 +144,16 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
     }
 
     fn decode_i128(&mut self) -> Result<i128, DecodeError> {
-        let bz = self.read_bytes(16)?;
-        Ok(i128::from_le_bytes(bz.try_into().unwrap()))
+        let len = self.read_bytes(1)?[0] as usize;
+        if len > 16 {
+            return Err(DecodeError::InvalidData);
+        }
+
+        let mut bytes = [0u8; 16];
+        let bz = self.read_bytes(len)?;
+        bytes[..len].copy_from_slice(bz);
+
+        Ok(i128::from_le_bytes(bytes))
     }
 
     fn decode_borrowed_bytes(&mut self) -> Result<&'a [u8], DecodeError> {
@@ -393,5 +411,68 @@ mod tests {
         let res = encode_value(&coins, &mem).unwrap();
         let decoded = crate::codec::decode_value::<&[Coin]>(&NativeBinaryCodec, res, &mem).unwrap();
         assert_eq!(decoded, coins);
+    }
+
+    #[test]
+    fn test_u128_encoding() {
+        let test_cases = [
+            (0u128, 1),                    // Zero (1 byte)
+            (255u128, 1),                  // Max u8 (1 byte)
+            (256u128, 2),                  // Min 2 bytes
+            (65535u128, 2),                // Max u16 (2 bytes)
+            (65536u128, 3),                // Min 3 bytes
+            (0xFFFFFFFFu128, 4),           // Max u32 (4 bytes)
+            (0x100000000u128, 5),          // Min 5 bytes
+            (0xFFFFFFFFFFFFFFFFu128, 8),   // Max u64 (8 bytes)
+            (0x100000000000000000u128, 9), // Min 9 bytes
+            (u128::MAX, 16),               // Max u128 (16 bytes)
+        ];
+
+        let mem = MemoryManager::new();
+        for (value, expected_size) in test_cases {
+            let encoded = encode_value(&value, &mem).unwrap();
+            assert_eq!(
+                encoded[0] as usize, expected_size,
+                "Wrong size prefix for {}",
+                value
+            );
+
+            // Test roundtrip
+            let decoded =
+                crate::codec::decode_value::<u128>(&NativeBinaryCodec, encoded, &mem).unwrap();
+            assert_eq!(decoded, value, "Roundtrip failed for {}", value);
+        }
+    }
+
+    #[test]
+    fn test_i128_encoding() {
+        let test_cases = [
+            (0i128, 1),            // Zero (1 byte)
+            (127i128, 1),          // Max i8 (1 byte)
+            (-128i128, 1),         // Min i8 (1 byte)
+            (32767i128, 2),        // Max i16 (2 bytes)
+            (-32768i128, 2),       // Min i16 (2 bytes)
+            (2147483647i128, 4),   // Max i32 (4 bytes)
+            (-2147483648i128, 4),  // Min i32 (4 bytes)
+            (i64::MAX as i128, 8), // Max i64 (8 bytes)
+            (i64::MIN as i128, 8), // Min i64 (8 bytes)
+            (i128::MAX, 16),       // Max i128 (16 bytes)
+            (i128::MIN, 16),       // Min i128 (16 bytes)
+        ];
+
+        let mem = MemoryManager::new();
+        for (value, expected_size) in test_cases {
+            let encoded = encode_value(&value, &mem).unwrap();
+            assert_eq!(
+                encoded[0] as usize, expected_size,
+                "Wrong size prefix for {}",
+                value
+            );
+
+            // Test roundtrip
+            let decoded =
+                crate::codec::decode_value::<i128>(&NativeBinaryCodec, encoded, &mem).unwrap();
+            assert_eq!(decoded, value, "Roundtrip failed for {}", value);
+        }
     }
 }

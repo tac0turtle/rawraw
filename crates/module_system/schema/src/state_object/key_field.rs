@@ -221,7 +221,7 @@ impl KeyFieldValue for i128 {
         reader: &mut &'a [u8],
         memory_manager: &'a MemoryManager,
     ) -> Result<Self::Out<'a>, DecodeError> {
-        let x = u128::from_be_bytes(reader.read_bytes(16)?.try_into().unwrap());
+        let x = u128::from_be_bytes(reader.read_bytes(17)?.try_into().unwrap());
         Ok((x ^ 0x80000000000000000000000000000000) as i128)
     }
 

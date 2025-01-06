@@ -43,7 +43,32 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
     }
 
     fn encode_u128(&mut self, x: u128) -> Result<(), EncodeError> {
-        self.writer.write(&x.to_le_bytes())
+        // Find the minimum number of bytes needed
+        let significant_bytes = if x == 0 {
+            1
+        } else {
+            let bits_needed = 128 - x.leading_zeros();
+            (bits_needed + 7) / 8
+        };
+
+        // Then write the significant bytes in little-endian order
+        let bytes = x.to_le_bytes();
+        if significant_bytes == 16 {
+            // Create a buffer of 17 bytes (16 data + 1 length)
+            let mut full_buffer = [0u8; 17];
+            // Copy the data bytes into position after the length byte
+            full_buffer[0] = significant_bytes as u8; // Length prefix first
+            full_buffer[1..].copy_from_slice(&bytes); // Then data
+            self.writer.write(&full_buffer)?;
+        } else {
+            // Then write the data
+            self.writer.write(&bytes[..significant_bytes as usize])?;
+
+            // Normal case - write length prefix first
+            self.writer.write(&[significant_bytes as u8])?;
+        }
+
+        Ok(())
     }
 
     fn encode_str(&mut self, x: &str) -> Result<(), EncodeError> {
@@ -117,12 +142,10 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
     }
 
     fn encode_time(&mut self, x: Time) -> Result<(), EncodeError> {
-        /// TODO find a more efficient way to encode time
         self.encode_i128(x.unix_nanos())
     }
 
     fn encode_duration(&mut self, x: Duration) -> Result<(), EncodeError> {
-        /// TODO find a more efficient way to encode duration
         self.encode_i128(x.nanos())
     }
 
@@ -517,5 +540,78 @@ mod tests {
         let mem = MemoryManager::new();
         let res = encode_value(&x, &mem).unwrap();
         assert_eq!(res, &[10, 0, 0, 0]);
+    }
+    #[test]
+    fn test_u128_encode() {
+        let test_cases = [
+            (0u128, vec![1, 0]),      // Zero needs 0 bytes + 1 byte length prefix
+            (1u128, vec![1, 1]),      // One needs 1 byte + 1 byte length prefix
+            (255u128, vec![1, 255]),  // Max u8 needs 1 byte
+            (256u128, vec![2, 0, 1]), // First u16 needs 2 bytes
+            (0xFFFFFFFFu128, vec![4, 255, 255, 255, 255]), // Max u32 needs 4 bytes
+            // Test a larger number that needs more bytes
+            (
+                0x1234567890ABCDEFu128,
+                vec![8, 0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12],
+            ),
+            (
+                0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu128,
+                vec![
+                    16, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0xFF,
+                ],
+            ),
+        ];
+
+        let mem = MemoryManager::new();
+        for (value, expected) in test_cases {
+            let encoded = encode_value(&value, &mem).unwrap();
+            assert_eq!(
+                encoded,
+                expected.as_slice(),
+                "Failed encoding {}: got {:?}, expected {:?}",
+                value,
+                encoded,
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_i128_encode() {
+        let test_cases = [
+            (0i128, vec![1, 0]),         // Zero needs 1 byte + length prefix
+            (1i128, vec![1, 1]),         // One needs 1 byte + length prefix
+            (-1i128, vec![1, 255]),      // Negative one needs 1 byte
+            (127i128, vec![1, 127]),     // Max positive i8 needs 1 byte
+            (-128i128, vec![1, 128]),    // Min negative i8 needs 1 byte
+            (255i128, vec![2, 255, 0]),  // Needs 2 bytes
+            (-256i128, vec![2, 0, 255]), // Needs 2 bytes
+            (0x7FFFFFFFi128, vec![4, 255, 255, 255, 127]), // Max i32 needs 4 bytes
+            (-0x80000000i128, vec![4, 0, 0, 0, 128]), // Min i32 needs 4 bytes
+            // Test a larger positive number
+            (
+                0x1234567890ABCDEFi128,
+                vec![8, 0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12],
+            ),
+            // Test a larger negative number
+            (
+                -0x1234567890ABCDEFi128,
+                vec![8, 0x11, 0x32, 0x54, 0x6F, 0x87, 0xA9, 0xCB, 0xED],
+            ),
+        ];
+
+        let mem = MemoryManager::new();
+        for (value, expected) in test_cases {
+            let encoded = encode_value(&value, &mem).unwrap();
+            assert_eq!(
+                encoded,
+                expected.as_slice(),
+                "Failed encoding {}: got {:?}, expected {:?}",
+                value,
+                encoded,
+                expected
+            );
+        }
     }
 }
