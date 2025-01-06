@@ -30,30 +30,35 @@ The module maintains several key state components:
 ### Administrative Operations
 
 1. **Create Denom**
+
    ```rust
    create_denom(denom: &str, admin: AccountID)
    ```
+
    - Creates a new token denomination
    - Only callable by super admin
    - Sets the specified account as the denom admin
 
 2. **Set Global Send Hook**
+
    ```rust
    set_global_send_hook(hook: AccountID)
    ```
+
    - Sets a global hook for all send operations
    - Only callable by super admin
 
 3. **Set Denom-specific Hooks**
+
    ```rust
    set_denom_send_hook(denom: &str, hook: AccountID)
    set_denom_burn_hook(denom: &str, hook: AccountID)
    set_denom_recieve_hook(hook: AccountID)
    ```
+
    - Sets hooks for specific denominations or accounts
    - Denom hooks require denom admin authorization
    - Receive hooks can be set by any account for themselves
-
 
 ### Token Operations
 
@@ -66,14 +71,17 @@ The send operation transfers tokens from one account to another, with multiple h
    ```
 
 **State Changes:**
+
 - Decreases sender's balance
 - Increases recipient's balance
 - No change to total supply
 
 **Event Emitted:**
+
 - `EventSend`: Contains sender (`from`), recipient (`to`), and coin details (denom and amount)
 
 **Hook Execution Order:**
+
 1. Global Send Hook (if set)
 2. Denom Send Hook (if set)
 3. Receive Hook (if set for recipient)
@@ -120,11 +128,13 @@ The mint operation creates new tokens, increasing both the recipient's balance a
    ```
 
 **State Changes:**
+
 - Increases recipient's balance
 - Increases total supply for the denom
 - No change to other accounts
 
 **Event Emitted:**
+
 - `EventMint`: Contains recipient (`to`) and coin details (denom and amount)
 
 ```mermaid
@@ -158,11 +168,13 @@ The burn operation destroys tokens, reducing both the holder's balance and the t
    ```
 
 **State Changes:**
+
 - Decreases holder's balance
 - Decreases total supply for the denom
 - No change to other accounts
 
 **Event Emitted:**
+
 - `EventBurn`: Contains token holder (`from`) and coin details (denom and amount)
 
 ```mermaid
@@ -193,11 +205,12 @@ Each operation ensures atomicity - either all state changes occur successfully, 
 ## Queries
 
 1. **Get Balance**
+
    ```rust
    get_balance(account: AccountID, denom: &str) -> u128
    ```
-   - Returns the token balance for a specific account and denomination
 
+   - Returns the token balance for a specific account and denomination
 
 ## Hook System
 
@@ -225,6 +238,7 @@ The module supports three types of hooks:
 ## Testing
 
 The module includes comprehensive tests covering:
+
 - Basic token operations
 - Hook functionality
 - Authorization checks

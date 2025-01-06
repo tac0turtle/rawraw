@@ -7,24 +7,23 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-ixc = { path = "../../module_system/ixc" }
-ixc_core = { path = "../../module_system/core" }
-ixc_schema = { path = "../../module_system/schema", version = "0.0.4", features = [
-    "use_ixc_macro_path",
-] }
-ixc_message_api = { path = "../../module_system/message_api", version = "0.0.4" }
-ixc_collections = { path = "../../module_system/collections", version = "0.0.4" }
-mockall = "0.13.0"
-ixc_core_macros = { path = "../../module_system/core_macros", version = "0.0.4" }
-ixc_schema_macros = { path = "../../module_system/schema_macros", version = "0.0.3", features = [
-    "use_ixc_macro_path",
-] }
+ixc = { workspace = true }
+ixc_core = { workspace = true }
+ixc_schema = { workspace = true, features = ["use_ixc_macro_path"] }
+ixc_message_api = { workspace = true }
+ixc_collections = { workspace = true }
+ixc_core_macros = { workspace = true }
+ixc_schema_macros = { workspace = true, features = ["use_ixc_macro_path"] }
+ixc_bank = { path = "../bank", version = "0.1.0" }
 
 [dev-dependencies]
 ixc_testing = { path = "../../module_system/testing" }
-arrayvec = "0.7.6"
 thiserror = "1.0.63"
 num_enum = "0.7.3"
+mockall = "0.13.0"
 
 [lints]
 workspace = true
+
+[features]
+default = []

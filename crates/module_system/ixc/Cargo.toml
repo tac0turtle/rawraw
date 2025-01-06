@@ -38,7 +38,3 @@ default = []
 
 [profile.release]
 lto = true
-
-# [[example]]
-# name = "../../../example"
-# crate-type = ["cdylib"]

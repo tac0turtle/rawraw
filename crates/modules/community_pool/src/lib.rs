@@ -21,6 +21,11 @@
 #[ixc::handler(CommunityPool)]
 pub mod community_pool {
     use ixc::*;
+    use ixc_bank::bank::Coin;
+    use ixc_core::handler::{Client, Service};
+    use mockall::automock;
+    use num_enum::{IntoPrimitive, TryFromPrimitive};
+    use thiserror::Error;
 
     /// CommunityPool is a module that allows users to deposit and spend tokens.
     #[derive(Resources)]
@@ -31,6 +36,8 @@ pub mod community_pool {
         params: Item<PoolParams>,
         #[state(prefix = 3)]
         admin: Item<AccountID>,
+        #[client(123)]
+        bank_client: <dyn BankAPI as Service>::Client,
     }
 
     /// PoolParams is a struct that represents the parameters of the community pool.
@@ -39,16 +46,6 @@ pub mod community_pool {
     pub struct PoolParams {
         /// SpendEnabled is a boolean that determines whether spending is enabled.
         pub spend_enabled: bool,
-    }
-
-    /// Coin is a struct that represents a coin.
-    #[derive(SchemaValue, Clone, Default)]
-    #[sealed]
-    pub struct Coin<'a> {
-        /// The denom of the coin.
-        pub denom: &'a str,
-        /// The amount of the coin.
-        pub amount: u128,
     }
 
     /// EventDeposit is emitted when a deposit is executed.
@@ -71,6 +68,29 @@ pub mod community_pool {
         pub coin: Coin<'a>,
         /// The proposal ID that was spent.
         pub proposal_id: u64,
+    }
+
+    #[handler_api]
+    #[automock]
+    pub trait BankAPI {
+        fn send<'a>(
+            &self,
+            ctx: &mut Context<'a>,
+            to: AccountID,
+            amount: &[Coin],
+        ) -> Result<(), SendError>;
+    }
+
+    #[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive, Error, SchemaValue, Default, Copy)]
+    #[repr(u8)]
+    #[non_exhaustive]
+    pub enum SendError {
+        #[default]
+        #[error("insufficient funds")]
+        InsufficientFunds,
+
+        #[error("send blocked")]
+        SendBlocked,
     }
 
     /// CommunityPool is a module that allows users to deposit and spend tokens.
@@ -107,6 +127,10 @@ pub mod community_pool {
             amount: u128,
             mut evt: EventBus<EventDeposit<'a>>,
         ) -> Result<()> {
+            let coins = [Coin { denom, amount }];
+            // transfer funds from caller to community pool
+            self.bank_client.send(ctx, ctx.self_account_id(), &coins)?;
+
             // Add to pool balance
             self.pool_balance.add(ctx, denom, amount)?;
 
@@ -166,13 +190,34 @@ pub mod community_pool {
 #[cfg(test)]
 mod tests {
     use super::community_pool::*;
+    use ixc_bank::bank::Coin;
     use ixc_core::account_api::ROOT_ACCOUNT;
     use ixc_testing::*;
 
     #[test]
     fn test_community_pool_basic() {
         let app = TestApp::default();
-        app.register_handler::<CommunityPool>().unwrap();
+        // initialize bank mock
+        let mut bank_mock = MockBankAPI::new();
+        // expect send to be called once with the correct coins
+        let coins = vec![Coin {
+            denom: "foo",
+            amount: 1000,
+        }];
+        let expected_coins = coins.clone();
+        bank_mock
+            .expect_send()
+            .times(1)
+            .returning(move |_, _, coins| {
+                assert_eq!(coins, expected_coins);
+                Ok(())
+            });
+        let bank_id = app
+            .add_mock(MockHandler::of::<dyn BankAPI>(Box::new(bank_mock)))
+            .unwrap();
+        let mut bank_ctx = app.client_context_for(bank_id);
+        app.register_handler_with_bindings::<CommunityPool>(&[("bank", bank_id)])
+            .unwrap();
 
         // Initialize with root account
         let mut root = app.client_context_for(ROOT_ACCOUNT);
