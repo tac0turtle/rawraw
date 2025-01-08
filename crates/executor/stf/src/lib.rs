@@ -192,13 +192,14 @@ where
     /// - `idg`: A mutable reference to the ID generator.
     /// - `block`: The block containing transactions.
     /// - `allocator`: A memory allocator reference.
-    pub fn apply_block<Vm, SH, IDG>(
+    pub fn apply_block<'a, Vm, SH, IDG>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
         idg: &mut IDG,
-        block: &Br,
-        allocator: &dyn Allocator,
-    ) where
+        block: &'a Br,
+        allocator: &'a dyn Allocator,
+    ) -> Vec<TxResult<'a, Tx>>
+    where
         Vm: VM,
         SH: StateHandler,
         IDG: IDGenerator,
@@ -218,6 +219,7 @@ where
 
         // Once all Txs are processed, call the 'end_blocker' hook.
         Eb::end_blocker(am, sh, idg, allocator);
+        results
     }
 
     /// Validates a single transaction without executing it.

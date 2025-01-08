@@ -132,7 +132,7 @@ impl EndBlocker for MyEndBlocker {
 // --------------------------------------------------------------------------
 // 8. Putting it all together
 // --------------------------------------------------------------------------
-/// Create our STF with the chosen transaction, block request, validator, hooks, etc.
+/// Create our STF with the chosen transaction, block request, tx validator, hooks, etc.
 pub type App<'a> = Stf<
     MyTransaction<'a>,  // Tx
     MyBlockRequest<'a>, // BlockRequest
@@ -142,25 +142,45 @@ pub type App<'a> = Stf<
     MyEndBlocker,
 >;
 
+impl<'a> App<'a> {
+    pub fn genesis() {
+
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use allocator_api2::alloc::Global;
     use ixc_account_manager::AccountManager;
-    use super::App;
+    use ixc_account_manager::id_generator::IncrementingIDGenerator;
+    use super::{App, MyBlockRequest};
     use ixc_account_manager::native_vm::NativeVMImpl;
+    use ixc_testing::store::VersionedMultiStore;
+    use ixc_account_manager::state_handler::std::{StdStateHandler};
 
     #[test]
     fn test() {
-        /*
+
         let vm = NativeVMImpl::default();
         let am = AccountManager::new(&vm);
-        let sh =
 
-        App::apply_block(
-            &vm,
-            sh,
+        let storage = VersionedMultiStore::default();
+        let mut tx = storage.new_transaction();
+        let mut state = StdStateHandler::new(&mut tx, Default::default());
 
-        )
+        let mut idg = IncrementingIDGenerator::default();
 
-         */
+        let block = MyBlockRequest{
+            transactions: vec![],
+        };
+
+        let resp = App::apply_block(
+            &am,
+            &mut state,
+            &mut idg,
+            &block,
+            &Global,
+        );
+
     }
 }

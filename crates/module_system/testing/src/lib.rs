@@ -1,6 +1,7 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-mod store;
+/// Implements a testing storage.
+pub mod store;
 
 use crate::default_account::{DefaultAccount, DefaultAccountCreate};
 use crate::store::VersionedMultiStore;
