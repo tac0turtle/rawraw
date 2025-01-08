@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 // --------------------------------------------------------------------------
 // 1. Bring in the STF traits and structures (update the imports to your module paths).
 // --------------------------------------------------------------------------
@@ -11,8 +9,7 @@ use crate::{
 use allocator_api2::alloc::Allocator;
 use ixc_account_manager::{id_generator::IDGenerator, state_handler::StateHandler, AccountManager};
 use ixc_message_api::gas::GasTracker;
-use ixc_message_api::handler::InvokeParams;
-use ixc_message_api::message::{Message, Response};
+use ixc_message_api::message::Message;
 use ixc_message_api::{code::ErrorCode, AccountID};
 use ixc_vm_api::VM;
 
@@ -22,7 +19,6 @@ use ixc_vm_api::VM;
 /// A basic transaction that carries a sender, recipient, a message payload, and a gas limit.
 pub struct MyTransaction<'a> {
     sender: AccountID,
-    recipient: AccountID,
     msg: Message<'a>,
     gas_limit: u64,
 }
@@ -88,8 +84,8 @@ impl<'a> AfterTxApplyHandler<MyTransaction<'a>> for MyAfterTxApply {
         _am: &AccountManager<Vm>,
         _sh: &SH,
         _idg: &mut IDG,
-        tx: &MyTransaction<'a>,
-        tx_result: &TxResult<'x, MyTransaction<'a>>,
+        _tx: &MyTransaction<'a>,
+        _tx_result: &TxResult<'x, MyTransaction<'a>>,
     ) {
         // Here you could log the result, emit events, etc.
     }
@@ -105,7 +101,7 @@ impl<'a> BeginBlocker<MyTransaction<'a>, MyBlockRequest<'a>> for MyBeginBlocker 
         _am: &AccountManager<Vm>,
         _sh: &mut SH,
         _idg: &mut IDG,
-        block_request: &MyBlockRequest<'a>,
+        _block_request: &MyBlockRequest<'a>,
         _allocator: &dyn Allocator,
     ) {
         println!("[BeginBlocker] BeginBlock called");
@@ -143,25 +139,48 @@ pub type App<'a> = Stf<
 >;
 
 impl<'a> App<'a> {
-    pub fn genesis() {
+    pub fn genesis() {}
+}
 
+#[ixc::handler(Echo)]
+mod echo_account {
+    use ixc::*;
+
+    #[derive(Resources)]
+    pub struct Echo;
+    impl Echo {
+        #[on_create]
+        pub fn create(&self, ctx: &mut Context) -> Result<()> {
+            Ok(())
+        }
+
+        #[publish]
+        pub fn echo(&self, ctx: &mut Context, msg: u64) -> Result<u64> {
+            Ok(msg)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{App, MyBlockRequest, MyTransaction};
+    use crate::example_app::echo_account::Echo;
     use allocator_api2::alloc::Global;
-    use ixc_account_manager::AccountManager;
     use ixc_account_manager::id_generator::IncrementingIDGenerator;
-    use super::{App, MyBlockRequest};
-    use ixc_account_manager::native_vm::NativeVMImpl;
+    use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
+    use ixc_account_manager::state_handler::std::StdStateHandler;
+    use ixc_account_manager::AccountManager;
+    use ixc_core::handler::HandlerResources;
+    use ixc_core::resource::{ResourceScope, Resources};
     use ixc_testing::store::VersionedMultiStore;
-    use ixc_account_manager::state_handler::std::{StdStateHandler};
 
     #[test]
     fn test() {
+        let scope = ResourceScope::default();
 
-        let vm = NativeVMImpl::default();
+        let mut vm = NativeVMImpl::default();
+        vm.register_handler(Echo::NAME, Box::new(unsafe { Echo::new(&scope).unwrap() }));
+
         let am = AccountManager::new(&vm);
 
         let storage = VersionedMultiStore::default();
@@ -170,17 +189,23 @@ mod tests {
 
         let mut idg = IncrementingIDGenerator::default();
 
-        let block = MyBlockRequest{
-            transactions: vec![],
+        // TODO: init account of type Echo
+        // TODO: init alice account which wants to call into echo
+
+        let block = MyBlockRequest {
+            transactions: vec![
+                /*
+                MyTransaction {
+                    sender: AccountID::new(10000),
+                    msg: Message::new(
+
+                    ),
+                    gas_limit: 0,
+                }
+                 */
+            ],
         };
 
-        let resp = App::apply_block(
-            &am,
-            &mut state,
-            &mut idg,
-            &block,
-            &Global,
-        );
-
+        let resp = App::apply_block(&am, &mut state, &mut idg, &block, &Global);
     }
 }

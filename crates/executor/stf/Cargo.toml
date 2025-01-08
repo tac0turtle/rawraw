@@ -13,7 +13,8 @@ ixc_vm_api = { path = "../../vm/api" }
 ixc_account_manager = { path = "../../vm/account_manager" }
 
 [dev-dependencies]
+ixc = { path = "../../module_system/ixc"}
 ixc_testing = { path= "../../module_system/testing"}
-
+ixc_core = {path="../../module_system/core"}
 [lints]
 workspace = true
