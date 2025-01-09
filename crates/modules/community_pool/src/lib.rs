@@ -130,7 +130,6 @@ pub mod community_pool {
             let coins = [Coin { denom, amount }];
             // transfer funds from caller to community pool
             self.bank_client.send(ctx, ctx.self_account_id(), &coins)?;
-
             // Add to pool balance
             self.pool_balance.add(ctx, denom, amount)?;
 
@@ -209,13 +208,14 @@ mod tests {
             .expect_send()
             .times(1)
             .returning(move |_, _, coins| {
-                assert_eq!(coins, expected_coins);
+                // assert that the coins are the same
+                assert_eq!(coins[0].denom, expected_coins[0].denom);
+                assert_eq!(coins[0].amount, expected_coins[0].amount);
                 Ok(())
             });
         let bank_id = app
             .add_mock(MockHandler::of::<dyn BankAPI>(Box::new(bank_mock)))
             .unwrap();
-        let mut bank_ctx = app.client_context_for(bank_id);
         app.register_handler_with_bindings::<CommunityPool>(&[("bank", bank_id)])
             .unwrap();
 
@@ -224,19 +224,19 @@ mod tests {
         let pool = create_account::<CommunityPool>(&mut root, CommunityPoolCreate {}).unwrap();
 
         // Test deposit
-        pool.deposit(&mut root, "atom", 1000).unwrap();
-        assert_eq!(pool.get_balance(&root, "atom").unwrap(), 1000);
+        pool.deposit(&mut root, "foo", 1000).unwrap();
+        assert_eq!(pool.get_balance(&root, "foo").unwrap(), 1000);
 
         // Test spend
         let mut alice = app.new_client_context().unwrap();
         let alice_id = alice.self_account_id();
 
         // Only admin can spend
-        let result = pool.spend(&mut alice, alice_id, "atom", 500, 1);
+        let result = pool.spend(&mut alice, alice_id, "foo", 500, 1);
         assert!(result.is_err());
 
         // Admin can spend
-        pool.spend(&mut root, alice_id, "atom", 500, 1).unwrap();
-        assert_eq!(pool.get_balance(&root, "atom").unwrap(), 500);
+        pool.spend(&mut root, alice_id, "foo", 500, 1).unwrap();
+        assert_eq!(pool.get_balance(&root, "foo").unwrap(), 500);
     }
 }
