@@ -36,7 +36,7 @@ pub mod community_pool {
         params: Item<PoolParams>,
         #[state(prefix = 3)]
         admin: Item<AccountID>,
-        #[client(123)]
+        #[client(6656)]
         bank_client: <dyn BankAPI as Service>::Client,
     }
 
@@ -77,7 +77,7 @@ pub mod community_pool {
             &self,
             ctx: &mut Context<'a>,
             to: AccountID,
-            amount: &[Coin],
+            amount: &[Coin<'a>],
         ) -> Result<(), SendError>;
     }
 
@@ -122,7 +122,7 @@ pub mod community_pool {
         #[publish]
         pub fn deposit<'a>(
             &self,
-            ctx: &mut Context,
+            ctx: &mut Context<'a>,
             denom: &'a str,
             amount: u128,
             mut evt: EventBus<EventDeposit<'a>>,
