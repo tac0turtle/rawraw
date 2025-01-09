@@ -122,12 +122,12 @@ impl KeyFieldValue for u128 {
         reader: &mut &'a [u8],
         memory_manager: &'a MemoryManager,
     ) -> Result<Self::Out<'a>, DecodeError> {
-        let bz = reader.read_bytes(16)?;
+        let bz = reader.read_bytes(17)?;
         Ok(u128::from_be_bytes(bz.try_into().unwrap()))
     }
 
     fn out_size(key: &Self::In<'_>) -> usize {
-        16
+        17
     }
 }
 
@@ -226,7 +226,7 @@ impl KeyFieldValue for i128 {
     }
 
     fn out_size(key: &Self::In<'_>) -> usize {
-        16
+        17
     }
 }
 
