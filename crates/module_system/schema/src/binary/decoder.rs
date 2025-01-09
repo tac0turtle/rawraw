@@ -153,6 +153,11 @@ impl<'a> crate::decoder::Decoder<'a> for Decoder<'a> {
         let bz = self.read_bytes(len)?;
         bytes[..len].copy_from_slice(bz);
 
+        // Sign extend if the highest bit of the last byte is set
+        if len > 0 && (bz[len - 1] & 0x80) != 0 {
+            bytes[len..].fill(0xFF);
+        }
+
         Ok(i128::from_le_bytes(bytes))
     }
 
@@ -425,7 +430,7 @@ mod tests {
             (0x100000000u128, 5),          // Min 5 bytes
             (0xFFFFFFFFFFFFFFFFu128, 8),   // Max u64 (8 bytes)
             (0x100000000000000000u128, 9), // Min 9 bytes
-            (u128::MAX, 16),               // Max u128 (16 bytes)
+            (u128::MAX, 16),               // Max u128 (17 bytes)
         ];
 
         let mem = MemoryManager::new();
