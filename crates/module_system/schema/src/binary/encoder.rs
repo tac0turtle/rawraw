@@ -134,7 +134,22 @@ impl<W: Writer> crate::encoder::Encoder for Encoder<'_, W> {
     }
 
     fn encode_i128(&mut self, x: i128) -> Result<(), EncodeError> {
-        self.writer.write(&x.to_le_bytes())
+        // Find minimum bytes needed (accounting for sign bit)
+        let significant_bytes = if x == 0 {
+            1
+        } else {
+            let bits_needed = 128 - x.leading_zeros().max(x.leading_ones());
+            (bits_needed + 8) / 8
+        };
+
+        // Write significant bytes in little-endian
+        let bytes = x.to_le_bytes();
+        self.writer.write(&bytes[..significant_bytes as usize])?;
+
+        // Write length prefix
+        self.writer.write(&[significant_bytes as u8])?;
+
+        Ok(())
     }
 
     fn encode_bytes(&mut self, x: &[u8]) -> Result<(), EncodeError> {
@@ -191,7 +206,7 @@ impl crate::encoder::Encoder for EncodeSizer {
     }
 
     fn encode_u128(&mut self, x: u128) -> Result<(), EncodeError> {
-        self.size += 16;
+        self.size += 17;
         Ok(())
     }
 
@@ -256,7 +271,7 @@ impl crate::encoder::Encoder for EncodeSizer {
     }
 
     fn encode_i128(&mut self, x: i128) -> Result<(), EncodeError> {
-        self.size += 16;
+        self.size += 17;
         Ok(())
     }
 
@@ -598,6 +613,13 @@ mod tests {
             (
                 -0x1234567890ABCDEFi128,
                 vec![8, 0x11, 0x32, 0x54, 0x6F, 0x87, 0xA9, 0xCB, 0xED],
+            ),
+            (
+                0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFi128,
+                vec![
+                    16, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                    0xFF, 0xFF, 0xFF, 0x7F,
+                ],
             ),
         ];
 
