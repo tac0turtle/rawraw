@@ -113,7 +113,7 @@ impl SystemCode {
 }
 
 impl<H: HandlerCode> From<AllocError> for ErrorCode<H> {
-    fn from(value: AllocError) -> Self {
+    fn from(_value: AllocError) -> Self {
         ErrorCode::SystemCode(SystemCode::FatalExecutionError)
     }
 }

@@ -81,12 +81,12 @@ pub trait AfterTxApplyHandler<Tx: Transaction> {
     /// - `idg`: Reference to the `IDGenerator`.
     /// - `tx`: The transaction that was applied.
     /// - `tx_result`: The result of the transaction application (including gas used, response, etc.).
-    fn after_tx_apply<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
+    fn after_tx_apply<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &SH,
         idg: &mut IDG,
         tx: &Tx,
-        tx_result: &TxResult<'a, Tx>,
+        tx_result: &TxResult<'_, Tx>,
     );
 }
 
@@ -133,13 +133,12 @@ pub trait EndBlocker {
 }
 
 /// Encapsulates the result of applying a single transaction.
-///
-/// - `gas_used`: The total gas consumed by this transaction.
-/// - `response`: The outcome of the transaction, either `Response` or an `ErrorCode`.
-/// - `tx`: A reference to the original transaction.
 pub struct TxResult<'a, Tx: Transaction> {
+    /// The total gas consumed by this transaction.
     pub gas_used: u64,
+    /// The outcome of the transaction, either `Response` or an `ErrorCode`
     pub response: Result<Response<'a>, ErrorCode>,
+    /// A reference to the original transaction.
     pub tx: &'a Tx,
 }
 
@@ -313,6 +312,8 @@ where
         am.invoke_msg(sh, id_generator, tx.sender(), tx.msg(), &invoke_params)
     }
 
+    /// Allows any caller to execute something with sudo permissions
+    /// It allows it to impersonate any account.
     pub fn sudo<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &mut SH,
@@ -331,6 +332,7 @@ where
         am.invoke_msg(sh, id_generator, sender, msg, &invoke_params)
     }
 
+    /// Performs a readonly query on the account.
     pub fn query<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator>(
         am: &AccountManager<Vm>,
         sh: &SH,

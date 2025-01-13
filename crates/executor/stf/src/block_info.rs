@@ -6,8 +6,11 @@ use ixc_account_manager::AccountManager;
 use ixc_message_api::gas::GasTracker;
 use ixc_vm_api::VM;
 
+/// Defines a BlockRequest which exposes time and height information.
 pub trait BlockRequestWithInfo<Tx: Transaction>: BlockRequest<Tx> {
+    /// The time as unix nanoseconds.
     fn time_unix_ns(&self) -> u64;
+    /// The height of the block being processed.
     fn height(&self) -> u64;
 }
 
@@ -19,12 +22,12 @@ impl<Tx: Transaction, T: BlockRequestWithInfo<Tx>> BeginBlocker<Tx, T>
     for BeginBlockerWithBlockInfo
 {
     fn begin_blocker<Vm: VM, SH: StateHandler, IDG: IDGenerator>(
-        am: &AccountManager<Vm>,
-        sh: &mut SH,
-        idg: &mut IDG,
-        block_request: &T,
-        allocator: &dyn Allocator,
+        _am: &AccountManager<Vm>,
+        _sh: &mut SH,
+        _idg: &mut IDG,
+        _block_request: &T,
+        _allocator: &dyn Allocator,
     ) {
-        let gt = GasTracker::unlimited();
+        let _gt = GasTracker::unlimited();
     }
 }
