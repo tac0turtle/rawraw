@@ -1,7 +1,7 @@
 //! Error and success codes returned by the message API.
 
-use core::fmt::Debug;
 use allocator_api2::alloc::AllocError;
+use core::fmt::Debug;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 /// Error and success codes returned by the message API.
