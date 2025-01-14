@@ -11,12 +11,14 @@ use std::alloc::Layout;
 use std::cell::RefCell;
 use thiserror::Error;
 
+/// Faux versioned multi store.
 #[derive(Default, Clone)]
 pub struct VersionedMultiStore {
     versions: Vector<MultiStore>,
 }
 
 impl VersionedMultiStore {
+    /// Creates a new storage tx.
     pub fn new_transaction(&self) -> Tx {
         let latest = self.versions.last().cloned().unwrap_or_default();
         Tx {
@@ -27,6 +29,7 @@ impl VersionedMultiStore {
         }
     }
 
+    /// Commits the tx.
     pub fn commit(&mut self, tx: Tx) -> Result<Vector<EventData>, ()> {
         if tx.call_stack.len() != 1 {
             return Err(());
@@ -37,17 +40,20 @@ impl VersionedMultiStore {
     }
 }
 
+/// Faux implementation of a multi store for the account.
 #[derive(Default, Clone, Debug)]
 pub struct MultiStore {
     stores: HashMap<AccountID, Store>,
     events: Vec<EventData>,
 }
 
+/// Faux store for the account.
 #[derive(Default, Clone, Debug)]
 pub struct Store {
     kv_store: OrdMap<Vec<u8>, Vec<u8>>,
 }
 
+/// Faux state handler impl.
 pub struct Tx {
     call_stack: Vec<Frame>,
 }
@@ -214,10 +220,12 @@ enum Error {
     AccessError(#[from] AccessError),
 }
 
+/// Faux errors.
 #[derive(Debug, Error)]
 #[error("access error")]
 struct AccessError;
 
+/// Defines a frame in the multistore.
 #[derive(Clone)]
 pub struct Frame {
     store: MultiStore,

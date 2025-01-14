@@ -1,0 +1,20 @@
+[package]
+name = "stf"
+version = "0.1.0"
+edition = "2021"
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+allocator-api2 = "0.2.18"
+ixc_message_api = { path = "../../module_system/message_api" }
+ixc_vm_api = { path = "../../vm/api" }
+ixc_account_manager = { path = "../../vm/account_manager" }
+
+[dev-dependencies]
+ixc = { path = "../../module_system/ixc"}
+ixc_testing = { path= "../../module_system/testing"}
+ixc_core = {path="../../module_system/core"}
+[lints]
+workspace = true
