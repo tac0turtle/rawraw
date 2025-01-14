@@ -150,12 +150,12 @@ mod echo_account {
     pub struct Echo;
     impl Echo {
         #[on_create]
-        pub fn create(&self, _ctx: &mut Context) -> Result<()> {
+        pub fn create(&self, ctx: &mut Context) -> Result<()> {
             Ok(())
         }
 
         #[publish]
-        pub fn echo(&self, _ctx: &mut Context, msg: u64) -> Result<u64> {
+        pub fn echo(&self, ctx: &mut Context, msg: u64) -> Result<u64> {
             Ok(msg)
         }
     }
