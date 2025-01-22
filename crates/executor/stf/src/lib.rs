@@ -19,12 +19,15 @@ mod block_info;
 mod example_app;
 
 use allocator_api2::alloc::Allocator;
+use ixc::schema::binary::NativeBinaryCodec;
+use ixc::schema::codec::Codec;
 use ixc_account_manager::id_generator::IDGenerator;
 use ixc_account_manager::state_handler::StateHandler;
 use ixc_account_manager::AccountManager;
+use ixc_core::handler::Handler;
 use ixc_message_api::gas::GasTracker;
 use ixc_message_api::handler::InvokeParams;
-use ixc_message_api::message::{Message, Response};
+use ixc_message_api::message::{Message, Param, Request, Response};
 use ixc_message_api::{code::ErrorCode, AccountID};
 use ixc_vm_api::VM;
 use std::marker::PhantomData;
@@ -330,6 +333,43 @@ where
 
         let invoke_params = InvokeParams::new(allocator, Some(&gt));
         am.invoke_msg(sh, id_generator, sender, msg, &invoke_params)
+    }
+
+    const CREATE_SELECTOR: u64 = 4843642167467229819; // hacked from expansion
+
+    /// Creates an account. It is a SUDO operation.
+    pub fn create_account<'a, Vm: VM, SH: StateHandler, IDG: IDGenerator, H: Handler>(
+        am: &AccountManager<Vm>,
+        sh: &mut SH,
+        id_generator: &mut IDG,
+        sender: Option<AccountID>, // if none defaults to root.
+        msg: H::Init<'_>,
+        gas_limit: Option<u64>,
+        allocator: &'a dyn Allocator,
+    ) -> Result<AccountID, ErrorCode> {
+        let gt = match gas_limit {
+            Some(gt) => GasTracker::limited(gt),
+            None => GasTracker::unlimited(),
+        };
+
+        let msg_bytes = NativeBinaryCodec {}.encode_value(&msg, allocator)?;
+
+        let invoke_params = InvokeParams::new(allocator, Some(&gt));
+
+        let request = Request::new2(
+            Self::CREATE_SELECTOR,
+            Param::from(H::NAME),
+            Param::from(msg_bytes),
+        );
+        let msg = Message::new(ixc_message_api::ROOT_ACCOUNT, request);
+        am.invoke_msg(
+            sh,
+            id_generator,
+            sender.unwrap_or(ixc_message_api::ROOT_ACCOUNT),
+            &msg,
+            &invoke_params,
+        )
+        .map(|r| r.out1().expect_account_id().unwrap())
     }
 
     /// Performs a readonly query on the account.

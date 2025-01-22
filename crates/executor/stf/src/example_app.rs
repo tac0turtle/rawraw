@@ -163,15 +163,19 @@ mod echo_account {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, MyBlockRequest};
+    use super::{echo_account, App, MyBlockRequest, MyTransaction};
     use crate::example_app::echo_account::Echo;
     use allocator_api2::alloc::Global;
+    use ixc::schema::binary::NativeBinaryCodec;
+    use ixc::schema::codec::Codec;
+    use ixc::schema::structs::StructSchema; // imported for type selector
     use ixc_account_manager::id_generator::IncrementingIDGenerator;
     use ixc_account_manager::native_vm::{NativeVM, NativeVMImpl};
     use ixc_account_manager::state_handler::std::StdStateHandler;
     use ixc_account_manager::AccountManager;
     use ixc_core::handler::HandlerResources;
     use ixc_core::resource::{ResourceScope, Resources};
+    use ixc_message_api::message::{Message, Param, Request};
     use ixc_testing::store::VersionedMultiStore;
 
     #[test]
@@ -189,23 +193,57 @@ mod tests {
 
         let mut idg = IncrementingIDGenerator::default();
 
-        // TODO: init account of type Echo
-        // TODO: init alice account which wants to call into echo
+        let alice = App::create_account::<_, _, _, Echo>(
+            &am,
+            &mut state,
+            &mut idg,
+            None,
+            echo_account::EchoCreate {},
+            None,
+            &Global,
+        )
+        .unwrap();
+        let bob = App::create_account::<_, _, _, Echo>(
+            &am,
+            &mut state,
+            &mut idg,
+            None,
+            echo_account::EchoCreate {},
+            None,
+            &Global,
+        )
+        .unwrap();
+
+        let req = echo_account::EchoEcho { msg: 200u64 };
+        let req_bytes = NativeBinaryCodec {}.encode_value(&req, &Global).unwrap();
 
         let block = MyBlockRequest {
-            transactions: vec![
-                /*
-                MyTransaction {
-                    sender: AccountID::new(10000),
-                    msg: Message::new(
-
+            transactions: vec![MyTransaction {
+                sender: alice,
+                msg: Message::new(
+                    bob,
+                    Request::new1(
+                        echo_account::EchoEcho::TYPE_SELECTOR,
+                        Param::from(req_bytes),
                     ),
-                    gas_limit: 0,
-                }
-                 */
-            ],
+                ),
+                gas_limit: 100_000,
+            }],
         };
 
-        let _resp = App::apply_block(&am, &mut state, &mut idg, &block, &Global);
+        let mut block_resp = App::apply_block(&am, &mut state, &mut idg, &block, &Global);
+        let tx_exec_resp = u64::from_le_bytes(
+            block_resp
+                .pop()
+                .unwrap()
+                .response
+                .unwrap()
+                .out1()
+                .expect_bytes() // why bytes???
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        );
+        assert_eq!(200, tx_exec_resp);
     }
 }
